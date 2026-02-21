@@ -5,28 +5,27 @@ import { v } from "convex/values";
 
 export default defineSchema({
   // ============================================
-  // USERS
+  // USERS (app-level — synced from Better Auth via triggers)
   // ============================================
   users: defineTable({
-    // Identity
+    // ---- Link to Better Auth ----
+    better_auth_user_id: v.string(), // ID from Better Auth component's user table
+
+    // ---- Denormalized from Better Auth (synced via triggers) ----
     email: v.string(),
     name: v.string(),
     avatar_url: v.optional(v.string()),
+
+    // ---- Pixel-Mart business fields (NOT in Better Auth) ----
     phone: v.optional(v.string()), // E.164 format: +22961234567
 
-    // Role & Auth
     role: v.union(
       v.literal("admin"),
       v.literal("vendor"),
       v.literal("customer"),
     ),
-    auth_provider: v.union(
-      v.literal("email"),
-      v.literal("google"),
-      v.literal("facebook"),
-    ),
 
-    // Security
+    // Security (app-level, not managed by Better Auth)
     is_2fa_enabled: v.boolean(),
     totp_secret: v.optional(v.string()), // encrypted AES-256
 
@@ -41,6 +40,7 @@ export default defineSchema({
     // Metadata
     updated_at: v.number(),
   })
+    .index("by_better_auth_id", ["better_auth_user_id"])
     .index("by_email", ["email"])
     .index("by_role", ["role"]),
 
