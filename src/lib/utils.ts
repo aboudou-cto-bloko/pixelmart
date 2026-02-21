@@ -7,20 +7,26 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Formate un montant en centimes vers un prix lisible
- * @param centimes - Montant en centimes (ex: 1500 = 15.00€)
- * @param currency - Code devise ISO (EUR, XOF, USD)
- * @param locale - Locale pour le formatage (fr, en)
+ *
+ * XOF: 150000 centimes → "1 500 FCFA" (pas de décimales)
+ * EUR: 1500 centimes → "15,00 €"
  */
 export function formatPrice(
   centimes: number,
-  currency: string = "EUR",
+  currency: string = "XOF",
   locale: string = "fr-FR",
 ): string {
   const amount = centimes / 100;
+
+  // XOF/XAF have 0 decimal places
+  const noDecimalCurrencies = ["XOF", "XAF", "GNF", "CDF"];
+  const minimumFractionDigits = noDecimalCurrencies.includes(currency) ? 0 : 2;
+
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    minimumFractionDigits: currency === "XOF" ? 0 : 2,
+    minimumFractionDigits,
+    maximumFractionDigits: minimumFractionDigits,
   }).format(amount);
 }
 

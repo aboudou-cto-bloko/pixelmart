@@ -1,3 +1,7 @@
+export const DEFAULT_CURRENCY = "XOF";
+export const DEFAULT_COUNTRY = "BJ";
+export const DEFAULT_LOCALE = "fr";
+
 export const SUPPORTED_COUNTRIES = [
   { code: "BJ", name: "Bénin", currency: "XOF", locale: "fr" },
   { code: "SN", name: "Sénégal", currency: "XOF", locale: "fr" },
@@ -17,3 +21,4 @@ export const SUPPORTED_COUNTRIES = [
 ] as const;
 
 export type CountryCode = (typeof SUPPORTED_COUNTRIES)[number]["code"];
+export type CurrencyCode = (typeof SUPPORTED_COUNTRIES)[number]["currency"];
