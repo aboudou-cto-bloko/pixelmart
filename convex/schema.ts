@@ -182,7 +182,11 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_category", ["category_id"])
     .index("by_status", ["store_id", "status"])
-    .index("by_store_active", ["store_id", "status", "published_at"]),
+    .index("by_store_active", ["store_id", "status", "published_at"])
+    .searchIndex("search_title", {
+      searchField: "title",
+      filterFields: ["store_id", "category_id", "status"],
+    }),
 
   // ============================================
   // PRODUCT VARIANTS
