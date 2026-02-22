@@ -21,12 +21,11 @@ export const updateProfile = mutation({
   },
 });
 
-// filepath: convex/users/mutations.ts — remplacer becomeVendor
-
 export const becomeVendor = mutation({
   args: {
     store_name: v.string(),
-    country: v.optional(v.string()), // ISO 3166-1 alpha-2
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -56,11 +55,7 @@ export const becomeVendor = mutation({
       slug = `${baseSlug}-${counter}`;
     }
 
-    // ---- Devise par pays ----
-    const country = args.country ?? "BJ";
-    const currency = country === "GN" ? "GNF" : "XOF";
-
-    // ---- Insert store — 100% conforme au schéma step-0.2 ----
+    // ---- Insert store ----
     const storeId = await ctx.db.insert("stores", {
       owner_id: user._id,
       name: args.store_name,
@@ -76,16 +71,15 @@ export const becomeVendor = mutation({
       commission_rate: 500,
       balance: 0,
       pending_balance: 0,
-      currency,
+      currency: args.currency ?? "XOF",
       level: "bronze",
       total_orders: 0,
       avg_rating: 0,
       is_verified: false,
-      country,
+      country: args.country ?? "BJ",
       updated_at: Date.now(),
     });
 
-    // ---- Promote user to vendor ----
     await ctx.db.patch(user._id, {
       role: "vendor",
       updated_at: Date.now(),

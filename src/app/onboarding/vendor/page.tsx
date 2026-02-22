@@ -150,9 +150,14 @@ export default function VendorOnboardingPage() {
     setIsSubmitting(true);
 
     try {
+      const country = SUPPORTED_COUNTRIES.find(
+        (c) => c.code === result.data.country,
+      );
+
       await becomeVendor({
         store_name: result.data.store_name.trim(),
         country: result.data.country,
+        currency: country?.currency ?? "XOF",
         description: result.data.description ?? undefined,
       });
 
