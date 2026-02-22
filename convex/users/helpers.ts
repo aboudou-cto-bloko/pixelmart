@@ -1,26 +1,22 @@
+// filepath: convex/users/helpers.ts
+
 import { QueryCtx, MutationCtx } from "../_generated/server";
-import { Doc } from "../_generated/dataModel";
+import { authComponent } from "../auth";
+
+type Ctx = QueryCtx | MutationCtx;
 
 /**
- * Récupère l'utilisateur Pixel-Mart (app-level) à partir du contexte auth.
- * Retourne null si non authentifié.
+ * Retourne l'utilisateur app Pixel-Mart à partir de la session Better Auth.
+ * Retourne null si pas de session ou pas d'utilisateur app.
  */
-export async function getAppUser(
-  ctx: QueryCtx | MutationCtx,
-): Promise<Doc<"users"> | null> {
-  // Get Better Auth user ID from the authenticated session
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
+export async function getAppUser(ctx: Ctx) {
+  const betterAuthUser = await authComponent.getAuthUser(ctx);
+  if (!betterAuthUser) return null;
 
-  // The subject field contains the Better Auth user ID
-  const betterAuthUserId = identity.subject;
-  if (!betterAuthUserId) return null;
-
-  // Lookup our app user by Better Auth ID
   const appUser = await ctx.db
     .query("users")
     .withIndex("by_better_auth_id", (q) =>
-      q.eq("better_auth_user_id", betterAuthUserId),
+      q.eq("better_auth_user_id", betterAuthUser._id),
     )
     .unique();
 
@@ -28,12 +24,9 @@ export async function getAppUser(
 }
 
 /**
- * Comme getAppUser, mais throw si non authentifié.
- * À utiliser dans les mutations qui requièrent un utilisateur.
+ * Comme getAppUser mais throw si pas authentifié.
  */
-export async function requireAppUser(
-  ctx: QueryCtx | MutationCtx,
-): Promise<Doc<"users">> {
+export async function requireAppUser(ctx: Ctx) {
   const user = await getAppUser(ctx);
   if (!user) {
     throw new Error("Non authentifié");
@@ -45,15 +38,42 @@ export async function requireAppUser(
 }
 
 /**
- * Vérifie que l'utilisateur a le rôle requis.
+ * Requiert un utilisateur avec le rôle vendor ou admin.
  */
-export async function requireRole(
-  ctx: QueryCtx | MutationCtx,
-  ...roles: Doc<"users">["role"][]
-): Promise<Doc<"users">> {
+export async function requireVendor(ctx: Ctx) {
   const user = await requireAppUser(ctx);
-  if (!roles.includes(user.role)) {
-    throw new Error(`Rôle requis : ${roles.join(" ou ")}`);
+  if (user.role !== "vendor" && user.role !== "admin") {
+    throw new Error("Accès réservé aux vendeurs");
   }
   return user;
+}
+
+/**
+ * Requiert un utilisateur admin.
+ */
+export async function requireAdmin(ctx: Ctx) {
+  const user = await requireAppUser(ctx);
+  if (user.role !== "admin") {
+    throw new Error("Accès réservé aux administrateurs");
+  }
+  return user;
+}
+
+/**
+ * Retourne la boutique du vendor connecté.
+ * Throw si le vendor n'a pas de boutique.
+ */
+export async function getVendorStore(ctx: Ctx) {
+  const user = await requireVendor(ctx);
+
+  const store = await ctx.db
+    .query("stores")
+    .withIndex("by_owner", (q) => q.eq("owner_id", user._id))
+    .first();
+
+  if (!store) {
+    throw new Error("Aucune boutique trouvée — complétez l'onboarding");
+  }
+
+  return { user, store };
 }
