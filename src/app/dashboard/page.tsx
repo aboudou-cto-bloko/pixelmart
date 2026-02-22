@@ -1,3 +1,5 @@
+// filepath: src/app/dashboard/page.tsx — remplacer le contenu existant
+
 "use client";
 
 import { useEffect } from "react";
@@ -21,7 +23,9 @@ export default function DashboardRedirect() {
         break;
       case "customer":
       default:
-        router.replace("/storefront");
+        // Le customer n'a pas de dashboard dédié pour l'instant
+        // Il est redirigé vers la storefront
+        router.replace("/");
         break;
     }
   }, [user, isLoading, router]);
