@@ -21,9 +21,13 @@ export const updateProfile = mutation({
   },
 });
 
+// filepath: convex/users/mutations.ts — remplacer becomeVendor
+
 export const becomeVendor = mutation({
   args: {
     store_name: v.string(),
+    country: v.optional(v.string()), // ISO 3166-1 alpha-2
+    description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
@@ -35,6 +39,8 @@ export const becomeVendor = mutation({
     // ---- Slug generation (collision-safe) ----
     const baseSlug = args.store_name
       .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
 
@@ -50,12 +56,16 @@ export const becomeVendor = mutation({
       slug = `${baseSlug}-${counter}`;
     }
 
+    // ---- Devise par pays ----
+    const country = args.country ?? "BJ";
+    const currency = country === "GN" ? "GNF" : "XOF";
+
     // ---- Insert store — 100% conforme au schéma step-0.2 ----
     const storeId = await ctx.db.insert("stores", {
       owner_id: user._id,
       name: args.store_name,
       slug,
-      description: "",
+      description: args.description ?? "",
       logo_url: undefined,
       banner_url: undefined,
       theme_id: "default",
@@ -63,15 +73,15 @@ export const becomeVendor = mutation({
       status: "active",
       subscription_tier: "free",
       subscription_ends_at: undefined,
-      commission_rate: 500, // free plan = 5%
+      commission_rate: 500,
       balance: 0,
       pending_balance: 0,
-      currency: "XOF",
+      currency,
       level: "bronze",
       total_orders: 0,
       avg_rating: 0,
       is_verified: false,
-      country: "BJ",
+      country,
       updated_at: Date.now(),
     });
 
