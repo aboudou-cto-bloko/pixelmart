@@ -1,6 +1,8 @@
+// filepath: src/components/products/ProductForm.tsx
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -25,76 +27,81 @@ import { ProductImageUpload } from "./ProductImageUpload";
 import { VariantEditor, type VariantFormData } from "./VariantEditor";
 import { PriceInput } from "./PriceInput";
 
+// ---- Types ----
 interface ProductFormProps {
   mode: "create" | "edit";
   productId?: Id<"products">;
 }
 
-export function ProductForm({ mode, productId }: ProductFormProps) {
+interface FormState {
+  title: string;
+  description: string;
+  shortDescription: string;
+  categoryId: string;
+  tags: string;
+  images: string[];
+  imageUrls: string[];
+  price: number | undefined;
+  comparePrice: number | undefined;
+  costPrice: number | undefined;
+  sku: string;
+  barcode: string;
+  trackInventory: boolean;
+  quantity: number;
+  lowStockThreshold: number;
+  weight: number | undefined;
+  isDigital: boolean;
+  seoTitle: string;
+  seoDescription: string;
+  variants: VariantFormData[];
+}
+
+const EMPTY_FORM: FormState = {
+  title: "",
+  description: "",
+  shortDescription: "",
+  categoryId: "",
+  tags: "",
+  images: [],
+  imageUrls: [],
+  price: undefined,
+  comparePrice: undefined,
+  costPrice: undefined,
+  sku: "",
+  barcode: "",
+  trackInventory: true,
+  quantity: 0,
+  lowStockThreshold: 5,
+  weight: undefined,
+  isDigital: false,
+  seoTitle: "",
+  seoDescription: "",
+  variants: [],
+};
+
+// ---- Inner form (rendu seulement quand les données sont prêtes) ----
+function ProductFormInner({
+  mode,
+  productId,
+  initialState,
+}: {
+  mode: "create" | "edit";
+  productId?: Id<"products">;
+  initialState: FormState;
+}) {
   const router = useRouter();
   const categories = useQuery(api.categories.queries.listActive);
-
-  // Mutations
   const createProduct = useMutation(api.products.mutations.create);
   const updateProduct = useMutation(api.products.mutations.update);
 
-  // Load existing product for edit mode
-  const existingProduct = useQuery(
-    api.products.queries.getById,
-    productId ? { id: productId } : "skip",
-  );
-
-  // ---- Form State ----
+  const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [shortDescription, setShortDescription] = useState("");
-  const [categoryId, setCategoryId] = useState<string>("");
-  const [tags, setTags] = useState("");
-  const [images, setImages] = useState<string[]>([]);
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [price, setPrice] = useState<number | undefined>(undefined);
-  const [comparePrice, setComparePrice] = useState<number | undefined>(
-    undefined,
-  );
-  const [costPrice, setCostPrice] = useState<number | undefined>(undefined);
-  const [sku, setSku] = useState("");
-  const [barcode, setBarcode] = useState("");
-  const [trackInventory, setTrackInventory] = useState(true);
-  const [quantity, setQuantity] = useState(0);
-  const [lowStockThreshold, setLowStockThreshold] = useState(5);
-  const [weight, setWeight] = useState<number | undefined>(undefined);
-  const [isDigital, setIsDigital] = useState(false);
-  const [seoTitle, setSeoTitle] = useState("");
-  const [seoDescription, setSeoDescription] = useState("");
-  const [variants, setVariants] = useState<VariantFormData[]>([]);
-
-  // ---- Hydrate form for edit mode ----
-  useEffect(() => {
-    if (mode === "edit" && existingProduct) {
-      setTitle(existingProduct.title);
-      setDescription(existingProduct.description);
-      setShortDescription(existingProduct.short_description ?? "");
-      setCategoryId(existingProduct.category_id);
-      setTags(existingProduct.tags.join(", "));
-      setImages(existingProduct.images);
-      setImageUrls(existingProduct.imageUrls);
-      setPrice(existingProduct.price);
-      setComparePrice(existingProduct.compare_price);
-      setCostPrice(existingProduct.cost_price);
-      setSku(existingProduct.sku ?? "");
-      setBarcode(existingProduct.barcode ?? "");
-      setTrackInventory(existingProduct.track_inventory);
-      setQuantity(existingProduct.quantity);
-      setLowStockThreshold(existingProduct.low_stock_threshold);
-      setWeight(existingProduct.weight);
-      setIsDigital(existingProduct.is_digital);
-      setSeoTitle(existingProduct.seo_title ?? "");
-      setSeoDescription(existingProduct.seo_description ?? "");
-    }
-  }, [mode, existingProduct]);
+  // ---- Updater typé ----
+  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev: FormState) => ({ ...prev, [key]: value }));
+  }
 
   // ---- Submit ----
   async function handleSubmit(e: React.FormEvent) {
@@ -102,58 +109,56 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
     setError(null);
     setIsSubmitting(true);
 
-    const parsedTags = tags
+    const parsedTags = form.tags
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
 
     try {
       if (mode === "create") {
-        const { productId: newId, slug } = await createProduct({
-          title,
-          description,
-          short_description: shortDescription || undefined,
-          category_id: categoryId as Id<"categories">,
+        await createProduct({
+          title: form.title,
+          description: form.description,
+          short_description: form.shortDescription || undefined,
+          category_id: form.categoryId as Id<"categories">,
           tags: parsedTags,
-          images,
-          price: price ?? 0,
-          compare_price: comparePrice,
-          cost_price: costPrice,
-          sku: sku || undefined,
-          barcode: barcode || undefined,
-          track_inventory: trackInventory,
-          quantity,
-          low_stock_threshold: lowStockThreshold,
-          weight,
-          is_digital: isDigital,
-          seo_title: seoTitle || undefined,
-          seo_description: seoDescription || undefined,
+          images: form.images,
+          price: form.price ?? 0,
+          compare_price: form.comparePrice,
+          cost_price: form.costPrice,
+          sku: form.sku || undefined,
+          barcode: form.barcode || undefined,
+          track_inventory: form.trackInventory,
+          quantity: form.quantity,
+          low_stock_threshold: form.lowStockThreshold,
+          weight: form.weight,
+          is_digital: form.isDigital,
+          seo_title: form.seoTitle || undefined,
+          seo_description: form.seoDescription || undefined,
         });
-
         router.push("/vendor/products");
       } else if (productId) {
         await updateProduct({
           id: productId,
-          title,
-          description,
-          short_description: shortDescription || undefined,
-          category_id: categoryId as Id<"categories">,
+          title: form.title,
+          description: form.description,
+          short_description: form.shortDescription || undefined,
+          category_id: form.categoryId as Id<"categories">,
           tags: parsedTags,
-          images,
-          price,
-          compare_price: comparePrice,
-          cost_price: costPrice,
-          sku: sku || undefined,
-          barcode: barcode || undefined,
-          track_inventory: trackInventory,
-          quantity,
-          low_stock_threshold: lowStockThreshold,
-          weight,
-          is_digital: isDigital,
-          seo_title: seoTitle || undefined,
-          seo_description: seoDescription || undefined,
+          images: form.images,
+          price: form.price,
+          compare_price: form.comparePrice,
+          cost_price: form.costPrice,
+          sku: form.sku || undefined,
+          barcode: form.barcode || undefined,
+          track_inventory: form.trackInventory,
+          quantity: form.quantity,
+          low_stock_threshold: form.lowStockThreshold,
+          weight: form.weight,
+          is_digital: form.isDigital,
+          seo_title: form.seoTitle || undefined,
+          seo_description: form.seoDescription || undefined,
         });
-
         router.push("/vendor/products");
       }
     } catch (err) {
@@ -162,14 +167,6 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
       );
       setIsSubmitting(false);
     }
-  }
-
-  if (mode === "edit" && !existingProduct) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
   }
 
   return (
@@ -196,8 +193,8 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                 </Label>
                 <Input
                   id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  value={form.title}
+                  onChange={(e) => updateField("title", e.target.value)}
                   placeholder="Robe wax Ankara"
                   required
                 />
@@ -209,8 +206,8 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                 </Label>
                 <Textarea
                   id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  value={form.description}
+                  onChange={(e) => updateField("description", e.target.value)}
                   placeholder="Décrivez votre produit..."
                   rows={5}
                   required
@@ -221,8 +218,10 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                 <Label htmlFor="short_description">Description courte</Label>
                 <Input
                   id="short_description"
-                  value={shortDescription}
-                  onChange={(e) => setShortDescription(e.target.value)}
+                  value={form.shortDescription}
+                  onChange={(e) =>
+                    updateField("shortDescription", e.target.value)
+                  }
                   placeholder="Résumé en une phrase"
                   maxLength={160}
                 />
@@ -233,7 +232,10 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                   <Label htmlFor="category">
                     Catégorie <span className="text-destructive">*</span>
                   </Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
+                  <Select
+                    value={form.categoryId}
+                    onValueChange={(val) => updateField("categoryId", val)}
+                  >
                     <SelectTrigger id="category">
                       <SelectValue placeholder="Sélectionnez" />
                     </SelectTrigger>
@@ -251,8 +253,8 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                   <Label htmlFor="tags">Tags</Label>
                   <Input
                     id="tags"
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
+                    value={form.tags}
+                    onChange={(e) => updateField("tags", e.target.value)}
                     placeholder="mode, africain, wax"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -262,7 +264,10 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
               </div>
 
               <div className="flex items-center gap-3 border-t pt-4">
-                <Switch checked={isDigital} onCheckedChange={setIsDigital} />
+                <Switch
+                  checked={form.isDigital}
+                  onCheckedChange={(val) => updateField("isDigital", val)}
+                />
                 <Label>Produit digital (ebook, template...)</Label>
               </div>
             </CardContent>
@@ -277,9 +282,9 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
             </CardHeader>
             <CardContent>
               <ProductImageUpload
-                images={images}
-                imageUrls={imageUrls}
-                onChange={setImages}
+                images={form.images}
+                imageUrls={form.imageUrls}
+                onChange={(imgs) => updateField("images", imgs)}
               />
             </CardContent>
           </Card>
@@ -295,21 +300,21 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
               <PriceInput
                 id="price"
                 label="Prix de vente"
-                value={price}
-                onChange={setPrice}
+                value={form.price}
+                onChange={(val) => updateField("price", val)}
                 required
               />
               <PriceInput
                 id="compare_price"
                 label="Prix barré"
-                value={comparePrice}
-                onChange={setComparePrice}
+                value={form.comparePrice}
+                onChange={(val) => updateField("comparePrice", val)}
               />
               <PriceInput
                 id="cost_price"
                 label="Prix d'achat"
-                value={costPrice}
-                onChange={setCostPrice}
+                value={form.costPrice}
+                onChange={(val) => updateField("costPrice", val)}
               />
             </CardContent>
           </Card>
@@ -321,13 +326,13 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
                 <Switch
-                  checked={trackInventory}
-                  onCheckedChange={setTrackInventory}
+                  checked={form.trackInventory}
+                  onCheckedChange={(val) => updateField("trackInventory", val)}
                 />
                 <Label>Suivre le stock</Label>
               </div>
 
-              {trackInventory && (
+              {form.trackInventory && (
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="quantity">Quantité en stock</Label>
@@ -335,9 +340,9 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                       id="quantity"
                       type="number"
                       min="0"
-                      value={quantity}
+                      value={form.quantity}
                       onChange={(e) =>
-                        setQuantity(parseInt(e.target.value) || 0)
+                        updateField("quantity", parseInt(e.target.value) || 0)
                       }
                     />
                   </div>
@@ -347,9 +352,12 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                       id="low_stock"
                       type="number"
                       min="0"
-                      value={lowStockThreshold}
+                      value={form.lowStockThreshold}
                       onChange={(e) =>
-                        setLowStockThreshold(parseInt(e.target.value) || 5)
+                        updateField(
+                          "lowStockThreshold",
+                          parseInt(e.target.value) || 5,
+                        )
                       }
                     />
                   </div>
@@ -357,8 +365,8 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                     <Label htmlFor="sku">SKU</Label>
                     <Input
                       id="sku"
-                      value={sku}
-                      onChange={(e) => setSku(e.target.value)}
+                      value={form.sku}
+                      onChange={(e) => updateField("sku", e.target.value)}
                       placeholder="SKU-001"
                     />
                   </div>
@@ -371,10 +379,13 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                   id="weight"
                   type="number"
                   min="0"
-                  value={weight ?? ""}
+                  value={form.weight ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;
-                    setWeight(val === "" ? undefined : parseInt(val));
+                    updateField(
+                      "weight",
+                      val === "" ? undefined : parseInt(val),
+                    );
                   }}
                   placeholder="250"
                   className="max-w-xs"
@@ -391,7 +402,10 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
               <CardTitle>Variantes du produit</CardTitle>
             </CardHeader>
             <CardContent>
-              <VariantEditor variants={variants} onChange={setVariants} />
+              <VariantEditor
+                variants={form.variants}
+                onChange={(val) => updateField("variants", val)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -407,27 +421,29 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
                 <Label htmlFor="seo_title">Titre SEO</Label>
                 <Input
                   id="seo_title"
-                  value={seoTitle}
-                  onChange={(e) => setSeoTitle(e.target.value)}
-                  placeholder={title || "Titre du produit"}
+                  value={form.seoTitle}
+                  onChange={(e) => updateField("seoTitle", e.target.value)}
+                  placeholder={form.title || "Titre du produit"}
                   maxLength={60}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {seoTitle.length}/60
+                  {form.seoTitle.length}/60
                 </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="seo_description">Meta description</Label>
                 <Textarea
                   id="seo_description"
-                  value={seoDescription}
-                  onChange={(e) => setSeoDescription(e.target.value)}
+                  value={form.seoDescription}
+                  onChange={(e) =>
+                    updateField("seoDescription", e.target.value)
+                  }
                   placeholder="Description pour les moteurs de recherche..."
                   maxLength={160}
                   rows={3}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {seoDescription.length}/160
+                  {form.seoDescription.length}/160
                 </p>
               </div>
             </CardContent>
@@ -466,5 +482,59 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
         </Button>
       </div>
     </form>
+  );
+}
+
+// ---- Composant public : gère le loading et prépare l'initialState ----
+export function ProductForm({ mode, productId }: ProductFormProps) {
+  const existingProduct = useQuery(
+    api.products.queries.getById,
+    mode === "edit" && productId ? { id: productId } : "skip",
+  );
+
+  // En mode edit, attendre le chargement du produit
+  if (mode === "edit" && !existingProduct) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Construire l'état initial UNE SEULE FOIS avant le premier rendu du form
+  const initialState: FormState =
+    mode === "edit" && existingProduct
+      ? {
+          title: existingProduct.title,
+          description: existingProduct.description,
+          shortDescription: existingProduct.short_description ?? "",
+          categoryId: existingProduct.category_id,
+          tags: existingProduct.tags.join(", "),
+          images: existingProduct.images,
+          imageUrls: existingProduct.imageUrls,
+          price: existingProduct.price,
+          comparePrice: existingProduct.compare_price,
+          costPrice: existingProduct.cost_price,
+          sku: existingProduct.sku ?? "",
+          barcode: existingProduct.barcode ?? "",
+          trackInventory: existingProduct.track_inventory,
+          quantity: existingProduct.quantity,
+          lowStockThreshold: existingProduct.low_stock_threshold,
+          weight: existingProduct.weight,
+          isDigital: existingProduct.is_digital,
+          seoTitle: existingProduct.seo_title ?? "",
+          seoDescription: existingProduct.seo_description ?? "",
+          variants: [],
+        }
+      : EMPTY_FORM;
+
+  // key force le remount si on change de produit
+  return (
+    <ProductFormInner
+      key={productId ?? "create"}
+      mode={mode}
+      productId={productId}
+      initialState={initialState}
+    />
   );
 }
