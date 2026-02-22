@@ -9,9 +9,9 @@ import { api } from "../../../../convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   vendorOnboardingSchema,
-  SUPPORTED_COUNTRIES,
   type VendorOnboardingValues,
 } from "@/lib/validations/vendor";
+import { SUPPORTED_COUNTRIES } from "@/constants/countries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +30,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Store, MapPin, FileText, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import {
+  Loader2,
+  Store,
+  MapPin,
+  FileText,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+} from "lucide-react";
+
+// ---- Types extraits pour éviter le conflit JSX/generics ----
+type FieldErrors = Partial<Record<keyof VendorOnboardingValues, string>>;
 
 const STEPS = [
   { id: 1, title: "Votre boutique", icon: Store },
@@ -46,9 +57,7 @@ export default function VendorOnboardingPage() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState
-    Partial<Record<keyof VendorOnboardingValues, string>>
-  >({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const [formData, setFormData] = useState<VendorOnboardingValues>({
     store_name: "",
@@ -83,20 +92,21 @@ export default function VendorOnboardingPage() {
   // ---- Handlers ----
   function updateField<K extends keyof VendorOnboardingValues>(
     key: K,
-    value: VendorOnboardingValues[K]
+    value: VendorOnboardingValues[K],
   ) {
-    setFormData((prev) => ({ ...prev, [key]: value }));
-    setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
+    setFormData((prev: VendorOnboardingValues) => ({ ...prev, [key]: value }));
+    setFieldErrors((prev: FieldErrors) => ({ ...prev, [key]: undefined }));
     setError(null);
   }
 
   function validateCurrentStep(): boolean {
-    const errors: Partial<Record<keyof VendorOnboardingValues, string>> = {};
+    const errors: FieldErrors = {};
 
     if (step === 1) {
-      if (formData.store_name.trim().length < 3) {
+      const trimmed = formData.store_name.trim();
+      if (trimmed.length < 3) {
         errors.store_name = "Le nom doit contenir au moins 3 caractères";
-      } else if (formData.store_name.length > 60) {
+      } else if (trimmed.length > 60) {
         errors.store_name = "Le nom ne peut pas dépasser 60 caractères";
       }
     }
@@ -123,14 +133,14 @@ export default function VendorOnboardingPage() {
   async function handleSubmit() {
     setError(null);
 
-    // Validation Zod complète
     const result = vendorOnboardingSchema.safeParse(formData);
     if (!result.success) {
       const flat = result.error.flatten().fieldErrors;
-      const mapped: Partial<Record<keyof VendorOnboardingValues, string>> = {};
+      const mapped: FieldErrors = {};
       for (const [key, msgs] of Object.entries(flat)) {
-        if (msgs && msgs.length > 0) {
-          mapped[key as keyof VendorOnboardingValues] = msgs[0];
+        const messages = msgs as string[] | undefined;
+        if (messages && messages.length > 0) {
+          mapped[key as keyof VendorOnboardingValues] = messages[0];
         }
       }
       setFieldErrors(mapped);
@@ -140,11 +150,12 @@ export default function VendorOnboardingPage() {
     setIsSubmitting(true);
 
     try {
-      const { slug } = await becomeVendor({
+      await becomeVendor({
         store_name: result.data.store_name.trim(),
+        country: result.data.country,
+        description: result.data.description ?? undefined,
       });
 
-      // Redirect vers le dashboard vendor
       router.push("/vendor/dashboard");
     } catch (err) {
       const message =
@@ -156,7 +167,7 @@ export default function VendorOnboardingPage() {
 
   // ---- Derived ----
   const selectedCountry = SUPPORTED_COUNTRIES.find(
-    (c) => c.code === formData.country
+    (c) => c.code === formData.country,
   );
 
   // ---- Render ----
@@ -175,9 +186,7 @@ export default function VendorOnboardingPage() {
                 {index > 0 && (
                   <div
                     className={`h-px w-8 transition-colors ${
-                      isCompleted
-                        ? "bg-primary"
-                        : "bg-border"
+                      isCompleted ? "bg-primary" : "bg-border"
                     }`}
                   />
                 )}
@@ -255,7 +264,7 @@ export default function VendorOnboardingPage() {
                     onValueChange={(value) =>
                       updateField(
                         "country",
-                        value as VendorOnboardingValues["country"]
+                        value as VendorOnboardingValues["country"],
                       )
                     }
                   >
@@ -285,7 +294,7 @@ export default function VendorOnboardingPage() {
                         {selectedCountry.currency}
                       </span>
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Les prix seront affichés en {selectedCountry.currency}.
                       Tous les montants sont stockés en centimes.
                     </p>
@@ -297,7 +306,6 @@ export default function VendorOnboardingPage() {
             {/* Step 3 — Review + optional description */}
             {step === 3 && (
               <div className="space-y-4">
-                {/* Summary */}
                 <div className="rounded-lg border p-4 space-y-3">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">
@@ -331,7 +339,6 @@ export default function VendorOnboardingPage() {
                   </div>
                 </div>
 
-                {/* Optional description */}
                 <div className="space-y-2">
                   <Label htmlFor="description">
                     Description{" "}
@@ -401,7 +408,6 @@ export default function VendorOnboardingPage() {
           </CardContent>
         </Card>
 
-        {/* Footer */}
         <p className="text-center text-xs text-muted-foreground">
           Vous pourrez modifier ces informations à tout moment dans les
           paramètres de votre boutique.

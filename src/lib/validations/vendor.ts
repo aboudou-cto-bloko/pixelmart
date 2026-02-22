@@ -1,6 +1,11 @@
-// filepath: src/lib/validations/vendor.ts
-
 import { z } from "zod";
+import { SUPPORTED_COUNTRIES, type CountryCode } from "@/constants/countries";
+
+// Extraire les codes pays dynamiquement depuis la source de vérité
+const countryCodes = SUPPORTED_COUNTRIES.map((c) => c.code) as [
+  CountryCode,
+  ...CountryCode[],
+];
 
 export const vendorOnboardingSchema = z.object({
   store_name: z
@@ -13,20 +18,9 @@ export const vendorOnboardingSchema = z.object({
     .max(500, "La description ne peut pas dépasser 500 caractères")
     .optional()
     .or(z.literal("")),
-  country: z.enum(["BJ", "SN", "CI", "TG", "BF", "ML", "NE", "GN"], {
-    required_error: "Sélectionnez un pays",
+  country: z.enum(countryCodes, {
+    message: "Sélectionnez un pays",
   }),
 });
 
 export type VendorOnboardingValues = z.infer<typeof vendorOnboardingSchema>;
-
-export const SUPPORTED_COUNTRIES = [
-  { code: "BJ", name: "Bénin", currency: "XOF" },
-  { code: "SN", name: "Sénégal", currency: "XOF" },
-  { code: "CI", name: "Côte d'Ivoire", currency: "XOF" },
-  { code: "TG", name: "Togo", currency: "XOF" },
-  { code: "BF", name: "Burkina Faso", currency: "XOF" },
-  { code: "ML", name: "Mali", currency: "XOF" },
-  { code: "NE", name: "Niger", currency: "XOF" },
-  { code: "GN", name: "Guinée", currency: "GNF" },
-] as const;
