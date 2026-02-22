@@ -1,5 +1,3 @@
-// filepath: convex/users/mutations.ts
-
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAppUser } from "./helpers";
@@ -34,6 +32,7 @@ export const becomeVendor = mutation({
       throw new Error("Seul un customer peut devenir vendor");
     }
 
+    // ---- Slug generation (collision-safe) ----
     const baseSlug = args.store_name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -51,6 +50,7 @@ export const becomeVendor = mutation({
       slug = `${baseSlug}-${counter}`;
     }
 
+    // ---- Insert store — 100% conforme au schéma step-0.2 ----
     const storeId = await ctx.db.insert("stores", {
       owner_id: user._id,
       name: args.store_name,
@@ -58,26 +58,24 @@ export const becomeVendor = mutation({
       description: "",
       logo_url: undefined,
       banner_url: undefined,
+      theme_id: "default",
+      primary_color: undefined,
       status: "active",
       subscription_tier: "free",
-      commission_rate: 500,
+      subscription_ends_at: undefined,
+      commission_rate: 500, // free plan = 5%
       balance: 0,
       pending_balance: 0,
-      total_revenue: 0,
-      total_orders: 0,
+      currency: "XOF",
       level: "bronze",
-      default_currency: "XOF",
-      contact_email: user.email,
-      contact_phone: user.phone,
+      total_orders: 0,
+      avg_rating: 0,
+      is_verified: false,
       country: "BJ",
-      address: undefined,
-      city: undefined,
-      social_links: undefined,
-      seo_title: undefined,
-      seo_description: undefined,
       updated_at: Date.now(),
     });
 
+    // ---- Promote user to vendor ----
     await ctx.db.patch(user._id, {
       role: "vendor",
       updated_at: Date.now(),
