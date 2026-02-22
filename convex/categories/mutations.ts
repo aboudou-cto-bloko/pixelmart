@@ -59,12 +59,12 @@ export const update = mutation({
     if (!category) throw new Error("Catégorie introuvable");
 
     // Vérifier unicité du slug si modifié
-    if (args.slug && args.slug !== category.slug) {
-      const existing = await ctx.db
+    if (args.slug !== undefined && args.slug !== category.slug) {
+      const existingSlug = await ctx.db
         .query("categories")
-        .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+        .withIndex("by_slug", (q) => q.eq("slug", args.slug!))
         .unique();
-      if (existing) {
+      if (existingSlug) {
         throw new Error(`Le slug "${args.slug}" existe déjà`);
       }
     }

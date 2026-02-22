@@ -1,12 +1,8 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { resolveImageUrls } from "./helpers";
+import { resolveImageUrls, resolveImageUrl } from "./helpers";
 import { getVendorStore } from "../users/helpers";
 
-/**
- * Récupère un produit par ID avec URLs d'images résolues.
- * Accessible par vendor (son produit) ou côté storefront (produit actif).
- */
 export const getById = query({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
@@ -14,18 +10,10 @@ export const getById = query({
     if (!product) return null;
 
     const imageUrls = await resolveImageUrls(ctx, product.images);
-
-    return {
-      ...product,
-      imageUrls,
-    };
+    return { ...product, imageUrls };
   },
 });
 
-/**
- * Récupère un produit par slug (pour les URLs publiques).
- * Retourne seulement les produits actifs.
- */
 export const getBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
@@ -37,18 +25,10 @@ export const getBySlug = query({
     if (!product || product.status !== "active") return null;
 
     const imageUrls = await resolveImageUrls(ctx, product.images);
-
-    return {
-      ...product,
-      imageUrls,
-    };
+    return { ...product, imageUrls };
   },
 });
 
-/**
- * Liste les produits du vendor connecté.
- * Supporte le filtrage par statut.
- */
 export const listByStore = query({
   args: {
     status: v.optional(
@@ -63,42 +43,27 @@ export const listByStore = query({
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
 
-    let productsQuery;
-
-    if (args.status) {
-      productsQuery = ctx.db
-        .query("products")
-        .withIndex("by_status", (q) =>
-          q.eq("store_id", store._id).eq("status", args.status!),
-        );
-    } else {
-      productsQuery = ctx.db
-        .query("products")
-        .withIndex("by_store", (q) => q.eq("store_id", store._id));
-    }
+    const productsQuery = args.status
+      ? ctx.db
+          .query("products")
+          .withIndex("by_status", (q) =>
+            q.eq("store_id", store._id).eq("status", args.status!),
+          )
+      : ctx.db
+          .query("products")
+          .withIndex("by_store", (q) => q.eq("store_id", store._id));
 
     const products = await productsQuery.collect();
 
-    // Résoudre la première image (thumbnail) pour la liste
     return Promise.all(
       products.map(async (product) => {
-        const thumbnailUrl =
-          product.images.length > 0
-            ? await ctx.storage.getUrl(product.images[0] as any)
-            : null;
-
-        return {
-          ...product,
-          thumbnailUrl,
-        };
+        const thumbnailUrl = await resolveImageUrl(ctx, product.images[0]);
+        return { ...product, thumbnailUrl };
       }),
     );
   },
 });
 
-/**
- * Liste les produits actifs d'une catégorie (storefront).
- */
 export const listByCategory = query({
   args: {
     categoryId: v.id("categories"),
@@ -113,19 +78,13 @@ export const listByCategory = query({
 
     return Promise.all(
       activeProducts.map(async (product) => {
-        const thumbnailUrl =
-          product.images.length > 0
-            ? await ctx.storage.getUrl(product.images[0] as any)
-            : null;
+        const thumbnailUrl = await resolveImageUrl(ctx, product.images[0]);
         return { ...product, thumbnailUrl };
       }),
     );
   },
 });
 
-/**
- * Liste les produits actifs d'une boutique (storefront public).
- */
 export const listActiveByStore = query({
   args: {
     storeId: v.id("stores"),
@@ -140,10 +99,7 @@ export const listActiveByStore = query({
 
     return Promise.all(
       products.map(async (product) => {
-        const thumbnailUrl =
-          product.images.length > 0
-            ? await ctx.storage.getUrl(product.images[0] as any)
-            : null;
+        const thumbnailUrl = await resolveImageUrl(ctx, product.images[0]);
         return { ...product, thumbnailUrl };
       }),
     );

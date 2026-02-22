@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getVendorStore } from "../users/helpers";
+import { safeDeleteFile } from "../products/helpers";
 
 const variantOptionValidator = v.object({
   name: v.string(),
@@ -115,15 +116,7 @@ export const remove = mutation({
       throw new Error("Cette variante n'appartient pas à votre boutique");
     }
 
-    // Supprimer l'image de la variante du storage
-    if (variant.image_url) {
-      try {
-        await ctx.storage.delete(variant.image_url as any);
-      } catch {
-        // Fichier déjà supprimé
-      }
-    }
-
+    await safeDeleteFile(ctx, variant.image_url);
     await ctx.db.delete(args.id);
   },
 });

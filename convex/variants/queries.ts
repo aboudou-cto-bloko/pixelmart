@@ -1,12 +1,7 @@
-// filepath: convex/variants/queries.ts
-
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { resolveImageUrl } from "../products/helpers";
 
-/**
- * Liste les variantes d'un produit.
- * Résout les URLs d'images de variantes.
- */
 export const listByProduct = query({
   args: { productId: v.id("products") },
   handler: async (ctx, args) => {
@@ -17,16 +12,7 @@ export const listByProduct = query({
 
     return Promise.all(
       variants.map(async (variant) => {
-        let resolvedImageUrl: string | null = null;
-        if (variant.image_url) {
-          try {
-            resolvedImageUrl = await ctx.storage.getUrl(
-              variant.image_url as any,
-            );
-          } catch {
-            resolvedImageUrl = null;
-          }
-        }
+        const resolvedImageUrl = await resolveImageUrl(ctx, variant.image_url);
         return { ...variant, resolvedImageUrl };
       }),
     );

@@ -3,7 +3,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getVendorStore } from "../users/helpers";
-import { generateProductSlug } from "./helpers";
+import { generateProductSlug, safeDeleteFile } from "./helpers";
 
 /**
  * Crée un nouveau produit.
@@ -266,34 +266,22 @@ export const remove = mutation({
       throw new Error("Ce produit n'appartient pas à votre boutique");
     }
 
-    // Supprimer les variantes
+    // Supprimer les variantes + leurs images
     const variants = await ctx.db
       .query("product_variants")
       .withIndex("by_product", (q) => q.eq("product_id", args.id))
       .collect();
 
     for (const variant of variants) {
-      // Supprimer l'image de la variante du storage si elle existe
-      if (variant.image_url) {
-        try {
-          await ctx.storage.delete(variant.image_url as any);
-        } catch {
-          // Fichier déjà supprimé — ignorer
-        }
-      }
+      await safeDeleteFile(ctx, variant.image_url);
       await ctx.db.delete(variant._id);
     }
 
-    // Supprimer les images du produit du storage
+    // Supprimer les images du produit
     for (const storageId of product.images) {
-      try {
-        await ctx.storage.delete(storageId as any);
-      } catch {
-        // Fichier déjà supprimé — ignorer
-      }
+      await safeDeleteFile(ctx, storageId);
     }
 
-    // Supprimer le produit
     await ctx.db.delete(args.id);
   },
 });
