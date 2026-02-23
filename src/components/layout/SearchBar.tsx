@@ -5,18 +5,22 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/constants/routes";
 
 interface SearchBarProps {
   defaultValue?: string;
   className?: string;
   /** Compact mode pour la navbar mobile */
   compact?: boolean;
+  /** Callback après soumission (ex: fermer le drawer mobile) */
+  onSubmit?: () => void;
 }
 
 export function SearchBar({
   defaultValue = "",
   className = "",
   compact = false,
+  onSubmit,
 }: SearchBarProps) {
   const [query, setQuery] = useState(defaultValue);
   const router = useRouter();
@@ -25,7 +29,8 @@ export function SearchBar({
     e.preventDefault();
     const trimmed = query.trim();
     if (trimmed.length === 0) return;
-    router.push(`/products?q=${encodeURIComponent(trimmed)}`);
+    router.push(`${ROUTES.PRODUCTS}?q=${encodeURIComponent(trimmed)}`);
+    onSubmit?.();
   }
 
   return (
