@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BadgeCheck, ChevronsUpDown, LogOut, Settings } from "lucide-react";
 import { VENDOR_NAV_MAIN, VENDOR_NAV_SETTINGS } from "@/constants/vendor-nav";
+import { ROUTES } from "@/constants/routes";
 import type { NavItem } from "@/constants/vendor-nav";
 
 // ---- Store Header ----
@@ -52,7 +53,7 @@ function StoreHeader() {
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton size="lg" asChild>
-          <Link href="/vendor/dashboard">
+          <Link href={ROUTES.VENDOR_DASHBOARD}>
             <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Store className="size-4" />
             </div>

@@ -1,13 +1,13 @@
 import Link from "next/link";
+import { ROUTES } from "@/constants/routes";
 
 const FOOTER_LINKS = {
   marketplace: [
-    { label: "Catalogue", href: "/products" },
-    { label: "Boutiques", href: "/stores" },
-    { label: "Catégories", href: "/products" },
+    { label: "Catalogue", href: ROUTES.PRODUCTS },
+    { label: "Boutiques", href: ROUTES.STORES },
   ],
   vendor: [
-    { label: "Devenir vendeur", href: "/become-vendor" },
+    { label: "Devenir vendeur", href: ROUTES.ONBOARDING_VENDOR },
     { label: "Tarifs", href: "/pricing" },
     { label: "Guide vendeur", href: "/guide" },
   ],

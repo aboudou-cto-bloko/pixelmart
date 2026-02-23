@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { ROUTES } from "@/constants/routes";
 import Image from "next/image";
 
 interface CategoryCardProps {
@@ -16,7 +17,7 @@ export function CategoryCard({
   iconUrl,
 }: CategoryCardProps) {
   return (
-    <Link href={`/categories/${slug}`}>
+    <Link href={ROUTES.CATEGORY(slug)}>
       <Card className="group hover:border-primary/50 transition-colors h-full">
         <CardContent className="flex flex-col items-center justify-center p-6 text-center gap-3">
           {/* Icon placeholder — on utilisera l'URL quand dispo */}

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryCard } from "@/components/store/CategoryCard";
 import { formatPrice } from "@/lib/utils";
+import { ROUTES } from "@/constants/routes";
 
 // ─── Hero ────────────────────────────────────────────────────
 function HeroSection() {
@@ -32,13 +33,13 @@ function HeroSection() {
           </p>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" asChild>
-              <Link href="/products">
+              <Link href={ROUTES.PRODUCTS}>
                 Explorer le catalogue
                 <ArrowRight className="size-4 ml-2" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/become-vendor">Devenir vendeur</Link>
+              <Link href={ROUTES.ONBOARDING_VENDOR}>Devenir vendeur</Link>
             </Button>
           </div>
         </div>
@@ -53,7 +54,7 @@ function ValueProps() {
     {
       icon: ShieldCheck,
       title: "Paiement sécurisé",
-      description: "Mobile Money, cartes bancaires — transactions protégées",
+      description: "Mobile Money — transactions protégées",
     },
     {
       icon: Truck,
@@ -71,11 +72,8 @@ function ValueProps() {
     <section className="mx-auto max-w-7xl px-4 py-12">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         {props.map((prop) => (
-          <div
-            key={prop.title}
-            className="flex items-start gap-4 rounded-lg border p-4"
-          >
-            <div className="rounded-md bg-primary/10 p-2.5">
+          <div key={prop.title} className="flex items-start gap-4 border p-4">
+            <div className="bg-primary/10 p-2.5">
               <prop.icon className="size-5 text-primary" />
             </div>
             <div>
@@ -115,7 +113,7 @@ function CategoriesSection() {
       <div className="flex items-center justify-between mb-6">
         <h2>Catégories</h2>
         <Link
-          href="/products"
+          href={ROUTES.PRODUCTS}
           className="text-sm font-medium text-primary hover:underline"
         >
           Tout voir
@@ -156,7 +154,7 @@ function ProductCardInline({
   const hasDiscount = comparePrice && comparePrice > price;
 
   return (
-    <Link href={`/products/${slug}`}>
+    <Link href={ROUTES.PRODUCT(slug)}>
       <Card className="group overflow-hidden hover:border-primary/50 transition-colors h-full">
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
@@ -237,7 +235,7 @@ function LatestProductsSection() {
       <div className="flex items-center justify-between mb-6">
         <h2>Nouveautés</h2>
         <Link
-          href="/products?sort=newest"
+          href={`${ROUTES.PRODUCTS}?sort=newest`}
           className="text-sm font-medium text-primary hover:underline"
         >
           Tout voir
@@ -288,7 +286,7 @@ function FeaturedStoresSection() {
         <div className="flex items-center justify-between mb-6">
           <h2>Boutiques populaires</h2>
           <Link
-            href="/stores"
+            href={ROUTES.STORES}
             className="text-sm font-medium text-primary hover:underline"
           >
             Toutes les boutiques
@@ -296,7 +294,7 @@ function FeaturedStoresSection() {
         </div>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {stores.map((store) => (
-            <Link key={store._id} href={`/stores/${store.slug}`}>
+            <Link key={store._id} href={ROUTES.STORE(store.slug)}>
               <Card className="group hover:border-primary/50 transition-colors h-full">
                 <CardContent className="flex flex-col items-center justify-center p-4 text-center gap-2">
                   {store.logo_url ? (

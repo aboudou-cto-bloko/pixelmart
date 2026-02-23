@@ -11,6 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { ROUTES } from "@/constants/routes";
 import { Separator } from "@/components/ui/separator";
 import { SearchBar } from "./SearchBar";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -53,7 +54,7 @@ export function MobileNav({ categories }: MobileNavProps) {
         <SheetHeader className="p-4 pb-2">
           <SheetTitle className="text-left">
             <span className="text-primary font-bold">Pixel</span>
-            <span className="font-bold">-Mart</span>
+            <span className="font-bold font-secondary">-Mart</span>
           </SheetTitle>
         </SheetHeader>
 
@@ -71,18 +72,18 @@ export function MobileNav({ categories }: MobileNavProps) {
           {categories.map((cat) => (
             <Link
               key={cat._id}
-              href={`/categories/${cat.slug}`}
+              href={ROUTES.CATEGORY(cat.slug)}
               onClick={close}
-              className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+              className="flex items-center justify-between px-3 py-2 text-sm hover:bg-accent transition-colors"
             >
               {cat.name}
               <ChevronRight className="size-4 text-muted-foreground" />
             </Link>
           ))}
           <Link
-            href="/products"
+            href={ROUTES.PRODUCTS}
             onClick={close}
-            className="flex items-center rounded-md px-3 py-2 text-sm font-medium text-primary hover:bg-accent transition-colors"
+            className="flex items-center px-3 py-2 text-sm font-medium text-primary hover:bg-accent transition-colors"
           >
             Voir tout le catalogue
           </Link>
@@ -93,9 +94,9 @@ export function MobileNav({ categories }: MobileNavProps) {
         {/* Stores */}
         <nav className="p-4">
           <Link
-            href="/stores"
+            href={ROUTES.STORES}
             onClick={close}
-            className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+            className="flex items-center px-3 py-2 text-sm font-medium text-primary hover:bg-accent transition-colors"
           >
             Découvrir les boutiques
             <ChevronRight className="size-4 text-muted-foreground" />
@@ -112,7 +113,7 @@ export function MobileNav({ categories }: MobileNavProps) {
                 {user?.name ?? user?.email}
               </p>
               {user?.role === "vendor" && (
-                <Link href="/vendor/dashboard" onClick={close}>
+                <Link href={ROUTES.VENDOR_DASHBOARD} onClick={close}>
                   <Button variant="outline" className="w-full justify-start">
                     Dashboard vendeur
                   </Button>
@@ -129,13 +130,13 @@ export function MobileNav({ categories }: MobileNavProps) {
             </>
           ) : (
             <>
-              <Link href="/login" onClick={close}>
+              <Link href={ROUTES.LOGIN} onClick={close}>
                 <Button variant="outline" className="w-full justify-start">
                   <LogIn className="size-4 mr-2" />
                   Connexion
                 </Button>
               </Link>
-              <Link href="/register" onClick={close}>
+              <Link href={ROUTES.REGISTER} onClick={close}>
                 <Button className="w-full justify-start">
                   <UserPlus className="size-4 mr-2" />
                   Créer un compte

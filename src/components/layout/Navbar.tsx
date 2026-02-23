@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ROUTES } from "@/constants/routes";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SearchBar } from "./SearchBar";
@@ -55,7 +56,7 @@ export function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-1 shrink-0">
           <span className="text-xl font-bold text-primary">Pixel</span>
-          <span className="text-xl font-bold">-Mart</span>
+          <span className="text-xl font-bold text-secondary">-Mart</span>
         </Link>
 
         {/* Desktop search */}
@@ -68,15 +69,15 @@ export function Navbar() {
           {categories.slice(0, 5).map((cat) => (
             <Link
               key={cat._id}
-              href={`/categories/${cat.slug}`}
-              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              href={ROUTES.CATEGORY(cat.slug)}
+              className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               {cat.name}
             </Link>
           ))}
           <Link
-            href="/stores"
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            href={ROUTES.STORES}
+            className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
             Boutiques
           </Link>
@@ -86,7 +87,7 @@ export function Navbar() {
         <div className="ml-auto flex items-center gap-2">
           {/* Cart (placeholder — Step 0.10) */}
           <Button variant="ghost" size="icon" className="relative" asChild>
-            <Link href="/cart">
+            <Link href={ROUTES.CART}>
               <ShoppingCart className="size-5" />
               <span className="sr-only">Panier</span>
             </Link>
@@ -117,20 +118,14 @@ export function Navbar() {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/profile">
+                  <Link href={ROUTES.VENDOR_SETTINGS}>
                     <User className="size-4 mr-2" />
                     Mon profil
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/orders">
-                    <ShoppingCart className="size-4 mr-2" />
-                    Mes commandes
-                  </Link>
-                </DropdownMenuItem>
                 {user?.role === "vendor" && (
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard">
+                    <Link href={ROUTES.VENDOR_DASHBOARD}>
                       <LayoutDashboard className="size-4 mr-2" />
                       Dashboard vendeur
                     </Link>
@@ -138,7 +133,7 @@ export function Navbar() {
                 )}
                 {user?.role === "customer" && (
                   <DropdownMenuItem asChild>
-                    <Link href="/become-vendor">
+                    <Link href={ROUTES.ONBOARDING_VENDOR}>
                       <Store className="size-4 mr-2" />
                       Devenir vendeur
                     </Link>
@@ -157,10 +152,10 @@ export function Navbar() {
           ) : (
             <div className="hidden sm:flex items-center gap-2">
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/login">Connexion</Link>
+                <Link href={ROUTES.LOGIN}>Se connecter</Link>
               </Button>
               <Button size="sm" asChild>
-                <Link href="/register">S&apos;inscrire</Link>
+                <Link href={ROUTES.REGISTER}>S&apos;inscrire</Link>
               </Button>
             </div>
           )}
