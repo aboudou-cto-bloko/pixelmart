@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CategoryCard } from "@/components/store/CategoryCard";
+import { ProductCard } from "@/components/products/ProductCard";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 
@@ -243,15 +244,7 @@ function LatestProductsSection() {
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {products.map((product) => (
-          <ProductCardInline
-            key={product._id}
-            title={product.title}
-            slug={product.slug}
-            price={product.price}
-            comparePrice={product.compare_price}
-            images={product.images}
-            isDigital={product.is_digital}
-          />
+          <ProductCard key={product._id} product={product} />
         ))}
       </div>
     </section>
