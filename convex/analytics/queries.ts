@@ -2,6 +2,7 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import { getVendorStore } from "../users/helpers";
 import {
   type AnalyticsPeriod,
@@ -28,16 +29,11 @@ export const getSalesOverview = query({
     ),
   },
   handler: async (ctx, { period }) => {
-    const store = await getVendorStore(ctx);
-    if (!store) return null;
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
 
     const { current, previous } = getDateRanges(period as AnalyticsPeriod);
-
-    // Fetch all paid/delivered/processing/shipped orders for current & previous period
-    const allOrders = await ctx.db
-      .query("orders")
-      .withIndex("by_store", (q) => q.eq("store_id", store._id))
-      .collect();
 
     const paidStatuses = new Set([
       "paid",
@@ -45,6 +41,11 @@ export const getSalesOverview = query({
       "shipped",
       "delivered",
     ]);
+
+    const allOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_store", (q) => q.eq("store_id", store._id))
+      .collect();
 
     const currentOrders = allOrders.filter(
       (o) =>
@@ -59,7 +60,6 @@ export const getSalesOverview = query({
         paidStatuses.has(o.status),
     );
 
-    // Current period metrics
     const currentRevenue = currentOrders.reduce(
       (sum, o) => sum + o.total_amount,
       0,
@@ -68,7 +68,6 @@ export const getSalesOverview = query({
     const currentAov =
       currentCount > 0 ? Math.round(currentRevenue / currentCount) : 0;
 
-    // Previous period metrics
     const previousRevenue = previousOrders.reduce(
       (sum, o) => sum + o.total_amount,
       0,
@@ -77,7 +76,6 @@ export const getSalesOverview = query({
     const previousAov =
       previousCount > 0 ? Math.round(previousRevenue / previousCount) : 0;
 
-    // Refunds (current period)
     const refundedOrders = allOrders.filter(
       (o) =>
         o._creationTime >= current.start &&
@@ -89,7 +87,6 @@ export const getSalesOverview = query({
       0,
     );
 
-    // Cancelled (current period)
     const cancelledCount = allOrders.filter(
       (o) =>
         o._creationTime >= current.start &&
@@ -118,7 +115,6 @@ export const getSalesOverview = query({
         amount: refundAmount,
       },
       cancellations: cancelledCount,
-      conversionNote: "Taux de conversion disponible avec PostHog (Phase 2)",
     };
   },
 });
@@ -140,8 +136,9 @@ export const getSalesChart = query({
     ),
   },
   handler: async (ctx, { period, granularity: granularityArg }) => {
-    const store = await getVendorStore(ctx);
-    if (!store) return null;
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
 
     const typedPeriod = period as AnalyticsPeriod;
     const granularity: Granularity =
@@ -168,7 +165,6 @@ export const getSalesChart = query({
         paidStatuses.has(o.status),
     );
 
-    // Aggregate by date bucket
     type BucketData = { revenue: number; orders: number };
     const bucketMap = new Map<string, BucketData>();
 
@@ -180,7 +176,6 @@ export const getSalesChart = query({
       bucketMap.set(key, existing);
     }
 
-    // Generate all buckets (fill gaps with zeros)
     const allBuckets = generateDateBuckets(
       current.start,
       current.end,
@@ -214,8 +209,9 @@ export const getTopProducts = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, { period, limit = 10 }) => {
-    const store = await getVendorStore(ctx);
-    if (!store) return null;
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
 
     const { current } = getDateRanges(period as AnalyticsPeriod);
     const paidStatuses = new Set([
@@ -237,13 +233,12 @@ export const getTopProducts = query({
         paidStatuses.has(o.status),
     );
 
-    // Aggregate by product
     type ProductStat = { revenue: number; quantity: number; orders: number };
     const productMap = new Map<string, ProductStat>();
 
     for (const order of filteredOrders) {
       for (const item of order.items) {
-        const productId = item.product_id as string;
+        const productId = item.product_id;
         const existing = productMap.get(productId) ?? {
           revenue: 0,
           quantity: 0,
@@ -256,19 +251,17 @@ export const getTopProducts = query({
       }
     }
 
-    // Sort by revenue descending, take top N
     const sorted = Array.from(productMap.entries())
       .sort((a, b) => b[1].revenue - a[1].revenue)
       .slice(0, limit);
 
-    // Hydrate product info
     const results = await Promise.all(
       sorted.map(async ([productId, stats]) => {
-        const product = await ctx.db.get(productId as any);
+        const product = await ctx.db.get(productId as Id<"products">);
         return {
           productId,
           title: product?.title ?? "Produit supprimé",
-          image: product?.images?.[0] ?? null,
+          image: product?.images[0] ?? null,
           slug: product?.slug ?? null,
           revenue: stats.revenue,
           quantity: stats.quantity,
@@ -295,8 +288,9 @@ export const getRevenueByCategory = query({
     ),
   },
   handler: async (ctx, { period }) => {
-    const store = await getVendorStore(ctx);
-    if (!store) return null;
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
 
     const { current } = getDateRanges(period as AnalyticsPeriod);
     const paidStatuses = new Set([
@@ -318,22 +312,20 @@ export const getRevenueByCategory = query({
         paidStatuses.has(o.status),
     );
 
-    // We need product → category mapping
-    // Collect all unique product IDs from order items
-    const productIds = new Set<string>();
+    // Collect unique product IDs
+    const productIds = new Set<Id<"products">>();
     for (const order of filteredOrders) {
       for (const item of order.items) {
-        productIds.add(item.product_id as string);
+        productIds.add(item.product_id);
       }
     }
 
-    // Batch fetch products to get category_id
-    type ProductCategoryMap = Map<string, string>; // productId → categoryId
-    const productCategoryMap: ProductCategoryMap = new Map();
+    // Build product → category mapping
+    const productCategoryMap = new Map<string, Id<"categories">>();
     for (const productId of productIds) {
-      const product = await ctx.db.get(productId as any);
-      if (product?.category_id) {
-        productCategoryMap.set(productId, product.category_id as string);
+      const product = await ctx.db.get(productId);
+      if (product) {
+        productCategoryMap.set(productId, product.category_id);
       }
     }
 
@@ -344,7 +336,7 @@ export const getRevenueByCategory = query({
     for (const order of filteredOrders) {
       for (const item of order.items) {
         const categoryId =
-          productCategoryMap.get(item.product_id as string) ?? "uncategorized";
+          productCategoryMap.get(item.product_id) ?? "uncategorized";
         const existing = categoryRevenueMap.get(categoryId) ?? 0;
         categoryRevenueMap.set(categoryId, existing + item.total_price);
         totalRevenue += item.total_price;
@@ -358,7 +350,7 @@ export const getRevenueByCategory = query({
           if (categoryId === "uncategorized") {
             return { category: "Non catégorisé", revenue, percentage: 0 };
           }
-          const category = await ctx.db.get(categoryId as any);
+          const category = await ctx.db.get(categoryId as Id<"categories">);
           return {
             category: category?.name ?? "Catégorie supprimée",
             revenue,
@@ -368,7 +360,6 @@ export const getRevenueByCategory = query({
       ),
     );
 
-    // Calculate percentages
     for (const item of results) {
       item.percentage =
         totalRevenue > 0 ? Math.round((item.revenue / totalRevenue) * 100) : 0;
@@ -392,8 +383,9 @@ export const getCustomerInsights = query({
     ),
   },
   handler: async (ctx, { period }) => {
-    const store = await getVendorStore(ctx);
-    if (!store) return null;
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
 
     const { current } = getDateRanges(period as AnalyticsPeriod);
     const paidStatuses = new Set([
@@ -414,11 +406,10 @@ export const getCustomerInsights = query({
       (o) => o._creationTime >= current.start && o._creationTime <= current.end,
     );
 
-    // Determine new vs returning customers in current period
-    // A "new" customer had no orders before the current period start
-    const customerFirstOrder = new Map<string, number>(); // customerId → earliest order timestamp
+    // Determine first order per customer (across all time)
+    const customerFirstOrder = new Map<string, number>();
     for (const order of paidOrders) {
-      const customerId = order.customer_id as string;
+      const customerId = order.customer_id;
       const existing = customerFirstOrder.get(customerId);
       if (!existing || order._creationTime < existing) {
         customerFirstOrder.set(customerId, order._creationTime);
@@ -426,9 +417,7 @@ export const getCustomerInsights = query({
     }
 
     // Unique customers in current period
-    const currentCustomerIds = new Set(
-      currentOrders.map((o) => o.customer_id as string),
-    );
+    const currentCustomerIds = new Set(currentOrders.map((o) => o.customer_id));
     let newCustomers = 0;
     let returningCustomers = 0;
 
@@ -441,16 +430,16 @@ export const getCustomerInsights = query({
       }
     }
 
-    // Top customers by spend in current period
+    // Top customers by spend
     type CustomerSpend = {
-      customerId: string;
+      customerId: Id<"users">;
       totalSpent: number;
       orderCount: number;
     };
     const customerSpendMap = new Map<string, CustomerSpend>();
 
     for (const order of currentOrders) {
-      const customerId = order.customer_id as string;
+      const customerId = order.customer_id;
       const existing = customerSpendMap.get(customerId) ?? {
         customerId,
         totalSpent: 0,
@@ -465,10 +454,9 @@ export const getCustomerInsights = query({
       .sort((a, b) => b.totalSpent - a.totalSpent)
       .slice(0, 5);
 
-    // Hydrate customer names
     const hydratedTopCustomers = await Promise.all(
       topCustomers.map(async (c) => {
-        const user = await ctx.db.get(c.customerId as any);
+        const user = await ctx.db.get(c.customerId);
         return {
           name: user?.name ?? "Client inconnu",
           email: user?.email ?? "",
@@ -478,7 +466,6 @@ export const getCustomerInsights = query({
       }),
     );
 
-    // Average order value
     const totalRevenue = currentOrders.reduce(
       (sum, o) => sum + o.total_amount,
       0,
