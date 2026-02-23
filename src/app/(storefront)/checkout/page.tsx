@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import Link from "next/link";
@@ -40,12 +40,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
+import type { CountryCode } from "@/constants/countries";
+import { getPaymentMethodsForCountry } from "@/constants/paymentMethods";
 import type { CartStore } from "@/types/cart";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
 // ─── Types ───────────────────────────────────────────────────
-
-type PaymentMethod = "moneroo_mtn" | "moneroo_orange" | "moneroo_wave" | "stripe_card";
 
 interface StoreCoupon {
   code: string;
@@ -58,40 +58,6 @@ interface OrderResult {
   totalAmount: number;
   currency: string;
 }
-
-// ─── Payment Methods ─────────────────────────────────────────
-
-const PAYMENT_METHODS: {
-  id: PaymentMethod;
-  label: string;
-  description: string;
-  icon: typeof CreditCard;
-}[] = [
-  {
-    id: "moneroo_mtn",
-    label: "MTN Mobile Money",
-    description: "Paiement via MTN MoMo",
-    icon: Smartphone,
-  },
-  {
-    id: "moneroo_orange",
-    label: "Orange Money",
-    description: "Paiement via Orange Money",
-    icon: Smartphone,
-  },
-  {
-    id: "moneroo_wave",
-    label: "Wave",
-    description: "Paiement via Wave",
-    icon: Smartphone,
-  },
-  {
-    id: "stripe_card",
-    label: "Carte bancaire",
-    description: "Visa, Mastercard",
-    icon: CreditCard,
-  },
-];
 
 // ─── Store Order Card ────────────────────────────────────────
 
@@ -216,7 +182,7 @@ function StoreOrderCard({
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useCurrentUser();
-  const { stores, totalItems, totalAmount, clearStore } = useCart();
+  const { stores, totalItems, clearStore } = useCart();
   const createOrder = useMutation(api.orders.mutations.createOrder);
 
   // ── State ──
@@ -230,20 +196,37 @@ export default function CheckoutPage() {
     Partial<Record<keyof ShippingAddress, string>> | null
   >(null);
   const [notes, setNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethod>("moneroo_mtn");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [storeCoupons, setStoreCoupons] = useState
     Record<string, StoreCoupon>
   >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // ── Méthodes de paiement dynamiques selon le pays ──
+  const availableMethods = useMemo(
+    () => getPaymentMethodsForCountry(address.country as CountryCode),
+    [address.country],
+  );
+
   // ── Pré-remplir le nom si connecté ──
-  useState(() => {
+  useEffect(() => {
     if (user?.name && !address.full_name) {
       setAddress((prev) => ({ ...prev, full_name: user.name }));
     }
-  });
+    // Uniquement au changement de user.name, pas à chaque keystroke adresse
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.name]);
+
+  // ── Auto-sélection de la première méthode quand le pays change ──
+  useEffect(() => {
+    const isCurrentMethodAvailable = availableMethods.some(
+      (m) => m.id === paymentMethod,
+    );
+    if (availableMethods.length > 0 && !isCurrentMethodAvailable) {
+      setPaymentMethod(availableMethods[0].id);
+    }
+  }, [availableMethods, paymentMethod]);
 
   // ── Coupon handlers ──
   function handleCouponApply(
@@ -278,13 +261,11 @@ export default function CheckoutPage() {
 
   // ── Submit ──
   async function handleSubmit() {
-    // Vérifier l'auth
     if (!isAuthenticated) {
       router.push(`${ROUTES.LOGIN}?redirect=${ROUTES.CHECKOUT}`);
       return;
     }
 
-    // Valider l'adresse
     const errors = validateAddress(address);
     if (errors) {
       setAddressErrors(errors);
@@ -292,13 +273,17 @@ export default function CheckoutPage() {
     }
     setAddressErrors(null);
 
+    if (!paymentMethod) {
+      setSubmitError("Veuillez sélectionner une méthode de paiement");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
 
     const results: OrderResult[] = [];
 
     try {
-      // Créer une commande par boutique
       for (const store of stores) {
         const coupon = storeCoupons[store.storeId];
 
@@ -325,12 +310,9 @@ export default function CheckoutPage() {
         });
 
         results.push(result);
-
-        // Vider le panier de cette boutique
         clearStore(store.storeId);
       }
 
-      // Rediriger vers la page de confirmation
       const orderNumbers = results.map((r) => r.orderNumber).join(",");
       router.push(
         `${ROUTES.ORDER_CONFIRMATION}?orders=${encodeURIComponent(orderNumbers)}`,
@@ -347,6 +329,7 @@ export default function CheckoutPage() {
   }
 
   // ── Guards ──
+
   if (authLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-16 text-center">
@@ -436,31 +419,40 @@ export default function CheckoutPage() {
             <CardContent>
               <RadioGroup
                 value={paymentMethod}
-                onValueChange={(val) =>
-                  setPaymentMethod(val as PaymentMethod)
-                }
+                onValueChange={setPaymentMethod}
                 className="space-y-3"
               >
-                {PAYMENT_METHODS.map((method) => (
-                  <label
-                    key={method.id}
-                    htmlFor={method.id}
-                    className={`flex items-center gap-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                      paymentMethod === method.id
-                        ? "border-primary bg-primary/5"
-                        : "hover:border-muted-foreground/30"
-                    }`}
-                  >
-                    <RadioGroupItem value={method.id} id={method.id} />
-                    <method.icon className="size-5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{method.label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {method.description}
-                      </p>
-                    </div>
-                  </label>
-                ))}
+                {availableMethods.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">
+                    Aucune méthode de paiement disponible pour ce pays.
+                    Sélectionnez un autre pays de livraison.
+                  </p>
+                ) : (
+                  availableMethods.map((method) => (
+                    <label
+                      key={method.id}
+                      htmlFor={method.id}
+                      className={`flex items-center gap-4 rounded-lg border p-4 cursor-pointer transition-colors ${
+                        paymentMethod === method.id
+                          ? "border-primary bg-primary/5"
+                          : "hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      <RadioGroupItem value={method.id} id={method.id} />
+                      {method.type === "mobile_money" ? (
+                        <Smartphone className="size-5 text-muted-foreground shrink-0" />
+                      ) : (
+                        <CreditCard className="size-5 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{method.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {method.description}
+                        </p>
+                      </div>
+                    </label>
+                  ))
+                )}
               </RadioGroup>
             </CardContent>
           </Card>
@@ -492,7 +484,6 @@ export default function CheckoutPage() {
 
         {/* Right — Order Summary */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Store orders */}
           {stores.map((store) => (
             <StoreOrderCard
               key={store.storeId}
@@ -532,7 +523,7 @@ export default function CheckoutPage() {
                 className="w-full"
                 size="lg"
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || availableMethods.length === 0}
               >
                 {isSubmitting ? (
                   <>
