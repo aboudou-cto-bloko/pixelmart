@@ -9,6 +9,12 @@ export const ROUTES = {
   STORE: (slug: string) => `/stores/${slug}`,
   CART: "/cart",
   CHECKOUT: "/checkout",
+  ORDER_CONFIRMATION: (orderNumber: string) =>
+    `/orders/${orderNumber}/confirmation`,
+
+  // ---- Customer ----
+  CUSTOMER_ORDERS: "/orders",
+  CUSTOMER_ORDER: (id: string) => `/orders/${id}`,
 
   // ---- Auth ----
   LOGIN: "/login",
