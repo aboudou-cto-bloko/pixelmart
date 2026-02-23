@@ -1,6 +1,7 @@
 // filepath: convex/payments/mutations.ts
 
 import { internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { assertValidTransition } from "../orders/helpers";
 
@@ -112,6 +113,65 @@ export const confirmPayment = internalMutation({
       total_orders: store.total_orders + 1,
       updated_at: Date.now(),
     });
+
+    const customer = await ctx.db.get(order.customer_id);
+    const shippingAddr = order.shipping_address;
+    const addrStr = `${shippingAddr.full_name}, ${shippingAddr.line1}, ${shippingAddr.city}, ${shippingAddr.country}`;
+
+    // Email confirmation → client
+    if (customer?.email) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.emails.send.sendOrderConfirmation,
+        {
+          customerEmail: customer.email,
+          customerName: customer.name ?? "Client",
+          orderNumber: order.order_number,
+          orderId: order._id,
+          storeName: store.name,
+          items: order.items.map((i) => ({
+            title: i.title,
+            quantity: i.quantity,
+            unit_price: i.unit_price,
+            total_price: i.total_price,
+          })),
+          subtotal: order.subtotal,
+          discountAmount:
+            order.discount_amount > 0 ? order.discount_amount : undefined,
+          shippingAmount: order.shipping_amount,
+          totalAmount: order.total_amount,
+          currency: order.currency,
+          shippingAddress: addrStr,
+          paymentMethod: order.payment_method ?? "Mobile Money",
+        },
+      );
+    }
+
+    // Email nouvelle commande → vendor
+    const storeOwner = await ctx.db.get(store.owner_id);
+    if (storeOwner?.email) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.emails.send.sendNewOrderNotification,
+        {
+          vendorEmail: storeOwner.email,
+          vendorName: storeOwner.name ?? "Vendeur",
+          orderNumber: order.order_number,
+          orderId: order._id,
+          customerName: customer?.name ?? "Client",
+          items: order.items.map((i) => ({
+            title: i.title,
+            quantity: i.quantity,
+            total_price: i.total_price,
+            sku: i.sku,
+          })),
+          totalAmount: order.total_amount,
+          commissionAmount: commissionAmount,
+          currency: order.currency,
+          shippingAddress: addrStr,
+        },
+      );
+    }
 
     return { success: true };
   },

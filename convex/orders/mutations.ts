@@ -1,6 +1,7 @@
 // filepath: convex/orders/mutations.ts
 
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import type { MutationCtx } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
@@ -188,10 +189,38 @@ export const updateStatus = mutation({
     if (args.status === "shipped") {
       if (args.trackingNumber) updates.tracking_number = args.trackingNumber;
       if (args.carrier) updates.carrier = args.carrier;
+
+      const customer = await ctx.db.get(order.customer_id);
+      const store = await ctx.db.get(order.store_id);
+      if (customer?.email && store) {
+        await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderShipped, {
+          customerEmail: customer.email,
+          customerName: customer.name ?? "Client",
+          orderNumber: order.order_number,
+          orderId: order._id,
+          storeName: store.name,
+          trackingNumber: args.trackingNumber,
+          carrier: args.carrier,
+        });
+      }
     }
 
     if (args.status === "delivered") {
       updates.delivered_at = Date.now();
+
+      const customer = await ctx.db.get(order.customer_id);
+      const store = await ctx.db.get(order.store_id);
+      if (customer?.email && store) {
+        await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderShipped, {
+          customerEmail: customer.email,
+          customerName: customer.name ?? "Client",
+          orderNumber: order.order_number,
+          orderId: order._id,
+          storeName: store.name,
+          trackingNumber: args.trackingNumber,
+          carrier: args.carrier,
+        });
+      }
     }
 
     await ctx.db.patch(args.orderId, updates);
@@ -247,6 +276,21 @@ export const cancelOrder = mutation({
       status: "cancelled",
       updated_at: Date.now(),
     });
+
+    const customer = await ctx.db.get(order.customer_id);
+    const store = await ctx.db.get(order.store_id);
+    if (customer?.email && store) {
+      await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderCancelled, {
+        customerEmail: customer.email,
+        customerName: customer.name ?? "Client",
+        orderNumber: order.order_number,
+        storeName: store.name,
+        totalAmount: order.total_amount,
+        currency: order.currency,
+        reason: args.reason,
+        wasRefunded: order.payment_status === "paid",
+      });
+    }
 
     // Restaurer le stock
     await restoreInventory(ctx, order.items);
