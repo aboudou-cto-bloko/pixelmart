@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Star,
   Settings,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "./routes";
@@ -41,6 +42,11 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     title: "Commandes",
     url: ROUTES.VENDOR_ORDERS,
     icon: ShoppingCart,
+  },
+  {
+    title: "Analytics",
+    url: ROUTES.VENDOR_ANALYTICS,
+    icon: BarChart3,
   },
   {
     title: "Finance",

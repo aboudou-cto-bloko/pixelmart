@@ -33,6 +33,7 @@ export const ROUTES = {
   VENDOR_PRODUCT_EDIT: (id: string) => `/vendor/products/${id}/edit`,
   VENDOR_ORDERS: "/vendor/orders",
   VENDOR_ORDER: (id: string) => `/vendor/orders/${id}`,
+  VENDOR_ANALYTICS: "/vendor/analytics",
   VENDOR_FINANCE: "/vendor/finance",
   VENDOR_PAYOUTS: "/vendor/finance/payouts",
   VENDOR_STORE_SETTINGS: "/vendor/store/settings",
