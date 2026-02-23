@@ -2,6 +2,8 @@
 
 "use client";
 
+import { useAction } from "convex/react";
+import { setPaymentQueue } from "@/lib/payment-queue";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
@@ -181,6 +183,7 @@ export default function CheckoutPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useCurrentUser();
   const { stores, totalItems, clearStore } = useCart();
   const createOrder = useMutation(api.orders.mutations.createOrder);
+  const initializePayment = useAction(api.payments.moneroo.initializePayment);
 
   // ── State ──
   const [address, setAddress] = useState<ShippingAddress>({
@@ -274,9 +277,10 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
     setSubmitError(null);
 
-    const results: OrderResult[] = [];
-
     try {
+      // 1. Créer toutes les commandes
+      const orderIds: Id<"orders">[] = [];
+
       for (const store of stores) {
         const coupon = storeCoupons[store.storeId];
 
@@ -302,23 +306,29 @@ export default function CheckoutPage() {
           paymentMethod,
         });
 
-        results.push(result);
+        orderIds.push(result.orderId);
         clearStore(store.storeId);
       }
 
-      const orderNumbers = results.map((r) => r.orderNumber).join(",");
-      router.push(
-        `${ROUTES.ORDER_CONFIRMATION}?orders=${encodeURIComponent(orderNumbers)}`,
-      );
+      // 2. Stocker la queue de paiement
+      setPaymentQueue(orderIds);
+
+      // 3. Initialiser le paiement pour la première commande
+      const { checkoutUrl } = await initializePayment({
+        orderId: orderIds[0],
+      });
+
+      // 4. Rediriger vers Moneroo
+      window.location.href = checkoutUrl;
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : "Erreur lors de la création de la commande";
       setSubmitError(message);
-    } finally {
       setIsSubmitting(false);
     }
+    // Pas de finally setIsSubmitting(false) — on quitte la page
   }
 
   // ── Guards ──

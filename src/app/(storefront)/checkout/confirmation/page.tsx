@@ -5,7 +5,7 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Package, ArrowRight } from "lucide-react";
+import { CheckCircle2, Package, ArrowRight, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ import { ROUTES } from "@/constants/routes";
 function ConfirmationContent() {
   const searchParams = useSearchParams();
   const ordersParam = searchParams.get("orders") ?? "";
+  const isPaid = searchParams.get("paid") === "true";
+
   const orderNumbers = ordersParam
     .split(",")
     .map((s) => s.trim())
@@ -53,6 +55,17 @@ function ConfirmationContent() {
             </p>
           </div>
 
+          {/* Payment status */}
+          {isPaid && (
+            <Badge
+              variant="secondary"
+              className="gap-1.5 py-1.5 px-4 text-green-700 bg-green-100 dark:bg-green-900/20 dark:text-green-400"
+            >
+              <CreditCard className="size-3.5" />
+              Paiement confirmé
+            </Badge>
+          )}
+
           <Separator />
 
           {/* Order numbers */}
@@ -82,9 +95,19 @@ function ConfirmationContent() {
           <div className="text-left bg-muted/50 rounded-lg p-4 space-y-2">
             <p className="text-sm font-medium">Prochaines étapes :</p>
             <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
-              <li>Finalisez le paiement via la méthode choisie</li>
-              <li>Le vendeur préparera votre commande</li>
-              <li>Vous recevrez un numéro de suivi</li>
+              {isPaid ? (
+                <>
+                  <li>Le vendeur va préparer votre commande</li>
+                  <li>Vous recevrez un numéro de suivi par email</li>
+                  <li>Suivez votre livraison depuis votre espace client</li>
+                </>
+              ) : (
+                <>
+                  <li>Finalisez le paiement via la méthode choisie</li>
+                  <li>Le vendeur préparera votre commande</li>
+                  <li>Vous recevrez un numéro de suivi</li>
+                </>
+              )}
             </ol>
           </div>
 
