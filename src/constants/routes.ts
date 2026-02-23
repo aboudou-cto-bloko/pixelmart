@@ -1,20 +1,17 @@
+// filepath: src/constants/routes.ts
+
 export const ROUTES = {
   // ---- Public (storefront) ----
   HOME: "/",
   PRODUCTS: "/products",
   PRODUCT: (slug: string) => `/products/${slug}`,
-  CATEGORIES: "/products", // catalogue filtré — pas de page dédiée "toutes catégories"
+  CATEGORIES: "/products",
   CATEGORY: (slug: string) => `/categories/${slug}`,
   STORES: "/stores",
   STORE: (slug: string) => `/stores/${slug}`,
   CART: "/cart",
   CHECKOUT: "/checkout",
-  ORDER_CONFIRMATION: (orderNumber: string) =>
-    `/orders/${orderNumber}/confirmation`,
-
-  // ---- Customer ----
-  CUSTOMER_ORDERS: "/orders",
-  CUSTOMER_ORDER: (id: string) => `/orders/${id}`,
+  ORDER_CONFIRMATION: "/checkout/confirmation",
 
   // ---- Auth ----
   LOGIN: "/login",
@@ -24,6 +21,10 @@ export const ROUTES = {
 
   // ---- Onboarding ----
   ONBOARDING_VENDOR: "/onboarding/vendor",
+
+  // ---- Customer ----
+  CUSTOMER_ORDERS: "/orders",
+  CUSTOMER_ORDER: (id: string) => `/orders/${id}`,
 
   // ---- Vendor (préfixe /vendor/) ----
   VENDOR_DASHBOARD: "/vendor/dashboard",
