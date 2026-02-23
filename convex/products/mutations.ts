@@ -332,3 +332,210 @@ export const adjustStock = mutation({
     return { newQuantity };
   },
 });
+
+/**
+ * Duplique un produit existant et ses variantes.
+ * Le clone est créé en statut "draft" avec un nouveau slug.
+ * Les images sont partagées (même storageIds), pas dupliquées physiquement.
+ */
+export const duplicate = mutation({
+  args: { id: v.id("products") },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    const source = await ctx.db.get(args.id);
+    if (!source) throw new Error("Produit introuvable");
+    if (source.store_id !== store._id) {
+      throw new Error("Ce produit n'appartient pas à votre boutique");
+    }
+
+    // Générer un slug unique pour la copie
+    const slug = await generateProductSlug(ctx, `${source.title} (copie)`);
+
+    const cloneId = await ctx.db.insert("products", {
+      store_id: store._id,
+      title: `${source.title} (copie)`,
+      slug,
+      description: source.description,
+      short_description: source.short_description,
+      category_id: source.category_id,
+      tags: [...source.tags],
+      images: [...source.images], // storageIds partagés
+      price: source.price,
+      compare_price: source.compare_price,
+      cost_price: source.cost_price,
+      sku: undefined, // SKU doit être unique, on le vide
+      barcode: undefined,
+      track_inventory: source.track_inventory,
+      quantity: source.quantity,
+      low_stock_threshold: source.low_stock_threshold,
+      weight: source.weight,
+      status: "draft",
+      is_digital: source.is_digital,
+      digital_file_url: source.digital_file_url,
+      seo_title: undefined, // SEO doit être unique
+      seo_description: undefined,
+      published_at: undefined,
+      updated_at: Date.now(),
+    });
+
+    // Dupliquer les variantes
+    const variants = await ctx.db
+      .query("product_variants")
+      .withIndex("by_product", (q) => q.eq("product_id", args.id))
+      .collect();
+
+    for (const variant of variants) {
+      await ctx.db.insert("product_variants", {
+        product_id: cloneId,
+        store_id: store._id,
+        title: variant.title,
+        options: [...variant.options],
+        price: variant.price,
+        compare_price: variant.compare_price,
+        sku: undefined, // SKU doit être unique
+        quantity: variant.quantity,
+        image_url: variant.image_url, // storageId partagé
+        weight: variant.weight,
+        is_available: variant.is_available,
+      });
+    }
+
+    return { cloneId, slug };
+  },
+});
+
+/**
+ * Change le statut de plusieurs produits en une seule transaction.
+ * Max 50 produits par appel (limite de sécurité Convex).
+ * Respecte les mêmes règles de transition que updateStatus.
+ */
+export const bulkUpdateStatus = mutation({
+  args: {
+    ids: v.array(v.id("products")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("active"),
+      v.literal("archived"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    if (args.ids.length === 0) {
+      throw new Error("Aucun produit sélectionné");
+    }
+    if (args.ids.length > 50) {
+      throw new Error("Maximum 50 produits par opération bulk");
+    }
+
+    const allowed: Record<string, string[]> = {
+      draft: ["active", "archived"],
+      active: ["draft", "archived"],
+      archived: ["draft"],
+      out_of_stock: ["draft", "active"],
+    };
+
+    const results: Array<{ id: string; success: boolean; error?: string }> = [];
+
+    for (const productId of args.ids) {
+      const product = await ctx.db.get(productId);
+
+      if (!product) {
+        results.push({ id: productId, success: false, error: "Introuvable" });
+        continue;
+      }
+      if (product.store_id !== store._id) {
+        results.push({ id: productId, success: false, error: "Accès refusé" });
+        continue;
+      }
+      if (!allowed[product.status]?.includes(args.status)) {
+        results.push({
+          id: productId,
+          success: false,
+          error: `Transition ${product.status} → ${args.status} non autorisée`,
+        });
+        continue;
+      }
+
+      // Validation pour activation
+      if (args.status === "active") {
+        if (product.images.length === 0 || product.price <= 0) {
+          results.push({
+            id: productId,
+            success: false,
+            error: "Image et prix requis pour publier",
+          });
+          continue;
+        }
+      }
+
+      const updates: Record<string, unknown> = {
+        status: args.status,
+        updated_at: Date.now(),
+      };
+
+      if (args.status === "active" && !product.published_at) {
+        updates.published_at = Date.now();
+      }
+
+      await ctx.db.patch(productId, updates);
+      results.push({ id: productId, success: true });
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.filter((r) => !r.success).length;
+
+    return { results, successCount, failCount };
+  },
+});
+
+/**
+ * Supprime plusieurs produits en une seule transaction.
+ * Supprime aussi les variantes et les fichiers storage associés.
+ * Max 50 produits par appel.
+ */
+export const bulkDelete = mutation({
+  args: {
+    ids: v.array(v.id("products")),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    if (args.ids.length === 0) {
+      throw new Error("Aucun produit sélectionné");
+    }
+    if (args.ids.length > 50) {
+      throw new Error("Maximum 50 produits par opération bulk");
+    }
+
+    let deletedCount = 0;
+
+    for (const productId of args.ids) {
+      const product = await ctx.db.get(productId);
+
+      if (!product || product.store_id !== store._id) continue;
+
+      // Supprimer les variantes + leurs images
+      const variants = await ctx.db
+        .query("product_variants")
+        .withIndex("by_product", (q) => q.eq("product_id", productId))
+        .collect();
+
+      for (const variant of variants) {
+        await safeDeleteFile(ctx, variant.image_url);
+        await ctx.db.delete(variant._id);
+      }
+
+      // Supprimer les images du produit
+      for (const storageId of product.images) {
+        await safeDeleteFile(ctx, storageId);
+      }
+
+      await ctx.db.delete(productId);
+      deletedCount++;
+    }
+
+    return { deletedCount };
+  },
+});
