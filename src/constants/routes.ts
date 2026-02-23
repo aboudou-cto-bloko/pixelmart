@@ -1,34 +1,42 @@
 export const ROUTES = {
-  // Public
+  // ---- Public (storefront) ----
   HOME: "/",
   PRODUCTS: "/products",
   PRODUCT: (slug: string) => `/products/${slug}`,
-  STORE: (slug: string) => `/store/${slug}`,
+  CATEGORIES: "/products", // catalogue filtré — pas de page dédiée "toutes catégories"
+  CATEGORY: (slug: string) => `/categories/${slug}`,
+  STORES: "/stores",
+  STORE: (slug: string) => `/stores/${slug}`,
   CART: "/cart",
   CHECKOUT: "/checkout",
 
-  // Auth
+  // ---- Auth ----
   LOGIN: "/login",
   REGISTER: "/register",
+  FORGOT_PASSWORD: "/forgot-password",
+  RESET_PASSWORD: "/reset-password",
 
-  // Vendor
-  VENDOR_DASHBOARD: "/dashboard",
-  VENDOR_PRODUCTS: "/products",
-  VENDOR_PRODUCTS_NEW: "/products/new",
-  VENDOR_PRODUCT_EDIT: (id: string) => `/products/${id}/edit`,
-  VENDOR_ORDERS: "/orders",
-  VENDOR_ORDER: (id: string) => `/orders/${id}`,
-  VENDOR_FINANCE: "/finance",
-  VENDOR_PAYOUTS: "/finance/payouts",
-  VENDOR_STORE_SETTINGS: "/store/settings",
-  VENDOR_SETTINGS: "/settings",
-  VENDOR_SECURITY: "/settings/security",
+  // ---- Onboarding ----
+  ONBOARDING_VENDOR: "/onboarding/vendor",
 
-  // Admin
-  ADMIN_DASHBOARD: "/dashboard",
-  ADMIN_STORES: "/stores",
-  ADMIN_USERS: "/users",
-  ADMIN_CATEGORIES: "/categories",
-  ADMIN_PAYOUTS: "/payouts",
-  ADMIN_REPORTS: "/reports",
+  // ---- Vendor (préfixe /vendor/) ----
+  VENDOR_DASHBOARD: "/vendor/dashboard",
+  VENDOR_PRODUCTS: "/vendor/products",
+  VENDOR_PRODUCTS_NEW: "/vendor/products/new",
+  VENDOR_PRODUCT_EDIT: (id: string) => `/vendor/products/${id}/edit`,
+  VENDOR_ORDERS: "/vendor/orders",
+  VENDOR_ORDER: (id: string) => `/vendor/orders/${id}`,
+  VENDOR_FINANCE: "/vendor/finance",
+  VENDOR_PAYOUTS: "/vendor/finance/payouts",
+  VENDOR_STORE_SETTINGS: "/vendor/store/settings",
+  VENDOR_SETTINGS: "/vendor/settings",
+  VENDOR_SECURITY: "/vendor/settings/security",
+
+  // ---- Admin (préfixe /admin/) ----
+  ADMIN_DASHBOARD: "/admin/dashboard",
+  ADMIN_STORES: "/admin/stores",
+  ADMIN_USERS: "/admin/users",
+  ADMIN_CATEGORIES: "/admin/categories",
+  ADMIN_PAYOUTS: "/admin/payouts",
+  ADMIN_REPORTS: "/admin/reports",
 } as const;
