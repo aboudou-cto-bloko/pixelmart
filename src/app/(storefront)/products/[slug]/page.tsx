@@ -126,7 +126,7 @@ function StoreInfoCard({
     _id: string;
     name: string;
     slug: string;
-    logo_url: string | null;
+    logo_url?: string | null;
     is_verified: boolean;
     avg_rating: number;
     country: string;
