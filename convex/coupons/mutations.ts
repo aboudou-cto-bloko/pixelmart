@@ -16,22 +16,30 @@ export const create = mutation({
       v.literal("free_shipping"),
     ),
     value: v.number(),
+    applicableTo: v.optional(
+      v.union(
+        v.literal("all"),
+        v.literal("specific_products"),
+        v.literal("specific_categories"),
+      ),
+    ),
+    productIds: v.optional(v.array(v.id("products"))),
+    categoryIds: v.optional(v.array(v.id("categories"))),
     minOrderAmount: v.optional(v.number()),
     maxUses: v.optional(v.number()),
     maxUsesPerUser: v.optional(v.number()),
+    startsAt: v.optional(v.number()),
     expiresAt: v.optional(v.number()),
-    applicableProducts: v.optional(v.array(v.id("products"))),
-    applicableCategories: v.optional(v.array(v.id("categories"))),
   },
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
 
     const code = args.code.toUpperCase().trim();
 
-    // Vérifier l'unicité du code
+    // Unicité du code par boutique (index composé)
     const existing = await ctx.db
       .query("coupons")
-      .withIndex("by_code", (q) => q.eq("code", code))
+      .withIndex("by_code", (q) => q.eq("store_id", store._id).eq("code", code))
       .unique();
 
     if (existing) {
@@ -43,22 +51,28 @@ export const create = mutation({
       throw new Error("Le pourcentage doit être entre 1 et 100");
     }
     if (args.type === "fixed_amount" && args.value <= 0) {
-      throw new Error("Le montant doit être positif");
+      throw new Error("Le montant doit être positif (en centimes)");
     }
 
-    return await ctx.db.insert("coupons", {
+    const applicableTo = args.applicableTo ?? "all";
+
+    return ctx.db.insert("coupons", {
       store_id: store._id,
       code,
       type: args.type,
       value: args.value,
+      applicable_to: applicableTo,
+      product_ids:
+        applicableTo === "specific_products" ? args.productIds : undefined,
+      category_ids:
+        applicableTo === "specific_categories" ? args.categoryIds : undefined,
       min_order_amount: args.minOrderAmount,
       max_uses: args.maxUses,
       max_uses_per_user: args.maxUsesPerUser ?? 1,
       used_count: 0,
       is_active: true,
+      starts_at: args.startsAt,
       expires_at: args.expiresAt,
-      applicable_products: args.applicableProducts,
-      applicable_categories: args.applicableCategories,
     });
   },
 });

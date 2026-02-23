@@ -2,8 +2,7 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAppUser } from "../users/helpers";
-import { getVendorStore, requireAdmin } from "../users/helpers";
+import { requireAppUser, getVendorStore } from "../users/helpers";
 
 /**
  * Détail d'une commande (customer, vendor ou admin).
@@ -15,7 +14,6 @@ export const getById = query({
     const order = await ctx.db.get(args.orderId);
     if (!order) return null;
 
-    // Vérifier l'accès
     const isCustomer = order.customer_id === user._id;
     const isAdmin = user.role === "admin";
     let isVendor = false;
@@ -30,7 +28,6 @@ export const getById = query({
 
     if (!isCustomer && !isVendor && !isAdmin) return null;
 
-    // Enrichir avec les noms
     const store = await ctx.db.get(order.store_id);
     const customer = await ctx.db.get(order.customer_id);
 
@@ -61,12 +58,17 @@ export const getByOrderNumber = query({
 
     if (!order) return null;
 
-    // Même vérification d'accès
     const isCustomer = order.customer_id === user._id;
     const isAdmin = user.role === "admin";
     if (!isCustomer && !isAdmin) return null;
 
-    return order;
+    const store = await ctx.db.get(order.store_id);
+
+    return {
+      ...order,
+      store_name: store?.name ?? "Boutique supprimée",
+      store_slug: store?.slug ?? "",
+    };
   },
 });
 
@@ -92,20 +94,17 @@ export const listByCustomer = query({
     const user = await requireAppUser(ctx);
     const limit = args.limit ?? 20;
 
-    let ordersQuery = ctx.db
+    const orders = await ctx.db
       .query("orders")
       .withIndex("by_customer", (q) => q.eq("customer_id", user._id))
-      .order("desc");
+      .order("desc")
+      .take(limit);
 
-    const orders = await ordersQuery.take(limit);
-
-    // Filtrer par statut si spécifié
     const filtered = args.status
       ? orders.filter((o) => o.status === args.status)
       : orders;
 
-    // Enrichir avec le nom de la boutique
-    const enriched = await Promise.all(
+    return Promise.all(
       filtered.map(async (order) => {
         const store = await ctx.db.get(order.store_id);
         return {
@@ -115,8 +114,6 @@ export const listByCustomer = query({
         };
       }),
     );
-
-    return enriched;
   },
 });
 
@@ -142,7 +139,6 @@ export const listByStore = query({
     const { store } = await getVendorStore(ctx);
     const limit = args.limit ?? 50;
 
-    // Utiliser l'index composé by_status si statut spécifié
     let orders;
     if (args.status) {
       orders = await ctx.db
@@ -160,8 +156,7 @@ export const listByStore = query({
         .take(limit);
     }
 
-    // Enrichir avec le nom client
-    const enriched = await Promise.all(
+    return Promise.all(
       orders.map(async (order) => {
         const customer = await ctx.db.get(order.customer_id);
         return {
@@ -171,8 +166,6 @@ export const listByStore = query({
         };
       }),
     );
-
-    return enriched;
   },
 });
 
@@ -189,26 +182,24 @@ export const getStoreOrderStats = query({
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
       .collect();
 
-    const pending = allOrders.filter((o) => o.status === "pending").length;
-    const paid = allOrders.filter((o) => o.status === "paid").length;
-    const processing = allOrders.filter(
-      (o) => o.status === "processing",
-    ).length;
-    const shipped = allOrders.filter((o) => o.status === "shipped").length;
-    const delivered = allOrders.filter((o) => o.status === "delivered").length;
+    const countByStatus = (status: Doc<"orders">["status"]) =>
+      allOrders.filter((o) => o.status === status).length;
 
     const totalRevenue = allOrders
       .filter((o) => o.payment_status === "paid")
       .reduce((sum, o) => sum + o.total_amount, 0);
 
     return {
-      pending,
-      paid,
-      processing,
-      shipped,
-      delivered,
+      pending: countByStatus("pending"),
+      paid: countByStatus("paid"),
+      processing: countByStatus("processing"),
+      shipped: countByStatus("shipped"),
+      delivered: countByStatus("delivered"),
       total: allOrders.length,
       totalRevenue,
     };
   },
 });
+
+// Type import pour countByStatus
+import type { Doc } from "../_generated/dataModel";

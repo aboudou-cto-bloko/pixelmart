@@ -2,6 +2,7 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { getVendorStore } from "../users/helpers";
 import {
   validateCouponRules,
   calculateDiscount,
@@ -10,60 +11,55 @@ import {
 
 /**
  * Valide un code promo côté client (preview avant soumission).
- * Retourne le coupon avec le montant de la réduction estimé.
+ * Index by_code est composé : ["store_id", "code"]
  */
 export const validate = query({
   args: {
     code: v.string(),
     storeId: v.id("stores"),
-    subtotal: v.number(), // centimes
+    subtotal: v.number(),
   },
   handler: async (ctx, args) => {
+    const normalizedCode = args.code.toUpperCase().trim();
+
     const coupon = await ctx.db
       .query("coupons")
-      .withIndex("by_code", (q) => q.eq("code", args.code.toUpperCase()))
+      .withIndex("by_code", (q) =>
+        q.eq("store_id", args.storeId).eq("code", normalizedCode),
+      )
       .unique();
 
     if (!coupon) {
-      return { valid: false, error: "Code promo invalide" } as const;
-    }
-
-    if (coupon.store_id !== args.storeId) {
-      return {
-        valid: false,
-        error: "Ce code n'est pas valable pour cette boutique",
-      } as const;
+      return { valid: false as const, error: "Code promo invalide" };
     }
 
     const validationError = validateCouponRules(coupon, args.subtotal);
     if (validationError) {
-      return { valid: false, error: validationError } as const;
+      return { valid: false as const, error: validationError };
     }
 
     const discount = calculateDiscount(coupon, args.subtotal);
     const label = getCouponLabel(coupon);
 
     return {
-      valid: true,
+      valid: true as const,
       code: coupon.code,
       type: coupon.type,
       label,
       discount,
-    } as const;
+    };
   },
 });
 
 /**
- * Liste les coupons d'une boutique (vendor).
+ * Liste les coupons de la boutique vendor.
  */
 export const listByStore = query({
   args: {},
   handler: async (ctx) => {
-    // Import dynamique pour éviter la dépendance circulaire
-    const { getVendorStore } = await import("../users/helpers");
     const { store } = await getVendorStore(ctx);
 
-    return await ctx.db
+    return ctx.db
       .query("coupons")
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
       .order("desc")

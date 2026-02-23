@@ -1,7 +1,13 @@
 // filepath: convex/orders/helpers.ts
 
-import { QueryCtx, MutationCtx } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import {
+  COMMISSION_RATES,
+  CANCELLATION_WINDOW_MS,
+  ORDER_NUMBER_PREFIX,
+  type SubscriptionTier,
+} from "../lib/constants";
 
 // ─── Order Number ────────────────────────────────────────────
 
@@ -10,9 +16,8 @@ import type { Doc } from "../_generated/dataModel";
  */
 export async function generateOrderNumber(ctx: MutationCtx): Promise<string> {
   const year = new Date().getFullYear();
-  const prefix = `PM-${year}-`;
+  const prefix = `${ORDER_NUMBER_PREFIX}-${year}-`;
 
-  // Chercher la dernière commande de l'année
   const lastOrder = await ctx.db
     .query("orders")
     .withIndex("by_order_number")
@@ -44,16 +49,10 @@ const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   refunded: [],
 };
 
-/**
- * Vérifie si une transition de statut est autorisée.
- */
 export function isValidTransition(from: OrderStatus, to: OrderStatus): boolean {
   return STATUS_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-/**
- * Valide une transition et throw si invalide.
- */
 export function assertValidTransition(
   from: OrderStatus,
   to: OrderStatus,
@@ -65,18 +64,15 @@ export function assertValidTransition(
 
 // ─── Cancellation Rules ──────────────────────────────────────
 
-const CANCELLATION_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 heures
-
 /**
- * Vérifie si un client peut annuler sa commande.
- * - pending : toujours annulable
+ * Un client peut annuler :
+ * - pending : toujours
  * - paid : dans les 2h suivant la création
  */
 export function canCustomerCancel(order: Doc<"orders">): boolean {
   if (order.status === "pending") return true;
   if (order.status === "paid") {
-    const elapsed = Date.now() - order._creationTime;
-    return elapsed <= CANCELLATION_WINDOW_MS;
+    return Date.now() - order._creationTime <= CANCELLATION_WINDOW_MS;
   }
   return false;
 }
@@ -91,7 +87,14 @@ export function canVendorCancel(order: Doc<"orders">): boolean {
 // ─── Commission ──────────────────────────────────────────────
 
 /**
- * Calcule la commission Pixel-Mart en centimes.
+ * Retourne le taux de commission en basis points selon le plan.
+ * Source de vérité : convex/lib/constants.ts
+ */
+export function getCommissionRate(tier: SubscriptionTier): number {
+  return COMMISSION_RATES[tier] ?? COMMISSION_RATES.free;
+}
+
+/**
  * F-04: commission_amount = total_amount × commission_rate / 10000
  */
 export function calculateCommission(
@@ -101,34 +104,18 @@ export function calculateCommission(
   return Math.round((totalAmount * commissionRate) / 10000);
 }
 
-/**
- * Retourne le taux de commission en basis points selon le plan.
- */
-export function getCommissionRate(
-  plan: Doc<"stores">["subscription_plan"],
-): number {
-  switch (plan) {
-    case "business":
-      return 200; // 2%
-    case "pro":
-      return 300; // 3%
-    case "free":
-    default:
-      return 500; // 5%
-  }
-}
-
-// ─── Order Totals ────────────────────────────────────────────
+// ─── Order Item Types ────────────────────────────────────────
 
 export interface OrderItemInput {
-  productId: string;
-  variantId?: string;
+  productId: Id<"products">;
+  variantId?: Id<"product_variants">;
   quantity: number;
 }
 
+/** Type conforme au schema orders.items */
 export interface ValidatedOrderItem {
-  product_id: string;
-  variant_id?: string;
+  product_id: Id<"products">;
+  variant_id?: Id<"product_variants">;
   title: string;
   sku?: string;
   image_url: string;
@@ -137,13 +124,14 @@ export interface ValidatedOrderItem {
   total_price: number;
 }
 
+// ─── Item Validation ─────────────────────────────────────────
+
 /**
- * Valide les items, vérifie le stock, et retourne les items enrichis.
- * Throw si un produit est indisponible ou stock insuffisant.
+ * Valide les items, vérifie le stock, retourne les items enrichis.
  */
 export async function validateAndBuildItems(
   ctx: MutationCtx,
-  storeId: string,
+  storeId: Id<"stores">,
   items: OrderItemInput[],
 ): Promise<ValidatedOrderItem[]> {
   if (items.length === 0) {
@@ -153,7 +141,7 @@ export async function validateAndBuildItems(
   const validatedItems: ValidatedOrderItem[] = [];
 
   for (const item of items) {
-    const product = await ctx.db.get(item.productId as any);
+    const product = await ctx.db.get(item.productId);
     if (!product) {
       throw new Error(`Produit introuvable : ${item.productId}`);
     }
@@ -172,9 +160,8 @@ export async function validateAndBuildItems(
     let sku = product.sku;
     let imageUrl = product.images[0] ?? "";
 
-    // Vérifier la variante si spécifiée
     if (item.variantId) {
-      const variant = await ctx.db.get(item.variantId as any);
+      const variant = await ctx.db.get(item.variantId);
       if (!variant || variant.product_id !== product._id) {
         throw new Error(`Variante introuvable pour "${product.title}"`);
       }
@@ -195,19 +182,16 @@ export async function validateAndBuildItems(
       if (variant.image_url) {
         imageUrl = variant.image_url;
       }
-    } else {
-      // Vérifier le stock produit principal
-      if (product.track_inventory && product.quantity < item.quantity) {
-        throw new Error(
-          `Stock insuffisant pour "${product.title}" (${product.quantity} disponibles)`,
-        );
-      }
+    } else if (product.track_inventory && product.quantity < item.quantity) {
+      throw new Error(
+        `Stock insuffisant pour "${product.title}" (${product.quantity} disponibles)`,
+      );
     }
 
     validatedItems.push({
       product_id: product._id,
       variant_id: item.variantId,
-      title: item.variantId ? `${product.title}` : product.title,
+      title: product.title,
       sku,
       image_url: imageUrl,
       quantity: item.quantity,
@@ -219,8 +203,10 @@ export async function validateAndBuildItems(
   return validatedItems;
 }
 
+// ─── Inventory Management ────────────────────────────────────
+
 /**
- * Décrémente le stock des produits et variantes après création de commande.
+ * Décrémente le stock après création de commande.
  */
 export async function decrementInventory(
   ctx: MutationCtx,
@@ -228,7 +214,7 @@ export async function decrementInventory(
 ): Promise<void> {
   for (const item of items) {
     if (item.variant_id) {
-      const variant = await ctx.db.get(item.variant_id as any);
+      const variant = await ctx.db.get(item.variant_id);
       if (variant) {
         const newQty = variant.quantity - item.quantity;
         await ctx.db.patch(variant._id, {
@@ -237,24 +223,21 @@ export async function decrementInventory(
         });
       }
     } else {
-      const product = await ctx.db.get(item.product_id as any);
+      const product = await ctx.db.get(item.product_id);
       if (product && product.track_inventory) {
         const newQty = product.quantity - item.quantity;
-        const updates: Record<string, any> = {
+        await ctx.db.patch(product._id, {
           quantity: newQty,
+          status: newQty <= 0 ? "out_of_stock" : product.status,
           updated_at: Date.now(),
-        };
-        if (newQty <= 0) {
-          updates.status = "out_of_stock";
-        }
-        await ctx.db.patch(product._id, updates);
+        });
       }
     }
   }
 }
 
 /**
- * Restaure le stock (pour annulation / remboursement).
+ * Restaure le stock (annulation / remboursement).
  */
 export async function restoreInventory(
   ctx: MutationCtx,
@@ -262,7 +245,7 @@ export async function restoreInventory(
 ): Promise<void> {
   for (const item of items) {
     if (item.variant_id) {
-      const variant = await ctx.db.get(item.variant_id as any);
+      const variant = await ctx.db.get(item.variant_id);
       if (variant) {
         await ctx.db.patch(variant._id, {
           quantity: variant.quantity + item.quantity,
@@ -270,17 +253,17 @@ export async function restoreInventory(
         });
       }
     } else {
-      const product = await ctx.db.get(item.product_id as any);
+      const product = await ctx.db.get(item.product_id);
       if (product && product.track_inventory) {
         const newQty = product.quantity + item.quantity;
-        const updates: Record<string, any> = {
+        await ctx.db.patch(product._id, {
           quantity: newQty,
+          status:
+            product.status === "out_of_stock" && newQty > 0
+              ? "active"
+              : product.status,
           updated_at: Date.now(),
-        };
-        if (product.status === "out_of_stock" && newQty > 0) {
-          updates.status = "active";
-        }
-        await ctx.db.patch(product._id, updates);
+        });
       }
     }
   }

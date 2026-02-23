@@ -2,8 +2,10 @@
 
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAppUser } from "../users/helpers";
-import { getVendorStore, requireAdmin } from "../users/helpers";
+import type { MutationCtx } from "../_generated/server";
+import type { Id, Doc } from "../_generated/dataModel";
+import { requireAppUser, getVendorStore } from "../users/helpers";
+import { DEFAULT_CURRENCY } from "../lib/constants";
 import {
   generateOrderNumber,
   validateAndBuildItems,
@@ -14,6 +16,7 @@ import {
   assertValidTransition,
   canCustomerCancel,
   canVendorCancel,
+  type OrderItemInput,
 } from "./helpers";
 
 // ─── Create Order ────────────────────────────────────────────
@@ -69,14 +72,16 @@ export const createOrder = mutation({
     }
 
     // 3. Valider les items + vérifier le stock
+    const orderItems: OrderItemInput[] = args.items.map((i) => ({
+      productId: i.productId,
+      variantId: i.variantId,
+      quantity: i.quantity,
+    }));
+
     const validatedItems = await validateAndBuildItems(
       ctx,
       args.storeId,
-      args.items.map((i) => ({
-        productId: i.productId,
-        variantId: i.variantId,
-        quantity: i.quantity,
-      })),
+      orderItems,
     );
 
     // 4. Calculer les totaux
@@ -91,37 +96,38 @@ export const createOrder = mutation({
       discountAmount = await applyCoupon(
         ctx,
         args.couponCode,
-        store._id,
-        user._id,
+        args.storeId,
         subtotal,
-        validatedItems,
       );
     }
 
-    // 6. Frais de livraison (placeholder — sera calculé dynamiquement en Phase 1)
+    // 6. Frais de livraison (placeholder — calculé dynamiquement en Phase 1)
     const shippingAmount = 0;
 
-    // 7. Total
+    // 7. Total — tout en XOF centimes
     const totalAmount = Math.max(0, subtotal - discountAmount + shippingAmount);
 
-    // 8. Commission
-    const commissionRate = getCommissionRate(store.subscription_plan);
+    // 8. Commission — source : convex/lib/constants.ts
+    const commissionRate = getCommissionRate(store.subscription_tier);
     const commissionAmount = calculateCommission(totalAmount, commissionRate);
 
     // 9. Générer le numéro de commande
     const orderNumber = await generateOrderNumber(ctx);
 
-    // 10. Créer la commande
+    // 10. Devise — toujours XOF pour les opérations backend
+    const currency = DEFAULT_CURRENCY;
+
+    // 11. Créer la commande
     const orderId = await ctx.db.insert("orders", {
       order_number: orderNumber,
       customer_id: user._id,
       store_id: store._id,
-      items: validatedItems as any,
+      items: validatedItems,
       subtotal,
       shipping_amount: shippingAmount,
       discount_amount: discountAmount,
       total_amount: totalAmount,
-      currency: store.currency ?? "XOF",
+      currency,
       status: "pending",
       payment_status: "pending",
       payment_method: args.paymentMethod,
@@ -133,19 +139,19 @@ export const createOrder = mutation({
       updated_at: Date.now(),
     });
 
-    // 11. Décrémenter le stock
+    // 12. Décrémenter le stock
     await decrementInventory(ctx, validatedItems);
 
-    // 12. Incrémenter used_count du coupon
+    // 13. Incrémenter used_count du coupon
     if (args.couponCode) {
-      await incrementCouponUsage(ctx, args.couponCode, store._id);
+      await incrementCouponUsage(ctx, args.couponCode, args.storeId);
     }
 
     return {
       orderId,
       orderNumber,
       totalAmount,
-      currency: store.currency ?? "XOF",
+      currency,
     };
   },
 });
@@ -174,18 +180,16 @@ export const updateStatus = mutation({
 
     assertValidTransition(order.status, args.status);
 
-    const updates: Record<string, any> = {
+    const updates: Partial<Doc<"orders">> = {
       status: args.status,
       updated_at: Date.now(),
     };
 
-    // Ajout tracking si shipped
     if (args.status === "shipped") {
       if (args.trackingNumber) updates.tracking_number = args.trackingNumber;
       if (args.carrier) updates.carrier = args.carrier;
     }
 
-    // Timestamp de livraison
     if (args.status === "delivered") {
       updates.delivered_at = Date.now();
     }
@@ -222,7 +226,6 @@ export const cancelOrder = mutation({
       isVendor = store?._id === order.store_id;
     }
 
-    // Vérifier les permissions d'annulation
     if (isCustomer && !canCustomerCancel(order)) {
       throw new Error(
         "Annulation impossible — délai de 2h dépassé ou commande déjà expédiée",
@@ -260,55 +263,57 @@ export const cancelOrder = mutation({
   },
 });
 
-// ─── Helpers internes ────────────────────────────────────────
+// ─── Helpers internes (coupon) ───────────────────────────────
 
 /**
  * Applique un coupon et retourne le montant de la réduction en centimes.
+ * L'index by_code est composé : ["store_id", "code"]
  */
 async function applyCoupon(
   ctx: MutationCtx,
   code: string,
-  storeId: any,
-  userId: any,
+  storeId: Id<"stores">,
   subtotal: number,
-  items: any[],
 ): Promise<number> {
+  const normalizedCode = code.toUpperCase().trim();
+
   const coupon = await ctx.db
     .query("coupons")
-    .withIndex("by_code", (q) => q.eq("code", code.toUpperCase()))
+    .withIndex("by_code", (q) =>
+      q.eq("store_id", storeId).eq("code", normalizedCode),
+    )
     .unique();
 
-  if (!coupon) throw new Error(`Code promo « ${code} » invalide`);
-  if (coupon.store_id !== storeId) {
-    throw new Error("Ce code promo n'est pas valable pour cette boutique");
+  if (!coupon) {
+    throw new Error(`Code promo « ${code} » invalide pour cette boutique`);
   }
+
   if (!coupon.is_active) throw new Error("Ce code promo n'est plus actif");
 
-  // Vérifier expiration
+  if (coupon.starts_at && coupon.starts_at > Date.now()) {
+    throw new Error("Ce code promo n'est pas encore actif");
+  }
+
   if (coupon.expires_at && coupon.expires_at < Date.now()) {
     throw new Error("Ce code promo a expiré");
   }
 
-  // Vérifier le nombre d'utilisations global
   if (coupon.max_uses && coupon.used_count >= coupon.max_uses) {
     throw new Error("Ce code promo a atteint sa limite d'utilisation");
   }
 
-  // Vérifier le montant minimum
   if (coupon.min_order_amount && subtotal < coupon.min_order_amount) {
-    throw new Error(
-      `Montant minimum requis : ${coupon.min_order_amount / 100} FCFA`,
-    );
+    const minDisplay = Math.round(coupon.min_order_amount / 100);
+    throw new Error(`Montant minimum requis : ${minDisplay} FCFA`);
   }
 
-  // Calculer la réduction
   switch (coupon.type) {
     case "percentage":
       return Math.round((subtotal * coupon.value) / 100);
     case "fixed_amount":
       return Math.min(coupon.value, subtotal);
     case "free_shipping":
-      return 0; // sera appliqué sur shipping_amount quand implémenté
+      return 0; // appliqué sur shipping_amount quand implémenté
     default:
       return 0;
   }
@@ -316,23 +321,25 @@ async function applyCoupon(
 
 /**
  * Incrémente le compteur d'utilisation du coupon.
+ * L'index by_code est composé : ["store_id", "code"]
  */
 async function incrementCouponUsage(
   ctx: MutationCtx,
   code: string,
-  storeId: any,
+  storeId: Id<"stores">,
 ): Promise<void> {
+  const normalizedCode = code.toUpperCase().trim();
+
   const coupon = await ctx.db
     .query("coupons")
-    .withIndex("by_code", (q) => q.eq("code", code.toUpperCase()))
+    .withIndex("by_code", (q) =>
+      q.eq("store_id", storeId).eq("code", normalizedCode),
+    )
     .unique();
 
-  if (coupon && coupon.store_id === storeId) {
+  if (coupon) {
     await ctx.db.patch(coupon._id, {
       used_count: coupon.used_count + 1,
     });
   }
 }
-
-// Type import nécessaire pour les helpers internes
-import type { MutationCtx } from "../_generated/server";
