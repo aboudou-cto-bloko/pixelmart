@@ -1,3 +1,5 @@
+// filepath: src/constants/vendor-nav.ts
+
 import {
   LayoutDashboard,
   Package,
@@ -9,6 +11,7 @@ import {
   Settings,
   type LucideIcon,
 } from "lucide-react";
+import { ROUTES } from "./routes";
 
 export interface NavItem {
   title: string;
@@ -21,38 +24,38 @@ export interface NavItem {
 export const VENDOR_NAV_MAIN: NavItem[] = [
   {
     title: "Tableau de bord",
-    url: "/vendor/dashboard",
+    url: ROUTES.VENDOR_DASHBOARD,
     icon: LayoutDashboard,
   },
   {
     title: "Produits",
-    url: "/vendor/products",
+    url: ROUTES.VENDOR_PRODUCTS,
     icon: Package,
     isActive: true,
     items: [
-      { title: "Tous les produits", url: "/vendor/products" },
-      { title: "Ajouter un produit", url: "/vendor/products/new" },
+      { title: "Tous les produits", url: ROUTES.VENDOR_PRODUCTS },
+      { title: "Ajouter un produit", url: ROUTES.VENDOR_PRODUCTS_NEW },
     ],
   },
   {
     title: "Commandes",
-    url: "/vendor/orders",
+    url: ROUTES.VENDOR_ORDERS,
     icon: ShoppingCart,
   },
   {
     title: "Finance",
-    url: "/vendor/finance",
+    url: ROUTES.VENDOR_FINANCE,
     icon: Wallet,
     items: [
-      { title: "Solde & transactions", url: "/vendor/finance" },
-      { title: "Demander un paiement", url: "/vendor/payouts" },
+      { title: "Solde & transactions", url: ROUTES.VENDOR_FINANCE },
+      { title: "Demander un paiement", url: ROUTES.VENDOR_PAYOUTS },
     ],
   },
   {
     title: "Boutique",
-    url: "/vendor/store/settings",
+    url: ROUTES.VENDOR_STORE_SETTINGS,
     icon: Store,
-    items: [{ title: "Paramètres", url: "/vendor/store/settings" }],
+    items: [{ title: "Paramètres", url: ROUTES.VENDOR_STORE_SETTINGS }],
   },
   {
     title: "Messages",
@@ -69,11 +72,11 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
 export const VENDOR_NAV_SETTINGS: NavItem[] = [
   {
     title: "Paramètres",
-    url: "/vendor/settings",
+    url: ROUTES.VENDOR_SETTINGS,
     icon: Settings,
     items: [
-      { title: "Compte", url: "/vendor/settings" },
-      { title: "Sécurité", url: "/vendor/settings/security" },
+      { title: "Compte", url: ROUTES.VENDOR_SETTINGS },
+      { title: "Sécurité", url: ROUTES.VENDOR_SECURITY },
     ],
   },
 ];
