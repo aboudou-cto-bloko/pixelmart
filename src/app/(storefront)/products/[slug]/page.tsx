@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
+import { useCart } from "@/hooks/useCart";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -210,6 +211,7 @@ export default function ProductDetailPage() {
     null,
   );
   const [quantity, setQuantity] = useState(1);
+  const { addItem } = useCart();
 
   // Loading
   if (product === undefined) {
@@ -349,7 +351,29 @@ export default function ProductDetailPage() {
                 max={maxQuantity}
                 onChange={setQuantity}
               />
-              <Button size="lg" className="w-full sm:w-auto">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  if (!product.store) return;
+                  addItem({
+                    productId: product._id,
+                    variantId: selectedVariant?._id,
+                    title: product.title,
+                    variantTitle: selectedVariant?.title,
+                    slug: product.slug,
+                    image: product.images[0] ?? "",
+                    price: activePrice,
+                    comparePrice: activeComparePrice,
+                    storeId: product.store._id,
+                    storeName: product.store.name,
+                    storeSlug: product.store.slug,
+                    quantity,
+                    maxQuantity,
+                    isDigital: product.is_digital,
+                  });
+                }}
+              >
                 <ShoppingCart className="size-4 mr-2" />
                 Ajouter au panier
               </Button>

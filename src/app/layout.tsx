@@ -1,8 +1,11 @@
+// filepath: src/app/layout.tsx
+
 import type { Metadata } from "next";
 import { Poppins, Montserrat } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConvexClientProvider } from "./ConvexClientProvider";
+import { CartProvider } from "@/providers/CartProvider";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -35,8 +38,9 @@ export default function RootLayout({
         className={`${poppins.variable} ${montserrat.variable} antialiased`}
       >
         <ConvexClientProvider>
-          {" "}
-          <TooltipProvider>{children}</TooltipProvider>
+          <CartProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </CartProvider>
         </ConvexClientProvider>
       </body>
     </html>

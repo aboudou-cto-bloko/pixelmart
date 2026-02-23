@@ -26,10 +26,12 @@ import { SearchBar } from "./SearchBar";
 import { MobileNav } from "./MobileNav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { authClient } from "@/lib/auth-client";
+import { useCart } from "@/hooks/useCart";
 
 export function Navbar() {
   const { user, isAuthenticated, isLoading } = useCurrentUser();
   const categoryTree = useQuery(api.categories.queries.getTree);
+  const { totalItems } = useCart();
 
   const categories = categoryTree ?? [];
 
@@ -85,11 +87,15 @@ export function Navbar() {
 
         {/* Right section */}
         <div className="ml-auto flex items-center gap-2">
-          {/* Cart (placeholder — Step 0.10) */}
           <Button variant="ghost" size="icon" className="relative" asChild>
             <Link href={ROUTES.CART}>
               <ShoppingCart className="size-5" />
               <span className="sr-only">Panier</span>
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                  {totalItems > 99 ? "99+" : totalItems}
+                </span>
+              )}
             </Link>
           </Button>
 
