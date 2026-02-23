@@ -3,6 +3,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { resolveImageUrl } from "../products/helpers";
+import { getVendorStore } from "../users/helpers";
 
 /**
  * Détail boutique par slug — vitrine publique.
@@ -131,5 +132,16 @@ export const listActive = query({
     );
 
     return storesWithLogos;
+  },
+});
+
+/**
+ * Récupère la boutique du vendor connecté.
+ */
+export const getMyStore = query({
+  args: {},
+  handler: async (ctx) => {
+    const { store } = await getVendorStore(ctx);
+    return store;
   },
 });
