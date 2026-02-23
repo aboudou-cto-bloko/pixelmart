@@ -26,12 +26,7 @@ import {
 } from "@/components/checkout/AddressForm";
 import { CouponInput } from "@/components/checkout/CouponInput";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,6 +53,8 @@ interface OrderResult {
   totalAmount: number;
   currency: string;
 }
+
+type AddressErrors = Partial<Record<keyof ShippingAddress, string>>;
 
 // ─── Store Order Card ────────────────────────────────────────
 
@@ -192,14 +189,14 @@ export default function CheckoutPage() {
     city: "",
     country: DEFAULT_COUNTRY,
   });
-  const [addressErrors, setAddressErrors] = useState
-    Partial<Record<keyof ShippingAddress, string>> | null
-  >(null);
+  const [addressErrors, setAddressErrors] = useState<AddressErrors | null>(
+    null,
+  );
   const [notes, setNotes] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>("");
-  const [storeCoupons, setStoreCoupons] = useState
-    Record<string, StoreCoupon>
-  >({});
+  const [storeCoupons, setStoreCoupons] = useState<Record<string, StoreCoupon>>(
+    {},
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -229,11 +226,7 @@ export default function CheckoutPage() {
   }, [availableMethods, paymentMethod]);
 
   // ── Coupon handlers ──
-  function handleCouponApply(
-    storeId: string,
-    code: string,
-    discount: number,
-  ) {
+  function handleCouponApply(storeId: string, code: string, discount: number) {
     setStoreCoupons((prev) => ({
       ...prev,
       [storeId]: { code, discount },
@@ -393,9 +386,7 @@ export default function CheckoutPage() {
           {/* 1. Adresse de livraison */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                Adresse de livraison
-              </CardTitle>
+              <CardTitle className="text-base">Adresse de livraison</CardTitle>
             </CardHeader>
             <CardContent>
               <AddressForm
@@ -412,9 +403,7 @@ export default function CheckoutPage() {
           {/* 2. Méthode de paiement */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                Méthode de paiement
-              </CardTitle>
+              <CardTitle className="text-base">Méthode de paiement</CardTitle>
             </CardHeader>
             <CardContent>
               <RadioGroup
@@ -540,10 +529,7 @@ export default function CheckoutPage() {
 
               <p className="text-[11px] text-muted-foreground text-center">
                 En confirmant, vous acceptez nos{" "}
-                <Link
-                  href="/terms"
-                  className="underline hover:text-foreground"
-                >
+                <Link href="/terms" className="underline hover:text-foreground">
                   CGV
                 </Link>{" "}
                 et notre{" "}
