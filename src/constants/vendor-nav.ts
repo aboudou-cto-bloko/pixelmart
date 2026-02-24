@@ -10,6 +10,7 @@ import {
   Star,
   Settings,
   BarChart3,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "./routes";
@@ -65,6 +66,11 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     items: [{ title: "Paramètres", url: ROUTES.VENDOR_STORE_SETTINGS }],
   },
   {
+    title: "Notifications",
+    url: "/vendor/notifications",
+    icon: Bell,
+  },
+  /*  {
     title: "Messages",
     url: "/vendor/messages",
     icon: MessageSquare,
@@ -73,7 +79,7 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     title: "Avis",
     url: "/vendor/reviews",
     icon: Star,
-  },
+  },*/
 ];
 
 export const VENDOR_NAV_SETTINGS: NavItem[] = [

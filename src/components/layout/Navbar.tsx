@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationDropdown } from "@/components/notifications/organisms/NotificationDropdown";
 import { ROUTES } from "@/constants/routes";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,6 +99,10 @@ export function Navbar() {
               )}
             </Link>
           </Button>
+          {/* Notifications */}
+          {isAuthenticated && (
+            <NotificationDropdown notificationsPath="/notifications" />
+          )}
 
           {/* Auth */}
           {isLoading ? (

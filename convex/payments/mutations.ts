@@ -173,6 +173,21 @@ export const confirmPayment = internalMutation({
       );
     }
 
+    const vendor = await ctx.db.get(store.owner_id);
+    if (vendor) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.notifyNewOrderInApp,
+        {
+          vendorUserId: vendor._id,
+          orderNumber: order.order_number,
+          customerName: customer?.name ?? "Client",
+          totalAmount: order.total_amount,
+          currency: order.currency,
+        },
+      );
+    }
+
     return { success: true };
   },
 });

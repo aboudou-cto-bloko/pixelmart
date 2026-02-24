@@ -199,6 +199,21 @@ export const updateStatus = mutation({
         actorType: "vendor",
         actorId: user._id,
       });
+      const customer = await ctx.db.get(order.customer_id);
+      if (customer) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyOrderStatusGeneric,
+          {
+            customerUserId: customer._id,
+            customerEmail: customer.email,
+            orderNumber: order.order_number,
+            storeName: store.name,
+            previousStatus: "paid",
+            newStatus: "processing",
+          },
+        );
+      }
     }
 
     // ── Shipped ──
@@ -226,16 +241,35 @@ export const updateStatus = mutation({
 
       // Email au client — shipped
       const customer = await ctx.db.get(order.customer_id);
-      if (customer?.email) {
-        await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderShipped, {
-          customerEmail: customer.email,
-          customerName: customer.name ?? "Client",
-          orderNumber: order.order_number,
-          orderId: order._id,
-          storeName: store.name,
-          trackingNumber: args.trackingNumber,
-          carrier: args.carrier,
-        });
+      if (customer) {
+        // Email si l'adresse est disponible
+        if (customer.email) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.emails.send.sendOrderShipped,
+            {
+              customerEmail: customer.email,
+              customerName: customer.name ?? "Client",
+              orderNumber: order.order_number,
+              orderId: order._id,
+              storeName: store.name,
+              trackingNumber: args.trackingNumber,
+              carrier: args.carrier,
+            },
+          );
+        }
+
+        // Notification in-app
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyOrderStatusInApp,
+          {
+            customerUserId: customer._id,
+            orderNumber: order.order_number,
+            storeName: store.name,
+            newStatus: "shipped",
+          },
+        );
       }
     }
 
@@ -252,7 +286,7 @@ export const updateStatus = mutation({
         actorId: user._id,
       });
 
-      // Email au client — delivered (corrigé: était sendOrderShipped)
+      // Email au client — delivered
       const customer = await ctx.db.get(order.customer_id);
       if (customer?.email) {
         await ctx.scheduler.runAfter(
