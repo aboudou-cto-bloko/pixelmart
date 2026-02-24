@@ -8,6 +8,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { OrderStatusBadge } from "../atoms/OrderStatusBadge";
 import { TrackingLink } from "../atoms/TrackingLink";
 import { OrderTimeline } from "../molecules/OrderTimeline";
@@ -15,6 +16,8 @@ import { TrackingForm } from "../molecules/TrackingForm";
 import { OrderStatusActions } from "../molecules/OrderStatusActions";
 import { OrderSummaryCard } from "../molecules/OrderSummaryCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useInvoiceDownload } from "@/hooks/useInvoiceDownload";
+import { FileText } from "lucide-react";
 import Image from "next/image";
 
 type OrderStatus =
@@ -85,6 +88,12 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
   const updateStatus = useMutation(api.orders.mutations.updateStatus);
   const addTracking = useMutation(api.orders.mutations.addTracking);
+
+  const {
+    download: downloadInvoice,
+    isGenerating: isInvoiceGenerating,
+    isReady: invoiceReady,
+  } = useInvoiceDownload(order?._id);
 
   if (order === undefined) {
     return (
@@ -172,6 +181,18 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         onDeliver={() => handleStatusChange("delivered")}
         isLoading={isLoading}
       />
+
+      {invoiceReady && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={downloadInvoice}
+          disabled={isInvoiceGenerating}
+        >
+          <FileText className="mr-1.5 h-3.5 w-3.5" />
+          {isInvoiceGenerating ? "Génération..." : "Facture PDF"}
+        </Button>
+      )}
 
       {/* Tracking form (affiché quand on clique "Marquer comme expédié") */}
       {showTrackingForm && (

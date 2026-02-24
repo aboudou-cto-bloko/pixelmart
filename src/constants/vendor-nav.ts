@@ -54,6 +54,7 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     icon: Wallet,
     items: [
       { title: "Solde & transactions", url: ROUTES.VENDOR_FINANCE },
+      { title: "Factures", url: ROUTES.VENDOR_FINANCE_INVOICES },
       { title: "Demander un paiement", url: ROUTES.VENDOR_PAYOUTS },
     ],
   },
