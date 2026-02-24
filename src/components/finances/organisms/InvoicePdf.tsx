@@ -168,11 +168,13 @@ interface InvoiceData {
   };
   store: {
     name: string;
+    slug: string;
+    country: string;
+    // ── Collectés via UI, pas dans le schema ──
     contactEmail?: string;
     contactPhone?: string;
     address?: string;
     city?: string;
-    country?: string;
   };
   customer: {
     name: string;

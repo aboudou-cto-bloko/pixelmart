@@ -17,7 +17,19 @@ import { OrderStatusActions } from "../molecules/OrderStatusActions";
 import { OrderSummaryCard } from "../molecules/OrderSummaryCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInvoiceDownload } from "@/hooks/useInvoiceDownload";
+import {
+  InvoiceVendorInfoForm,
+  type VendorInvoiceInfo,
+} from "@/components/finances/molecules/InvoiceVendorInfoForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { FileText } from "lucide-react";
+
 import Image from "next/image";
 
 type OrderStatus =
@@ -94,6 +106,13 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
     isGenerating: isInvoiceGenerating,
     isReady: invoiceReady,
   } = useInvoiceDownload(order?._id);
+
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+
+  const handleInvoiceGenerate = async (vendorInfo: VendorInvoiceInfo) => {
+    await downloadInvoice(vendorInfo);
+    setInvoiceDialogOpen(false);
+  };
 
   if (order === undefined) {
     return (
@@ -183,17 +202,24 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       />
 
       {invoiceReady && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={downloadInvoice}
-          disabled={isInvoiceGenerating}
-        >
-          <FileText className="mr-1.5 h-3.5 w-3.5" />
-          {isInvoiceGenerating ? "Génération..." : "Facture PDF"}
-        </Button>
+        <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+              Facture PDF
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Générer une facture</DialogTitle>
+            </DialogHeader>
+            <InvoiceVendorInfoForm
+              onSubmit={handleInvoiceGenerate}
+              isLoading={isInvoiceGenerating}
+            />
+          </DialogContent>
+        </Dialog>
       )}
-
       {/* Tracking form (affiché quand on clique "Marquer comme expédié") */}
       {showTrackingForm && (
         <div className="rounded-lg border p-4 space-y-3">

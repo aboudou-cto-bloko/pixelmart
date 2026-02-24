@@ -8,17 +8,14 @@ import { pdf } from "@react-pdf/renderer";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { InvoicePdf } from "@/components/finances/organisms/InvoicePdf";
+import type { VendorInvoiceInfo } from "@/components/finances/molecules/InvoiceVendorInfoForm";
 import { toast } from "sonner";
 
 /**
  * Hook pour télécharger une facture PDF.
- * Utilise @react-pdf/renderer côté client.
  *
- * Usage :
- * ```tsx
- * const { download, isGenerating } = useInvoiceDownload(orderId);
- * <Button onClick={download} disabled={isGenerating}>PDF</Button>
- * ```
+ * Les infos vendeur (email, téléphone, adresse, ville) sont
+ * passées en paramètre car elles n'existent pas dans le schema stores.
  */
 export function useInvoiceDownload(orderId: Id<"orders"> | undefined) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -28,31 +25,46 @@ export function useInvoiceDownload(orderId: Id<"orders"> | undefined) {
     orderId ? { orderId } : "skip",
   );
 
-  const download = useCallback(async () => {
-    if (!invoiceData) {
-      toast.error("Données de facture non disponibles");
-      return;
-    }
+  const download = useCallback(
+    async (vendorInfo: VendorInvoiceInfo) => {
+      if (!invoiceData) {
+        toast.error("Données de facture non disponibles");
+        return;
+      }
 
-    setIsGenerating(true);
-    try {
-      const blob = await pdf(<InvoicePdf data={invoiceData} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${invoiceData.invoiceNumber}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
+      setIsGenerating(true);
+      try {
+        // Fusionner les données backend + infos vendeur UI
+        const fullData = {
+          ...invoiceData,
+          store: {
+            ...invoiceData.store,
+            contactEmail: vendorInfo.contactEmail,
+            contactPhone: vendorInfo.contactPhone,
+            address: vendorInfo.address,
+            city: vendorInfo.city,
+          },
+        };
 
-      toast.success("Facture téléchargée");
-    } catch (err) {
-      toast.error("Erreur de génération", {
-        description: err instanceof Error ? err.message : "Erreur inconnue",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [invoiceData]);
+        const blob = await pdf(<InvoicePdf data={fullData} />).toBlob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${invoiceData.invoiceNumber}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        toast.success("Facture téléchargée");
+      } catch (err) {
+        toast.error("Erreur de génération", {
+          description: err instanceof Error ? err.message : "Erreur inconnue",
+        });
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [invoiceData],
+  );
 
   return { download, isGenerating, isReady: !!invoiceData };
 }
