@@ -3,6 +3,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAppUser, getVendorStore } from "../users/helpers";
+import { resolveImageUrls, resolveImageUrl } from "../products/helpers";
 
 /**
  * Détail d'une commande (customer, vendor ou admin).
@@ -198,6 +199,78 @@ export const getStoreOrderStats = query({
       total: allOrders.length,
       totalRevenue,
     };
+  },
+});
+
+/**
+ * Détail complet d'une commande pour la page vendor.
+ * Inclut les URLs d'images résolues, les infos client complètes,
+ * et les données de tracking.
+ */
+export const getOrderDetail = query({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) return null;
+    if (order.store_id !== store._id) return null;
+
+    const customer = await ctx.db.get(order.customer_id);
+
+    // Résoudre les images des items
+    const itemsWithImages = await Promise.all(
+      order.items.map(async (item) => {
+        const imageUrl = await resolveImageUrl(ctx, item.image_url);
+        return { ...item, resolved_image_url: imageUrl };
+      }),
+    );
+
+    return {
+      ...order,
+      items: itemsWithImages,
+      customer: customer
+        ? {
+            _id: customer._id,
+            name: customer.name,
+            email: customer.email,
+            avatar_url: customer.avatar_url,
+          }
+        : null,
+      store_name: store.name,
+    };
+  },
+});
+
+/**
+ * Compteurs par statut pour les tabs de la liste commandes.
+ */
+export const getStatusCounts = query({
+  args: {},
+  handler: async (ctx) => {
+    const { store } = await getVendorStore(ctx);
+
+    const allOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_store", (q) => q.eq("store_id", store._id))
+      .collect();
+
+    const counts: Record<string, number> = {
+      all: allOrders.length,
+      pending: 0,
+      paid: 0,
+      processing: 0,
+      shipped: 0,
+      delivered: 0,
+      cancelled: 0,
+      refunded: 0,
+    };
+
+    for (const order of allOrders) {
+      counts[order.status] = (counts[order.status] ?? 0) + 1;
+    }
+
+    return counts;
   },
 });
 

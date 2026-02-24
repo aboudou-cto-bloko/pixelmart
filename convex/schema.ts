@@ -324,6 +324,36 @@ export default defineSchema({
     .index("by_payment_status", ["payment_status"]),
 
   // ============================================
+  // ORDER EVENTS (IMMUTABLE TIMELINE)
+  // ============================================
+  order_events: defineTable({
+    order_id: v.id("orders"),
+    store_id: v.id("stores"),
+    type: v.union(
+      v.literal("created"),
+      v.literal("paid"),
+      v.literal("processing"),
+      v.literal("shipped"),
+      v.literal("delivered"),
+      v.literal("cancelled"),
+      v.literal("refunded"),
+      v.literal("tracking_updated"),
+      v.literal("note"),
+    ),
+    description: v.string(),
+    actor_type: v.union(
+      v.literal("system"),
+      v.literal("customer"),
+      v.literal("vendor"),
+      v.literal("admin"),
+    ),
+    actor_id: v.optional(v.id("users")),
+    metadata: v.optional(v.string()), // JSON stringified extra data
+  })
+    .index("by_order", ["order_id"])
+    .index("by_store", ["store_id"]),
+
+  // ============================================
   // TRANSACTIONS (IMMUTABLE FINANCIAL LEDGER)
   // ============================================
   // Rule: NEVER update a transaction. Create a reversal instead.

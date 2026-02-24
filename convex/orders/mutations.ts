@@ -3,9 +3,11 @@
 import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { internalMutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
 import { requireAppUser, getVendorStore } from "../users/helpers";
+import { logOrderEvent } from "./events";
 import { DEFAULT_CURRENCY } from "../lib/constants";
 import {
   generateOrderNumber,
@@ -169,9 +171,10 @@ export const updateStatus = mutation({
     ),
     trackingNumber: v.optional(v.string()),
     carrier: v.optional(v.string()),
+    estimatedDelivery: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { store } = await getVendorStore(ctx);
+    const { user, store } = await getVendorStore(ctx);
 
     const order = await ctx.db.get(args.orderId);
     if (!order) throw new Error("Commande introuvable");
@@ -181,18 +184,49 @@ export const updateStatus = mutation({
 
     assertValidTransition(order.status, args.status);
 
-    const updates: Partial<Doc<"orders">> = {
+    const updates: Record<string, unknown> = {
       status: args.status,
       updated_at: Date.now(),
     };
 
+    // ── Processing ──
+    if (args.status === "processing") {
+      await logOrderEvent(ctx, {
+        orderId: order._id,
+        storeId: store._id,
+        type: "processing",
+        description: "Commande prise en charge par le vendeur",
+        actorType: "vendor",
+        actorId: user._id,
+      });
+    }
+
+    // ── Shipped ──
     if (args.status === "shipped") {
       if (args.trackingNumber) updates.tracking_number = args.trackingNumber;
       if (args.carrier) updates.carrier = args.carrier;
+      if (args.estimatedDelivery)
+        updates.estimated_delivery = args.estimatedDelivery;
 
+      await logOrderEvent(ctx, {
+        orderId: order._id,
+        storeId: store._id,
+        type: "shipped",
+        description: args.trackingNumber
+          ? `Colis expédié — ${args.carrier ?? "Transporteur"} : ${args.trackingNumber}`
+          : "Colis expédié",
+        actorType: "vendor",
+        actorId: user._id,
+        metadata: {
+          tracking_number: args.trackingNumber,
+          carrier: args.carrier,
+          estimated_delivery: args.estimatedDelivery,
+        },
+      });
+
+      // Email au client — shipped
       const customer = await ctx.db.get(order.customer_id);
-      const store = await ctx.db.get(order.store_id);
-      if (customer?.email && store) {
+      if (customer?.email) {
         await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderShipped, {
           customerEmail: customer.email,
           customerName: customer.name ?? "Client",
@@ -205,21 +239,33 @@ export const updateStatus = mutation({
       }
     }
 
+    // ── Delivered ──
     if (args.status === "delivered") {
       updates.delivered_at = Date.now();
 
+      await logOrderEvent(ctx, {
+        orderId: order._id,
+        storeId: store._id,
+        type: "delivered",
+        description: "Livraison confirmée par le vendeur",
+        actorType: "vendor",
+        actorId: user._id,
+      });
+
+      // Email au client — delivered (corrigé: était sendOrderShipped)
       const customer = await ctx.db.get(order.customer_id);
-      const store = await ctx.db.get(order.store_id);
-      if (customer?.email && store) {
-        await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderShipped, {
-          customerEmail: customer.email,
-          customerName: customer.name ?? "Client",
-          orderNumber: order.order_number,
-          orderId: order._id,
-          storeName: store.name,
-          trackingNumber: args.trackingNumber,
-          carrier: args.carrier,
-        });
+      if (customer?.email) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.emails.send.sendOrderDelivered,
+          {
+            customerEmail: customer.email,
+            customerName: customer.name ?? "Client",
+            orderNumber: order.order_number,
+            orderId: order._id,
+            storeName: store.name,
+          },
+        );
       }
     }
 
@@ -271,6 +317,23 @@ export const cancelOrder = mutation({
 
     assertValidTransition(order.status, "cancelled");
 
+    const actorType: "customer" | "vendor" | "admin" = isAdmin
+      ? "admin"
+      : isVendor
+        ? "vendor"
+        : "customer";
+
+    await logOrderEvent(ctx, {
+      orderId: order._id,
+      storeId: order.store_id,
+      type: "cancelled",
+      description: args.reason
+        ? `Commande annulée — ${args.reason}`
+        : "Commande annulée",
+      actorType,
+      actorId: user._id,
+    });
+
     // Annuler
     await ctx.db.patch(args.orderId, {
       status: "cancelled",
@@ -307,6 +370,106 @@ export const cancelOrder = mutation({
   },
 });
 
+/**
+ * Ajoute ou modifie les informations de suivi.
+ * Peut être fait à n'importe quel moment entre "processing" et "delivered".
+ */
+export const addTracking = mutation({
+  args: {
+    orderId: v.id("orders"),
+    trackingNumber: v.string(),
+    carrier: v.optional(v.string()),
+    estimatedDelivery: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { user, store } = await getVendorStore(ctx);
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Commande introuvable");
+    if (order.store_id !== store._id) {
+      throw new Error("Cette commande n'appartient pas à votre boutique");
+    }
+
+    const trackableStatuses = ["processing", "shipped"];
+    if (!trackableStatuses.includes(order.status)) {
+      throw new Error(
+        "Le suivi ne peut être ajouté qu'aux commandes en préparation ou expédiées",
+      );
+    }
+
+    const updates: Record<string, unknown> = {
+      tracking_number: args.trackingNumber,
+      updated_at: Date.now(),
+    };
+    if (args.carrier) updates.carrier = args.carrier;
+    if (args.estimatedDelivery)
+      updates.estimated_delivery = args.estimatedDelivery;
+
+    await ctx.db.patch(args.orderId, updates);
+
+    await logOrderEvent(ctx, {
+      orderId: order._id,
+      storeId: store._id,
+      type: "tracking_updated",
+      description: `Suivi mis à jour — ${args.carrier ?? "Transporteur"} : ${args.trackingNumber}`,
+      actorType: "vendor",
+      actorId: user._id,
+      metadata: {
+        tracking_number: args.trackingNumber,
+        carrier: args.carrier,
+        estimated_delivery: args.estimatedDelivery,
+      },
+    });
+
+    return { success: true };
+  },
+});
+
+// ─── Confirm Delivery (Customer) ─────────────────────────────
+
+/**
+ * Le client confirme la réception de sa commande.
+ * Transition : shipped → delivered
+ */
+export const confirmDelivery = mutation({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAppUser(ctx);
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Commande introuvable");
+    if (order.customer_id !== user._id) {
+      throw new Error("Cette commande ne vous appartient pas");
+    }
+
+    if (order.status !== "shipped") {
+      throw new Error(
+        "Seule une commande expédiée peut être confirmée comme livrée",
+      );
+    }
+
+    assertValidTransition(order.status, "delivered");
+
+    await ctx.db.patch(args.orderId, {
+      status: "delivered",
+      delivered_at: Date.now(),
+      updated_at: Date.now(),
+    });
+
+    await logOrderEvent(ctx, {
+      orderId: order._id,
+      storeId: order.store_id,
+      type: "delivered",
+      description: "Livraison confirmée par le client",
+      actorType: "customer",
+      actorId: user._id,
+    });
+
+    return { success: true };
+  },
+});
 // ─── Helpers internes (coupon) ───────────────────────────────
 
 /**
@@ -387,3 +550,53 @@ async function incrementCouponUsage(
     });
   }
 }
+
+// ─── Auto Confirm Delivery (Cron) ───────────────────────────
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Cron job : passe automatiquement les commandes shipped → delivered
+ * si elles sont en statut "shipped" depuis plus de 7 jours.
+ * Appelé toutes les 6 heures.
+ */
+export const autoConfirmDelivery = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoffTime = Date.now() - SEVEN_DAYS_MS;
+
+    // On ne peut pas filtrer par updated_at avec un index,
+    // donc on query toutes les commandes shipped et on filtre.
+    // Volume acceptable car shipped est un état transitoire.
+    const allShipped = await ctx.db
+      .query("orders")
+      .filter((q) => q.eq(q.field("status"), "shipped"))
+      .collect();
+
+    const overdueOrders = allShipped.filter(
+      (order) => order.updated_at <= cutoffTime,
+    );
+
+    let confirmedCount = 0;
+
+    for (const order of overdueOrders) {
+      await ctx.db.patch(order._id, {
+        status: "delivered",
+        delivered_at: Date.now(),
+        updated_at: Date.now(),
+      });
+
+      await logOrderEvent(ctx, {
+        orderId: order._id,
+        storeId: order.store_id,
+        type: "delivered",
+        description: "Livraison confirmée automatiquement (délai de 7 jours)",
+        actorType: "system",
+      });
+
+      confirmedCount++;
+    }
+
+    return { confirmedCount };
+  },
+});
