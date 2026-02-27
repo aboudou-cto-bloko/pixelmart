@@ -251,22 +251,30 @@ export const notifyNewOrderInApp = internalAction({
  * In-app companion pour les emails déjà envoyés par convex/emails/send.ts.
  * Appelé en parallèle des sendOrderShipped/sendOrderDelivered/sendOrderCancelled.
  */
+
+const ORDER_STATUSES = [
+  "shipped",
+  "delivered",
+  "cancelled",
+  "refunded",
+] as const;
+
 export const notifyOrderStatusInApp = internalAction({
   args: {
     customerUserId: v.id("users"),
     orderNumber: v.string(),
     storeName: v.string(),
-    newStatus: v.string(),
+    newStatus: v.union(...ORDER_STATUSES.map((s) => v.literal(s))),
   },
   handler: async (ctx, args) => {
-    const STATUS_LABELS: Record<string, string> = {
+    const STATUS_LABELS: Record<(typeof ORDER_STATUSES)[number], string> = {
       shipped: "Expédiée",
       delivered: "Livrée",
       cancelled: "Annulée",
       refunded: "Remboursée",
     };
 
-    const label = STATUS_LABELS[args.newStatus] ?? args.newStatus;
+    const label = STATUS_LABELS[args.newStatus];
 
     await ctx.runMutation(internal.notifications.mutations.create, {
       userId: args.customerUserId,
@@ -278,5 +286,108 @@ export const notifyOrderStatusInApp = internalAction({
       sentVia: ["in_app", "email"], // email envoyé par emails/send.ts
       metadata: undefined,
     });
+  },
+});
+
+// ─── Return Status Notification ─────────────────────────────────
+
+/**
+ * Envoie une notification de mise à jour de retour (email + in-app).
+ * Utilisé pour notifier le client ET le vendeur selon isVendorNotification.
+ */
+
+const RETURN_STATUSES = [
+  "requested",
+  "approved",
+  "rejected",
+  "received",
+  "refunded",
+] as const;
+
+export const notifyReturnStatus = internalAction({
+  args: {
+    recipientUserId: v.id("users"),
+    recipientEmail: v.string(),
+    recipientName: v.string(),
+    orderNumber: v.string(),
+    returnStatus: v.union(...RETURN_STATUSES.map((s) => v.literal(s))), // requested | approved | rejected | received | refunded
+    storeName: v.string(),
+    refundAmount: v.number(),
+    currency: v.string(),
+    customerName: v.string(),
+    isVendorNotification: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    // 1. In-app notification
+    const titleMap: Record<string, string> = {
+      requested: args.isVendorNotification
+        ? "Nouvelle demande de retour"
+        : "Demande de retour enregistrée",
+      approved: "Retour approuvé",
+      rejected: "Retour refusé",
+      received: args.isVendorNotification
+        ? "Articles retournés reçus"
+        : "Articles reçus — remboursement en cours",
+      refunded: "Remboursement effectué",
+    };
+
+    const bodyMap: Record<string, string> = {
+      requested: args.isVendorNotification
+        ? `${args.customerName} a demandé un retour sur la commande ${args.orderNumber}`
+        : `Votre demande de retour pour la commande ${args.orderNumber} a été enregistrée`,
+      approved: `Le retour pour la commande ${args.orderNumber} a été approuvé`,
+      rejected: `Le retour pour la commande ${args.orderNumber} a été refusé`,
+      received: args.isVendorNotification
+        ? `Articles retournés reçus pour la commande ${args.orderNumber}`
+        : `Le vendeur a reçu vos articles — remboursement en cours`,
+      refunded: `Remboursement de ${args.refundAmount / 100} ${args.currency} traité pour la commande ${args.orderNumber}`,
+    };
+
+    const link = args.isVendorNotification
+      ? "/vendor/orders/returns"
+      : `/customer/returns`;
+
+    await ctx.runAction(internal.notifications.send.createInAppNotification, {
+      userId: args.recipientUserId,
+      type: "return_status",
+      title: titleMap[args.returnStatus] ?? "Mise à jour retour",
+      body:
+        bodyMap[args.returnStatus] ??
+        `Retour commande ${args.orderNumber} mis à jour`,
+      link,
+      channels: ["in_app", "email"],
+      sentVia: ["in_app", "email"],
+      metadata: undefined,
+    });
+
+    // 2. Email via Resend
+    if (args.recipientEmail) {
+      try {
+        const { Resend } = await import("resend");
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        const { default: ReturnStatusUpdate } =
+          await import("../../emails/ReturnStatusUpdate");
+
+        await resend.emails.send({
+          from:
+            process.env.EMAIL_FROM ?? "Pixel-Mart <noreply@pixelmart.store>",
+          to: args.recipientEmail,
+          subject: `${titleMap[args.returnStatus]} — Commande ${args.orderNumber}`,
+          react: ReturnStatusUpdate({
+            recipientName: args.recipientName,
+            orderNumber: args.orderNumber,
+            storeName: args.storeName,
+            returnStatus: args.returnStatus,
+            refundAmount: args.refundAmount,
+            currency: args.currency,
+            customerName: args.customerName,
+            isVendorNotification: args.isVendorNotification,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to send return status email:", error);
+      }
+    }
   },
 });
