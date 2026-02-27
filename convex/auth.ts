@@ -19,7 +19,7 @@ const siteUrl = process.env.SITE_URL!;
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Adresse expéditeur — modifier UNIQUEMENT ici pour changer
-const EMAIL_FROM = "Pixel-Mart <onboarding@resend.dev>";
+const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
 
 // ---- Trigger functions reference ----
 const authFunctions: AuthFunctions = internal.auth;
@@ -109,7 +109,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
           { plainText: true },
         );
 
-        void resend.emails.send({
+        await resend.emails.send({
           from: EMAIL_FROM,
           to: user.email,
           subject: "Réinitialiser votre mot de passe — Pixel-Mart",
@@ -130,7 +130,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
           { plainText: true },
         );
 
-        void resend.emails.send({
+        await resend.emails.send({
           from: EMAIL_FROM,
           to: user.email,
           subject: "Vérifiez votre email — Pixel-Mart",
