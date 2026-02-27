@@ -6,16 +6,14 @@ import { verifyMonerooSignature } from "./helpers";
 import type { Id } from "../_generated/dataModel";
 
 /**
- * Webhook Moneroo — reçoit les notifications de paiement.
+ * Webhook Moneroo unifié — reçoit les notifications de paiement ET de payout.
  *
- * Moneroo envoie un POST avec :
- * - Header : x-moneroo-signature (HMAC-SHA256)
- * - Body : { event, data: { id, status, amount, currency, metadata, ... } }
- *
- * Statuts Moneroo : initiated | pending | success | failed | cancelled
+ * Routing :
+ * - metadata.order_id présent  → flow paiement (existant)
+ * - metadata.payout_id présent → flow payout (nouveau)
  */
 export const handleMonerooWebhook = httpAction(async (ctx, request) => {
-  // 1. Lire le body brut (nécessaire pour vérifier la signature)
+  // 1. Lire le body brut
   const rawBody = await request.text();
 
   // 2. Vérifier la signature
@@ -26,7 +24,6 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
   }
 
   const signature = request.headers.get("x-moneroo-signature") ?? "";
-
   if (!signature) {
     console.warn("Webhook Moneroo sans signature");
     return new Response("Missing signature", { status: 401 });
@@ -54,6 +51,7 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
         order_id?: string;
         order_number?: string;
         store_id?: string;
+        payout_id?: string;
       };
     };
   };
@@ -66,61 +64,89 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
   }
 
   const { data } = payload;
-
   if (!data?.id || !data?.status) {
     console.error("Webhook Moneroo : payload incomplet", payload);
     return new Response("Invalid payload", { status: 400 });
   }
 
+  // 4. Router : paiement ou payout ?
   const orderId = data.metadata?.order_id as Id<"orders"> | undefined;
+  const payoutId = data.metadata?.payout_id as Id<"payouts"> | undefined;
 
-  if (!orderId) {
-    console.warn("Webhook Moneroo : pas d'order_id dans metadata", data.id);
-    // On retourne 200 pour que Moneroo ne re-tente pas
-    return new Response("No order_id in metadata", { status: 200 });
+  if (!orderId && !payoutId) {
+    console.warn(
+      "Webhook Moneroo : ni order_id ni payout_id dans metadata",
+      data.id,
+    );
+    return new Response("No identifiable metadata", { status: 200 });
   }
 
-  // 4. Traiter selon le statut
   try {
-    switch (data.status) {
-      case "success": {
-        await ctx.runMutation(internal.payments.mutations.confirmPayment, {
-          orderId,
-          paymentReference: data.id,
-          amountPaid: data.amount,
-          currency: data.currency,
-        });
-        console.log(`Payment confirmed for order ${orderId}`);
-        break;
+    // ── PAYOUT FLOW ──
+    if (payoutId) {
+      switch (data.status) {
+        case "success": {
+          await ctx.runMutation(internal.payouts.mutations.confirmPayout, {
+            payoutId,
+            externalRef: data.id,
+          });
+          console.log(`Payout confirmed: ${payoutId}`);
+          break;
+        }
+        case "failed": {
+          await ctx.runMutation(internal.payouts.mutations.failPayout, {
+            payoutId,
+            reason: `Moneroo: ${data.status}`,
+          });
+          console.log(`Payout failed: ${payoutId}`);
+          break;
+        }
+        default: {
+          console.log(`Payout ${data.status} for ${payoutId} — no action`);
+        }
       }
 
-      case "failed":
-      case "cancelled": {
-        await ctx.runMutation(internal.payments.mutations.failPayment, {
-          orderId,
-          reason: `Moneroo: ${data.status}`,
-        });
-        console.log(`Payment ${data.status} for order ${orderId}`);
-        break;
-      }
+      return new Response("OK", { status: 200 });
+    }
 
-      case "initiated":
-      case "pending": {
-        // Rien à faire — la commande est déjà en "pending"
-        console.log(`Payment ${data.status} for order ${orderId} — no action`);
-        break;
-      }
-
-      default: {
-        console.warn(`Moneroo status inconnu: ${data.status}`);
+    // ── PAYMENT FLOW (existant) ──
+    if (orderId) {
+      switch (data.status) {
+        case "success": {
+          await ctx.runMutation(internal.payments.mutations.confirmPayment, {
+            orderId,
+            paymentReference: data.id,
+            amountPaid: data.amount,
+            currency: data.currency,
+          });
+          console.log(`Payment confirmed for order ${orderId}`);
+          break;
+        }
+        case "failed":
+        case "cancelled": {
+          await ctx.runMutation(internal.payments.mutations.failPayment, {
+            orderId,
+            reason: `Moneroo: ${data.status}`,
+          });
+          console.log(`Payment ${data.status} for order ${orderId}`);
+          break;
+        }
+        case "initiated":
+        case "pending": {
+          console.log(
+            `Payment ${data.status} for order ${orderId} — no action`,
+          );
+          break;
+        }
+        default: {
+          console.warn(`Moneroo status inconnu: ${data.status}`);
+        }
       }
     }
   } catch (error) {
     console.error("Webhook Moneroo processing error:", error);
-    // Retourner 500 pour que Moneroo re-tente
     return new Response("Processing error", { status: 500 });
   }
 
-  // 5. Toujours retourner 200 pour les cas traités
   return new Response("OK", { status: 200 });
 });
