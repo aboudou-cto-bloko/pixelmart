@@ -568,5 +568,6 @@ export default defineSchema({
     notes: v.optional(v.string()),
   })
     .index("by_store", ["store_id"])
-    .index("by_status", ["store_id", "status"]),
+    .index("by_status", ["store_id", "status"])
+    .index("by_status_only", ["status"]),
 });
