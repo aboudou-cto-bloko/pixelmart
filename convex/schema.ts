@@ -570,4 +570,65 @@ export default defineSchema({
     .index("by_store", ["store_id"])
     .index("by_status", ["store_id", "status"])
     .index("by_status_only", ["status"]),
+
+  // ============================================
+  // RETURN REQUESTS
+  // ============================================
+  return_requests: defineTable({
+    order_id: v.id("orders"),
+    store_id: v.id("stores"), // denormalized for vendor queries
+    customer_id: v.id("users"),
+
+    // Items being returned (partial returns supported)
+    items: v.array(
+      v.object({
+        product_id: v.id("products"),
+        variant_id: v.optional(v.id("product_variants")),
+        title: v.string(), // snapshot at time of return
+        quantity: v.number(),
+        unit_price: v.number(), // centimes at time of purchase
+      }),
+    ),
+
+    // Status workflow: requested → approved → received → refunded
+    //                  requested → rejected (terminal)
+    status: v.union(
+      v.literal("requested"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("received"),
+      v.literal("refunded"),
+    ),
+
+    // Customer details
+    reason: v.string(), // customer explanation
+    reason_category: v.union(
+      v.literal("defective"),
+      v.literal("wrong_item"),
+      v.literal("not_as_described"),
+      v.literal("changed_mind"),
+      v.literal("damaged_in_transit"),
+      v.literal("other"),
+    ),
+
+    // Financial
+    refund_amount: v.number(), // centimes, calculated on returned items
+
+    // Vendor response
+    vendor_notes: v.optional(v.string()),
+    rejection_reason: v.optional(v.string()),
+
+    // Timestamps
+    requested_at: v.number(),
+    approved_at: v.optional(v.number()),
+    received_at: v.optional(v.number()),
+    refunded_at: v.optional(v.number()),
+
+    // External reference (Moneroo refund ID)
+    refund_reference: v.optional(v.string()),
+  })
+    .index("by_order", ["order_id"])
+    .index("by_store", ["store_id"])
+    .index("by_customer", ["customer_id"])
+    .index("by_store_status", ["store_id", "status"]),
 });
