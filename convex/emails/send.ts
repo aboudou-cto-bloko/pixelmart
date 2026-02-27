@@ -14,7 +14,7 @@ import OrderShipped from "../../emails/OrderShipped";
 import OrderDelivered from "../../emails/OrderDelivered";
 import OrderCancelled from "../../emails/OrderCancelled";
 
-const EMAIL_FROM = "Pixel-Mart <onboarding@resend.dev>";
+const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;

@@ -12,7 +12,7 @@ import LowStockAlert from "../../emails/LowStockAlert";
 import PayoutCompleted from "../../emails/PayoutCompleted";
 import OrderStatusUpdate from "../../emails/OrderStatusUpdate";
 
-const EMAIL_FROM = "Pixel-Mart <onboarding@resend.dev>";
+const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -370,8 +370,7 @@ export const notifyReturnStatus = internalAction({
           await import("../../emails/ReturnStatusUpdate");
 
         await resend.emails.send({
-          from:
-            process.env.EMAIL_FROM ?? "Pixel-Mart <noreply@pixelmart.store>",
+          from: EMAIL_FROM ?? "Pixel-Mart <dev@aboudouzinsou.site>",
           to: args.recipientEmail,
           subject: `${titleMap[args.returnStatus]} — Commande ${args.orderNumber}`,
           react: ReturnStatusUpdate({
