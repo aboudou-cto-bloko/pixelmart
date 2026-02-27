@@ -3,7 +3,7 @@
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { assertValidTransition } from "../orders/helpers";
+import { assertValidTransition, OrderItemInput } from "../orders/helpers";
 
 /**
  * Stocke la référence de paiement Moneroo dans la commande.
@@ -114,12 +114,14 @@ export const confirmPayment = internalMutation({
       updated_at: Date.now(),
     });
 
+    // ── Emails + In-app ──
     const customer = await ctx.db.get(order.customer_id);
-    const shippingAddr = order.shipping_address;
-    const addrStr = `${shippingAddr.full_name}, ${shippingAddr.line1}, ${shippingAddr.city}, ${shippingAddr.country}`;
 
-    // Email confirmation → client
+    // Email confirmation au client
     if (customer?.email) {
+      const shippingAddr = order.shipping_address;
+      const addrStr = `${shippingAddr.full_name}, ${shippingAddr.line1}, ${shippingAddr.city}, ${shippingAddr.country}`;
+
       await ctx.scheduler.runAfter(
         0,
         internal.emails.send.sendOrderConfirmation,
@@ -127,7 +129,7 @@ export const confirmPayment = internalMutation({
           customerEmail: customer.email,
           customerName: customer.name ?? "Client",
           orderNumber: order.order_number,
-          orderId: order._id,
+          orderId: args.orderId,
           storeName: store.name,
           items: order.items.map((i) => ({
             title: i.title,
@@ -142,22 +144,22 @@ export const confirmPayment = internalMutation({
           totalAmount: order.total_amount,
           currency: order.currency,
           shippingAddress: addrStr,
-          paymentMethod: order.payment_method ?? "Mobile Money",
+          paymentMethod: order.payment_method ?? "mobile_money",
         },
       );
     }
 
-    // Email nouvelle commande → vendor
-    const storeOwner = await ctx.db.get(store.owner_id);
-    if (storeOwner?.email) {
+    // Email "nouvelle commande" au vendeur
+    const vendor = await ctx.db.get(store.owner_id);
+    if (vendor?.email) {
       await ctx.scheduler.runAfter(
         0,
         internal.emails.send.sendNewOrderNotification,
         {
-          vendorEmail: storeOwner.email,
-          vendorName: storeOwner.name ?? "Vendeur",
+          vendorEmail: vendor.email,
+          vendorName: vendor.name ?? "Vendeur",
           orderNumber: order.order_number,
-          orderId: order._id,
+          orderId: args.orderId,
           customerName: customer?.name ?? "Client",
           items: order.items.map((i) => ({
             title: i.title,
@@ -168,13 +170,11 @@ export const confirmPayment = internalMutation({
           totalAmount: order.total_amount,
           commissionAmount: commissionAmount,
           currency: order.currency,
-          shippingAddress: addrStr,
+          shippingAddress: `${order.shipping_address.full_name}, ${order.shipping_address.line1}, ${order.shipping_address.city}`,
         },
       );
-    }
 
-    const vendor = await ctx.db.get(store.owner_id);
-    if (vendor) {
+      // In-app vendeur
       await ctx.scheduler.runAfter(
         0,
         internal.notifications.send.notifyNewOrderInApp,

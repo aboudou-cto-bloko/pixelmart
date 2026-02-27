@@ -274,6 +274,7 @@ export const updateStatus = mutation({
     }
 
     // ── Delivered ──
+    // ── Delivered ──
     if (args.status === "delivered") {
       updates.delivered_at = Date.now();
 
@@ -286,9 +287,9 @@ export const updateStatus = mutation({
         actorId: user._id,
       });
 
-      // Email au client — delivered
       const customer = await ctx.db.get(order.customer_id);
       if (customer?.email) {
+        // Email existant
         await ctx.scheduler.runAfter(
           0,
           internal.emails.send.sendOrderDelivered,
@@ -298,6 +299,18 @@ export const updateStatus = mutation({
             orderNumber: order.order_number,
             orderId: order._id,
             storeName: store.name,
+          },
+        );
+
+        // ── NOUVEAU : in-app ──
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyOrderStatusInApp,
+          {
+            customerUserId: customer._id,
+            orderNumber: order.order_number,
+            storeName: store.name,
+            newStatus: "delivered",
           },
         );
       }
@@ -377,6 +390,7 @@ export const cancelOrder = mutation({
     const customer = await ctx.db.get(order.customer_id);
     const store = await ctx.db.get(order.store_id);
     if (customer?.email && store) {
+      // Email existant
       await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderCancelled, {
         customerEmail: customer.email,
         customerName: customer.name ?? "Client",
@@ -387,6 +401,18 @@ export const cancelOrder = mutation({
         reason: args.reason,
         wasRefunded: order.payment_status === "paid",
       });
+
+      // ── NOUVEAU : in-app ──
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.notifyOrderStatusInApp,
+        {
+          customerUserId: customer._id,
+          orderNumber: order.order_number,
+          storeName: store.name,
+          newStatus: "cancelled",
+        },
+      );
     }
 
     // Restaurer le stock
@@ -501,6 +527,36 @@ export const confirmDelivery = mutation({
       actorId: user._id,
     });
 
+    // ── NOUVEAU : Email "delivered" au client ──
+    if (user.email) {
+      const store = await ctx.db.get(order.store_id);
+      if (store) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.emails.send.sendOrderDelivered,
+          {
+            customerEmail: user.email,
+            customerName: user.name ?? "Client",
+            orderNumber: order.order_number,
+            orderId: order._id,
+            storeName: store.name,
+          },
+        );
+
+        // In-app
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyOrderStatusInApp,
+          {
+            customerUserId: user._id,
+            orderNumber: order.order_number,
+            storeName: store.name,
+            newStatus: "delivered",
+          },
+        );
+      }
+    }
+
     return { success: true };
   },
 });
@@ -599,9 +655,6 @@ export const autoConfirmDelivery = internalMutation({
   handler: async (ctx) => {
     const cutoffTime = Date.now() - SEVEN_DAYS_MS;
 
-    // On ne peut pas filtrer par updated_at avec un index,
-    // donc on query toutes les commandes shipped et on filtre.
-    // Volume acceptable car shipped est un état transitoire.
     const allShipped = await ctx.db
       .query("orders")
       .filter((q) => q.eq(q.field("status"), "shipped"))
@@ -627,6 +680,34 @@ export const autoConfirmDelivery = internalMutation({
         description: "Livraison confirmée automatiquement (délai de 7 jours)",
         actorType: "system",
       });
+
+      // ── NOUVEAU : Email + in-app ──
+      const customer = await ctx.db.get(order.customer_id);
+      const store = await ctx.db.get(order.store_id);
+      if (customer?.email && store) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.emails.send.sendOrderDelivered,
+          {
+            customerEmail: customer.email,
+            customerName: customer.name ?? "Client",
+            orderNumber: order.order_number,
+            orderId: order._id,
+            storeName: store.name,
+          },
+        );
+
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyOrderStatusInApp,
+          {
+            customerUserId: customer._id,
+            orderNumber: order.order_number,
+            storeName: store.name,
+            newStatus: "delivered",
+          },
+        );
+      }
 
       confirmedCount++;
     }
