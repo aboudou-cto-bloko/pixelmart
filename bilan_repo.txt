@@ -1,0 +1,622 @@
+* 833b4bf | 2026-02-27 16:26:15 +0100 | Aboudou ZINSOU | feat(payouts-ui): add vendor payout request interface with Moneroo integration| 
+|  .../(vendor)/vendor/finance/payouts/loading.tsx   |  26 ++
+|  src/app/(vendor)/vendor/finance/payouts/page.tsx  |  62 ++++
+|  src/components/payouts/atoms/PayoutMethodIcon.tsx |  60 +++
+|  .../payouts/atoms/PayoutStatusBadge.tsx           |  50 +++
+|  .../payouts/molecules/PayoutBalanceCard.tsx       |  95 +++++
+|  .../payouts/molecules/PayoutHistoryItem.tsx       |  96 +++++
+|  .../payouts/organisms/PayoutHistoryList.tsx       |  61 +++
+|  .../payouts/organisms/PayoutRequestDialog.tsx     | 392 ++++++++++++++++++++
+|  src/hooks/usePayouts.ts                           |  40 ++
+|  9 files changed, 882 insertions(+)
+
+* 19a4cbc | 2026-02-27 15:58:07 +0100 | Aboudou ZINSOU | fix(schema) : by_status_only index added| 
+|  convex/schema.ts | 3 ++-
+|  1 file changed, 2 insertions(+), 1 deletion(-)
+
+* 8111505 | 2026-02-27 15:57:16 +0100 | Aboudou ZINSOU | feat(infra): unified webhook routing (payment+payout) + cron jobs| 
+|  convex/crons.ts             |  31 +++++-
+|  convex/crons_handlers.ts    | 215 ++++++++++++++++++++++++++++++++++++++++++
+|  convex/payments/webhooks.ts | 116 ++++++++++++++---------
+|  3 files changed, 315 insertions(+), 47 deletions(-)
+
+* db49292 | 2026-02-27 15:57:16 +0100 | Aboudou ZINSOU | feat(payouts): add complete vendor withdrawal system via Moneroo| 
+|  convex/payouts/actions.ts   | 174 +++++++++++++++++++++++++++++
+|  convex/payouts/helpers.ts   | 120 ++++++++++++++++++++
+|  convex/payouts/mutations.ts | 252 ++++++++++++++++++++++++++++++++++++++++++
+|  convex/payouts/queries.ts   |  71 ++++++++++++
+|  4 files changed, 617 insertions(+)
+
+* 4b51b1b | 2026-02-27 15:57:16 +0100 | Aboudou ZINSOU | fix(notifications): add missing in-app notifications to all order transitions| 
+|  convex/orders/mutations.ts   | 89 ++++++++++++++++++++++++++++++++++++++++--
+|  convex/payments/mutations.ts | 32 +++++++--------
+|  2 files changed, 101 insertions(+), 20 deletions(-)
+
+* bbbac15 | 2026-02-24 16:15:06 +0100 | Aboudou ZINSOU | feat(notifications): add in-app notification system with 3 new email templates| 
+|  convex/notifications/helpers.ts                   | 120 +++++++++
+|  convex/notifications/mutations.ts                 |  80 ++++++
+|  convex/notifications/queries.ts                   |  73 +++++
+|  convex/notifications/send.ts                      | 282 ++++++++++++++++++++
+|  convex/orders/mutations.ts                        |  56 +++-
+|  convex/payments/mutations.ts                      |  15 ++
+|  emails/LowStockAlert.tsx                          |  96 +++++++
+|  emails/OrderItemsTable.tsx                        | 132 +++++++++
+|  emails/OrderStatusUpdate.tsx                      |  98 +++++++
+|  emails/PayoutCompleted.tsx                        | 108 ++++++++
+|  src/app/(storefront)/notifications/page.tsx       |   9 +
+|  src/app/(vendor)/vendor/notifications/loading.tsx |  16 ++
+|  src/app/(vendor)/vendor/notifications/page.tsx    |   9 +
+|  src/components/layout/Navbar.tsx                  |   5 +
+|  src/components/layout/VendorSidebar.tsx           |   4 +
+|  .../notifications/atoms/NotificationBadge.tsx     |  30 +++
+|  .../notifications/atoms/NotificationIcon.tsx      |  57 ++++
+|  src/components/notifications/atoms/index.ts       |   3 +
+|  src/components/notifications/index.ts             |   4 +
+|  .../molecules/NotificationEmptyState.tsx          |  17 ++
+|  .../notifications/molecules/NotificationItem.tsx  |  74 +++++
+|  src/components/notifications/molecules/index.ts   |   3 +
+|  .../organisms/NotificationDropdown.tsx            | 109 ++++++++
+|  .../notifications/organisms/NotificationList.tsx  |  81 ++++++
+|  src/components/notifications/organisms/index.ts   |   3 +
+|  src/constants/vendor-nav.ts                       |   8 +-
+|  src/hooks/useNotifications.ts                     |  34 +++
+|  27 files changed, 1514 insertions(+), 12 deletions(-)
+
+* 301ee33 | 2026-02-24 11:37:25 +0100 | Aboudou ZINSOU | fix(finance): align queries with schema, collect vendor info via UI form| 
+|  .../finances/molecules/InvoiceVendorInfoForm.tsx  | 127 ++++++++++++++++++++
+|  src/components/finances/molecules/index.ts        |   4 +
+|  src/components/finances/organisms/InvoicePdf.tsx  |   4 +-
+|  .../orders/molecules/OrderDetailPanel.tsx         |  46 +++++--
+|  src/hooks/useInvoiceDownload.tsx                  |  74 +++++++-----
+|  5 files changed, 213 insertions(+), 42 deletions(-)
+
+* 9f4a62d | 2026-02-24 11:29:52 +0100 | Aboudou ZINSOU | feat(finance): add financial dashboard, invoice PDF, margin analysis and CSV export| 
+|  convex/finance/helpers.ts                         |  54 +++
+|  convex/finance/queries.ts                         | 452 ++++++++++++++++++++
+|  package.json                                      |   1 +
+|  pnpm-lock.yaml                                    | 385 +++++++++++++++++
+|  src/app/(vendor)/vendor/finance/invoices/page.tsx |  51 +++
+|  src/app/(vendor)/vendor/finance/loading.tsx       |  25 ++
+|  src/app/(vendor)/vendor/finance/page.tsx          |  63 +++
+|  src/components/finances/atoms/BalanceCard.tsx     |  75 ++++
+|  .../finances/atoms/TransactionBadge.tsx           |  56 +++
+|  src/components/finances/atoms/TrendIndicator.tsx  |  47 ++
+|  src/components/finances/atoms/index.ts            |   4 +
+|  src/components/finances/index.ts                  |   5 +
+|  .../finances/molecules/FinancialKpiGrid.tsx       |  65 +++
+|  src/components/finances/molecules/MarginBar.tsx   | 115 +++++
+|  .../finances/molecules/TransactionRow.tsx         | 104 +++++
+|  src/components/finances/molecules/index.ts        |   4 +
+|  src/components/finances/organisms/InvoicePdf.tsx  | 367 ++++++++++++++++
+|  .../finances/organisms/RevenueChart.tsx           | 128 ++++++
+|  .../finances/organisms/TransactionTable.tsx       | 152 +++++++
+|  src/components/finances/organisms/index.ts        |   4 +
+|  .../templates/FinanceDashboardTemplate.tsx        | 216 ++++++++++
+|  .../finances/templates/InvoiceListTemplate.tsx    | 158 +++++++
+|  src/components/finances/templates/index.ts        |   3 +
+|  .../orders/molecules/OrderDetailPanel.tsx         |  21 +
+|  src/constants/routes.ts                           |   1 +
+|  src/constants/vendor-nav.ts                       |   1 +
+|  src/hooks/useInvoiceDownload.tsx                  |  58 +++
+|  src/lib/csv-export.ts                             |  49 +++
+|  28 files changed, 2664 insertions(+)
+
+* 14afd90 | 2026-02-24 01:29:49 +0100 | Aboudou ZINSOU | feat(orders): add order tracking, timeline, auto-delivery and vendor order management| 
+|  convex/crons.ts                                   |  13 +
+|  convex/orders/events.ts                           |  97 +++
+|  convex/orders/mutations.ts                        | 243 +++++++-
+|  convex/orders/queries.ts                          |  73 +++
+|  convex/schema.ts                                  |  30 +
+|  src/app/(vendor)/vendor/orders/[id]/loading.tsx   |  18 +
+|  src/app/(vendor)/vendor/orders/[id]/page.tsx      | 615 +-------------------
+|  src/app/(vendor)/vendor/orders/loading.tsx        |  20 +
+|  src/app/(vendor)/vendor/orders/page.tsx           | 304 +---------
+|  src/components/orders/atoms/OrderStatusBadge.tsx  |  64 ++
+|  src/components/orders/atoms/TimelineStep.tsx      | 121 ++++
+|  src/components/orders/atoms/TrackingLink.tsx      |  62 ++
+|  src/components/orders/atoms/index.ts              |   4 +
+|  src/components/orders/index.ts                    |   5 +
+|  .../orders/molecules/OrderDetailPanel.tsx         | 340 +++++++++++
+|  .../orders/molecules/OrderStatusActions.tsx       |  63 ++
+|  .../orders/molecules/OrderSummaryCard.tsx         |  62 ++
+|  src/components/orders/molecules/OrderTimeline.tsx |  58 ++
+|  src/components/orders/molecules/TrackingForm.tsx  | 122 ++++
+|  src/components/orders/molecules/index.ts          |   5 +
+|  .../orders/organisms/OrderDetailPanel.tsx         | 340 +++++++++++
+|  .../orders/organisms/VendorOrdersTable.tsx        | 143 +++++
+|  src/components/orders/organisms/index.ts          |   3 +
+|  .../orders/templates/OrderDetailTemplate.tsx      |  29 +
+|  .../orders/templates/VendorOrdersTemplate.tsx     | 103 ++++
+|  src/components/orders/templates/index.ts          |   3 +
+|  26 files changed, 2037 insertions(+), 903 deletions(-)
+
+* 86cb54c | 2026-02-23 18:29:14 +0100 | Aboudou ZINSOU | feat(products): add duplication, bulk actions and CSV import| 
+|  convex/products/csvImport.ts                      | 132 +++++++
+|  convex/products/mutations.ts                      | 207 +++++++++++
+|  package.json                                      |   2 +
+|  pnpm-lock.yaml                                    |  18 +
+|  src/app/(vendor)/vendor/products/loading.tsx      |  26 ++
+|  src/app/(vendor)/vendor/products/page.tsx         | 389 ++++++++------------
+|  src/app/layout.tsx                                |   6 +-
+|  src/components/products/atoms/BulkCounter.tsx     |  21 ++
+|  .../products/atoms/ProductStatusBadge.tsx         |  49 +++
+|  src/components/products/atoms/index.ts            |   3 +
+|  src/components/products/index.ts                  |   5 +
+|  .../products/molecules/BulkActionBar.tsx          |  99 +++++
+|  src/components/products/molecules/CsvDropzone.tsx | 108 ++++++
+|  .../products/molecules/ProductRowActions.tsx      | 113 ++++++
+|  src/components/products/molecules/index.ts        |   4 +
+|  .../products/organisms/CsvImportDialog.tsx        | 363 ++++++++++++++++++
+|  .../products/organisms/DuplicateDialog.tsx        |  52 +++
+|  .../products/organisms/ProductListTable.tsx       | 174 +++++++++
+|  src/components/products/organisms/index.ts        |   4 +
+|  .../products/templates/ProductListTemplate.tsx    | 209 +++++++++++
+|  src/components/products/templates/index.ts        |   2 +
+|  src/hooks/useBulkSelection.ts                     |  58 +++
+|  22 files changed, 1801 insertions(+), 243 deletions(-)
+
+* 37869d5 | 2026-02-23 17:56:58 +0100 | Aboudou ZINSOU | feat(analytics): add vendor analytics dashboard with Atomic Design| 
+|  src/app/(vendor)/vendor/analytics/loading.tsx     |  66 +++++++
+|  src/app/(vendor)/vendor/analytics/page.tsx        |  57 ++++++
+|  src/components/analytics/atoms/EmptyState.tsx     |  35 ++++
+|  src/components/analytics/atoms/MetricValue.tsx    |  41 ++++
+|  src/components/analytics/atoms/TrendBadge.tsx     |  50 +++++
+|  src/components/analytics/atoms/index.ts           |   4 +
+|  src/components/analytics/index.ts                 |   5 +
+|  .../analytics/molecules/PeriodSelector.tsx        |  37 ++++
+|  src/components/analytics/molecules/StatCard.tsx   |  69 +++++++
+|  src/components/analytics/molecules/index.ts       |   3 +
+|  .../analytics/organisms/CustomerInsightsPanel.tsx | 189 ++++++++++++++++++
+|  .../organisms/RevenueByCategoryChart.tsx          | 147 ++++++++++++++
+|  src/components/analytics/organisms/SalesChart.tsx | 208 ++++++++++++++++++++
+|  .../analytics/organisms/SalesOverviewCards.tsx    |  69 +++++++
+|  .../analytics/organisms/TopProductsTable.tsx      | 124 ++++++++++++
+|  src/components/analytics/organisms/index.ts       |   6 +
+|  .../analytics/templates/AnalyticsTemplate.tsx     | 133 +++++++++++++
+|  src/components/analytics/templates/index.ts       |   2 +
+|  18 files changed, 1245 insertions(+)
+
+* b715453 | 2026-02-23 17:27:09 +0100 | Aboudou ZINSOU | fix(analytics): fix TypeScript errors in vendor analytics queries| 
+|  convex/analytics/queries.ts | 97 +++++++++++++++++++------------------------
+|  1 file changed, 42 insertions(+), 55 deletions(-)
+
+* 01605b2 | 2026-02-23 17:21:10 +0100 | Aboudou ZINSOU | feat(analytics): add vendor analytics queries with period comparison| 
+|  convex/analytics/helpers.ts | 162 ++++++++++++++
+|  convex/analytics/queries.ts | 503 ++++++++++++++++++++++++++++++++++++++++++
+|  src/constants/routes.ts     |   1 +
+|  src/constants/vendor-nav.ts |   6 +
+|  4 files changed, 672 insertions(+)
+
+* c2a9e9d | 2026-02-23 12:50:43 +0100 | Aboudou ZINSOU | chore(Readme.md) Complete documentation Phase 0| 
+|  README.md | 964 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+|  1 file changed, 942 insertions(+), 22 deletions(-)
+
+* 465f55b | 2026-02-23 12:40:29 +0100 | Aboudou ZINSOU | feat(emails): add transactional order emails via Resend (Step 0.14)| 
+|  convex/emails/send.ts        | 264 +++++++++++++++++++++++++++++++++++++++++
+|  convex/orders/mutations.ts   |  44 +++++++
+|  convex/payments/mutations.ts |  60 ++++++++++
+|  emails/NewOrder.tsx          | 173 +++++++++++++++++++++++++++
+|  emails/OrderCancelled.tsx    | 113 ++++++++++++++++++
+|  emails/OrderConfirmation.tsx | 199 +++++++++++++++++++++++++++++++
+|  emails/OrderDelivered.tsx    |  79 ++++++++++++
+|  emails/OrderShipped.tsx      | 116 ++++++++++++++++++
+|  8 files changed, 1048 insertions(+)
+
+* 5013da0 | 2026-02-23 12:08:55 +0100 | Aboudou ZINSOU | feat(settings): add user profile and store settings pages (Step 0.13)| 
+|  convex/stores/mutations.ts                      |  76 ++++
+|  convex/stores/queries.ts                        |  12 +
+|  src/app/(vendor)/vendor/settings/page.tsx       | 214 ++++++++++
+|  src/app/(vendor)/vendor/store/settings/page.tsx | 455 ++++++++++++++++++++++
+|  4 files changed, 757 insertions(+)
+
+* 0d3c83b | 2026-02-23 11:58:47 +0100 | Aboudou ZINSOU | feat(dashboard): add vendor KPI dashboard with revenue, orders, stock alerts (Step 0.12 L3)| 
+|  convex/dashboard/queries.ts                | 195 +++++++++++
+|  src/app/(vendor)/vendor/dashboard/page.tsx | 476 +++++++++++++++++++++++++++
+|  2 files changed, 671 insertions(+)
+
+* ac41b15 | 2026-02-23 11:48:36 +0100 | Aboudou ZINSOU | feat(orders): add vendor order management pages (Step 0.12 L2)| 
+|  src/app/(vendor)/vendor/orders/[id]/page.tsx | 617 +++++++++++++++++++++++++
+|  src/app/(vendor)/vendor/orders/page.tsx      | 311 +++++++++++++
+|  2 files changed, 928 insertions(+)
+
+* 28482d7 | 2026-02-23 11:43:48 +0100 | Aboudou ZINSOU | feat(orders): add customer order history and detail pages (Step 0.12 L1)| 
+|  src/app/(storefront)/orders/[id]/page.tsx | 488 ++++++++++++++++++++++++++++
+|  src/app/(storefront)/orders/page.tsx      | 249 ++++++++++++++
+|  src/lib/order-helpers.ts                  | 143 ++++++++
+|  3 files changed, 880 insertions(+)
+
+* b69d3f8 | 2026-02-23 07:50:17 +0100 | Aboudou ZINSOU | feat(payments): add Moneroo checkout flow with multi-store queue (Step 0.11 L3)| 
+|  .../(storefront)/checkout/confirmation/page.tsx   |  31 ++-
+|  src/app/(storefront)/checkout/page.tsx            |  26 ++-
+|  .../checkout/payment-callback/page.tsx            | 228 ++++++++++++++++++++
+|  src/lib/payment-queue.ts                          |  69 ++++++
+|  4 files changed, 342 insertions(+), 12 deletions(-)
+
+* 4256c38 | 2026-02-23 07:42:33 +0100 | Aboudou ZINSOU | feat(payments): add Moneroo payment integration with webhook handler (Step 0.11 L1+L2)| 
+|  convex/http.ts               |  11 +++
+|  convex/payments/helpers.ts   |  86 +++++++++++++++++++
+|  convex/payments/moneroo.ts   | 182 +++++++++++++++++++++++++++++++++++++++++
+|  convex/payments/mutations.ts | 155 +++++++++++++++++++++++++++++++++++
+|  convex/payments/queries.ts   |  24 ++++++
+|  convex/payments/webhooks.ts  | 126 ++++++++++++++++++++++++++++
+|  6 files changed, 584 insertions(+)
+
+* ba57962 | 2026-02-23 07:27:43 +0100 | Aboudou ZINSOU | chore(checkout): fix multiline generics breaking on copy-paste| 
+|  src/app/(storefront)/checkout/page.tsx | 40 +++++++++++---------------------
+|  1 file changed, 13 insertions(+), 27 deletions(-)
+
+* 34c1134 | 2026-02-23 07:21:40 +0100 | Aboudou ZINSOU | fix(checkout): fix useState generics, add payment methods source of truth| 
+|  src/app/(storefront)/checkout/page.tsx | 137 ++++++++---------
+|  src/constants/paymentMethods.ts        | 249 +++++++++++++++++++++++++++++++
+|  2 files changed, 313 insertions(+), 73 deletions(-)
+
+* 99229e9 | 2026-02-23 07:10:06 +0100 | Aboudou ZINSOU | feat(checkout): add checkout flow with address, coupons, payment and confirmation (Step 0.10 L3)| 
+|  .../(storefront)/checkout/confirmation/page.tsx   | 115 ++++
+|  src/app/(storefront)/checkout/page.tsx            | 573 ++++++++++++++++++++
+|  src/components/checkout/AddressForm.tsx           | 192 +++++++
+|  src/components/checkout/CouponInput.tsx           | 122 +++++
+|  src/constants/routes.ts                           |  15 +-
+|  5 files changed, 1010 insertions(+), 7 deletions(-)
+
+* bff1d24 | 2026-02-23 07:04:00 +0100 | Aboudou ZINSOU | step O.9 (L2)| 
+|  src/constants/routes.ts | 6 ++++++
+|  1 file changed, 6 insertions(+)
+
+* fabbfd2 | 2026-02-23 07:02:51 +0100 | Aboudou ZINSOU | feat(orders): add order + coupon backend aligned with schema (Step 0.10 L2)| 
+|  convex/coupons/mutations.ts |  30 +++++++---
+|  convex/coupons/queries.ts   |  32 +++++------
+|  convex/lib/constants.ts     |  29 ++++++++++
+|  convex/orders/helpers.ts    | 125 ++++++++++++++++++------------------------
+|  convex/orders/mutations.ts  | 101 ++++++++++++++++++----------------
+|  convex/orders/queries.ts    |  55 ++++++++-----------
+|  6 files changed, 196 insertions(+), 176 deletions(-)
+
+* 0bba847 | 2026-02-23 02:57:54 +0100 | Aboudou ZINSOU | feat(orders): add order creation, status machine, cancellation and coupon system (Step 0.10 L2)| 
+|  convex/coupons/helpers.ts   |  64 ++++++++
+|  convex/coupons/mutations.ts |  83 +++++++++++
+|  convex/coupons/queries.ts   |  72 +++++++++
+|  convex/orders/helpers.ts    | 287 +++++++++++++++++++++++++++++++++++
+|  convex/orders/mutations.ts  | 338 ++++++++++++++++++++++++++++++++++++++++++
+|  convex/orders/queries.ts    | 214 ++++++++++++++++++++++++++
+|  6 files changed, 1058 insertions(+)
+
+* 48476ac | 2026-02-23 02:35:31 +0100 | Aboudou ZINSOU | feat(cart): add client-side cart with CartProvider, cart page and add-to-cart flow (Step 0.10 L1)| 
+|  src/app/(storefront)/cart/page.tsx            | 306 ++++++++++++++++++++++++
+|  src/app/(storefront)/products/[slug]/page.tsx |  26 +-
+|  src/app/layout.tsx                            |   8 +-
+|  src/components/layout/Navbar.tsx              |   8 +-
+|  src/hooks/useCart.ts                          |  14 ++
+|  src/providers/CartProvider.tsx                | 184 ++++++++++++++
+|  src/types/cart.ts                             |  61 +++++
+|  7 files changed, 603 insertions(+), 4 deletions(-)
+
+* a28d9b5 | 2026-02-23 02:21:52 +0100 | Aboudou ZINSOU | fix(product-detail): accept undefined logo_url from Convex store schema| 
+|  src/app/(storefront)/products/[slug]/page.tsx | 2 +-
+|  1 file changed, 1 insertion(+), 1 deletion(-)
+
+* 83e3b97 | 2026-02-23 02:18:05 +0100 | Aboudou ZINSOU | feat(storefront): add product detail, store discovery and store vitrine pages (Step 0.9b L3)| 
+|  src/app/(storefront)/products/[slug]/page.tsx | 410 ++++++++++++++++++++++++
+|  src/app/(storefront)/stores/[slug]/page.tsx   | 202 ++++++++++++
+|  src/app/(storefront)/stores/page.tsx          | 134 ++++++++
+|  src/components/products/ProductGallery.tsx    |  67 ++++
+|  src/components/store/StoreCard.tsx            |  98 ++++++
+|  5 files changed, 911 insertions(+)
+
+* 38ffb24 | 2026-02-23 02:11:11 +0100 | Aboudou ZINSOU | feat(storefront): add product catalog, filters and category pages (Step 0.9b L2)| 
+|  src/app/(storefront)/categories/[slug]/page.tsx | 137 ++++++++++
+|  src/app/(storefront)/page.tsx                   |  11 +-
+|  src/app/(storefront)/products/page.tsx          |  84 ++++++
+|  src/components/products/FilterSidebar.tsx       | 309 ++++++++++++++++++++++
+|  src/components/products/ProductCard.tsx         |  94 +++++++
+|  src/components/products/ProductGrid.tsx         |  53 ++++
+|  6 files changed, 679 insertions(+), 9 deletions(-)
+
+* e018401 | 2026-02-23 02:01:06 +0100 | Aboudou ZINSOU | feat(storefront): add storefront layout, Navbar, Footer and homepage (Step 0.9b L1)| 
+|  src/app/(storefront)/page.tsx           | 24 +++++++++++-------------
+|  src/components/layout/Footer.tsx        |  8 ++++----
+|  src/components/layout/MobileNav.tsx     | 21 +++++++++++----------
+|  src/components/layout/Navbar.tsx        | 29 ++++++++++++-----------------
+|  src/components/layout/VendorSidebar.tsx |  3 ++-
+|  src/components/store/CategoryCard.tsx   |  3 ++-
+|  6 files changed, 42 insertions(+), 46 deletions(-)
+
+* 05935cb | 2026-02-23 02:00:22 +0100 | Aboudou ZINSOU | fix(SearchBar): add onSubmit callback prop for mobile drawer close| 
+|  src/components/layout/SearchBar.tsx | 7 ++++++-
+|  1 file changed, 6 insertions(+), 1 deletion(-)
+
+* 165f658 | 2026-02-23 02:00:22 +0100 | Aboudou ZINSOU | refactor(vendor-nav): use ROUTES constants instead of hardcoded paths| 
+|  src/constants/vendor-nav.ts | 29 ++++++++++++++++-------------
+|  1 file changed, 16 insertions(+), 13 deletions(-)
+
+* f1d3dd5 | 2026-02-23 02:00:22 +0100 | Aboudou ZINSOU | fix(routes): correct all route paths to match actual app directory structure| 
+|  src/constants/routes.ts | 52 +++++++++++++++++++++++++++--------------------
+|  1 file changed, 30 insertions(+), 22 deletions(-)
+
+* da9bb50 | 2026-02-23 01:31:29 +0100 | Aboudou ZINSOU | feat(storefront): add storefront layout, Navbar, Footer and homepage (Step 0.9b L1)| 
+|  src/app/(storefront)/layout.tsx       |  16 ++
+|  src/app/(storefront)/page.tsx         | 348 ++++++++++++++++++++++++++++++++
+|  src/app/page.tsx                      |  23 ---
+|  src/components/layout/Footer.tsx      | 102 ++++++++++
+|  src/components/layout/MobileNav.tsx   | 150 ++++++++++++++
+|  src/components/layout/Navbar.tsx      | 171 ++++++++++++++++
+|  src/components/layout/SearchBar.tsx   |  53 +++++
+|  src/components/store/CategoryCard.tsx |  48 +++++
+|  8 files changed, 888 insertions(+), 23 deletions(-)
+
+* d8478dd | 2026-02-22 20:41:00 +0100 | Aboudou ZINSOU | feat(storefront): add public queries for storefront backend (Step 0.9a)| 
+|  convex/products/queries.ts | 250 ++++++++++++++++++++++++++++++++++++++++++-
+|  convex/schema.ts           |   6 +-
+|  convex/stores/queries.ts   | 135 +++++++++++++++++++++++
+|  3 files changed, 386 insertions(+), 5 deletions(-)
+
+* 8c91b02 | 2026-02-22 20:05:10 +0100 | Aboudou ZINSOU | fix(products): replace useEffect hydration with initialState pattern| 
+|  src/components/products/ProductForm.tsx | 354 ++++++++++++++++++------------
+|  1 file changed, 212 insertions(+), 142 deletions(-)
+
+* 5898f77 | 2026-02-22 12:34:10 +0100 | Aboudou ZINSOU | chore(config): allow next/image to load Convex storage images| 
+|  next.config.ts | 12 ++++++++++++
+|  1 file changed, 12 insertions(+)
+
+* d74aeb2 | 2026-02-22 12:32:45 +0100 | Aboudou ZINSOU | feat(vendor): add product list, create, and edit pages| 
+|  .../(vendor)/vendor/products/[id]/edit/page.tsx   |  24 ++
+|  src/app/(vendor)/vendor/products/new/page.tsx     |  18 ++
+|  src/app/(vendor)/vendor/products/page.tsx         | 263 ++++++++++++++++++++
+|  3 files changed, 305 insertions(+)
+
+* 1c77a9a | 2026-02-22 12:30:54 +0100 | Aboudou ZINSOU | feat(products): add complete product form (create + edit)| 
+|  src/components/products/ProductForm.tsx | 470 ++++++++++++++++++++++++++++++
+|  1 file changed, 470 insertions(+)
+
+* 0737259 | 2026-02-22 12:30:54 +0100 | Aboudou ZINSOU | feat(products): add variant editor with dynamic options| 
+|  src/components/products/VariantEditor.tsx | 240 ++++++++++++++++++++++++++++
+|  1 file changed, 240 insertions(+)
+
+* fcb1599 | 2026-02-22 12:30:54 +0100 | Aboudou ZINSOU | feat(products): add image upload with drag-drop, preview, and reorder| 
+|  src/components/products/ProductImageUpload.tsx | 200 +++++++++++++++++++++++
+|  1 file changed, 200 insertions(+)
+
+* 58ed4fd | 2026-02-22 12:30:54 +0100 | Aboudou ZINSOU | ui(products): add StatusBadge and PriceInput molecules| 
+|  src/components/products/PriceInput.tsx  | 69 +++++++++++++++++++++++++++++++
+|  src/components/products/StatusBadge.tsx | 15 +++++++
+|  2 files changed, 84 insertions(+)
+
+* b992181 | 2026-02-22 12:30:54 +0100 | Aboudou ZINSOU | feat(vendor): implement dashboard layout with shadcn Sidebar| 
+|  src/app/(vendor)/layout.tsx             |  97 ++++++++++++-
+|  src/components/layout/VendorSidebar.tsx | 228 ++++++++++++++++++++++++++++++
+|  src/constants/vendor-nav.ts             |  79 +++++++++++
+|  3 files changed, 402 insertions(+), 2 deletions(-)
+
+* 14243c8 | 2026-02-22 12:01:47 +0100 | Aboudou ZINSOU | refactor(onboarding): pass currency from frontend to avoid duplicating country mapping| 
+|  convex/users/mutations.ts          | 16 +++++-----------
+|  src/app/onboarding/vendor/page.tsx |  5 +++++
+|  2 files changed, 10 insertions(+), 11 deletions(-)
+
+* abd77a4 | 2026-02-22 11:59:54 +0100 | Aboudou ZINSOU | fix(onboarding): fix Zod v4 enum API, JSX generic parsing, and type errors| 
+|  src/app/onboarding/vendor/page.tsx | 58 ++++++++++++++++++++----------------
+|  src/lib/validations/vendor.ts      | 24 ++++++---------
+|  2 files changed, 41 insertions(+), 41 deletions(-)
+
+* 92cf95e | 2026-02-22 11:52:29 +0100 | Aboudou ZINSOU | fix(routing): redirect customer to storefront instead of empty dashboard| 
+|  src/app/dashboard/page.tsx | 6 +++++-
+|  1 file changed, 5 insertions(+), 1 deletion(-)
+
+* be29d49 | 2026-02-22 11:52:29 +0100 | Aboudou ZINSOU | feat(auth): add country and description to becomeVendor mutation| 
+|  convex/users/mutations.ts | 18 ++++++++++++++----
+|  1 file changed, 14 insertions(+), 4 deletions(-)
+
+* 657b990 | 2026-02-22 11:52:29 +0100 | Aboudou ZINSOU | feat(onboarding): add multi-step vendor onboarding page| 
+|  src/app/onboarding/vendor/page.tsx | 412 +++++++++++++++++++++++++++++++++++
+|  src/lib/validations/vendor.ts      |  32 +++
+|  2 files changed, 444 insertions(+)
+
+* d9b2b3e | 2026-02-22 11:40:22 +0100 | Aboudou ZINSOU | fix(types): eliminate all 'as any' casts and fix strict TypeScript errors| 
+|  convex/categories/mutations.ts |  8 ++---
+|  convex/products/helpers.ts     | 44 +++++++++++++++++++++--
+|  convex/products/mutations.ts   | 22 +++---------
+|  convex/products/queries.ts     | 76 +++++++++-------------------------------
+|  convex/variants/mutations.ts   | 11 ++----
+|  convex/variants/queries.ts     | 18 ++--------
+|  6 files changed, 71 insertions(+), 108 deletions(-)
+
+* aafed77 | 2026-02-22 11:32:20 +0100 | Aboudou ZINSOU | feat(variants): add variant CRUD with per-variant inventory| 
+|  convex/variants/mutations.ts | 168 +++++++++++++++++++++++++++++++++++++++++
+|  convex/variants/queries.ts   |  34 +++++++++
+|  2 files changed, 202 insertions(+)
+
+* 463d60e | 2026-02-22 11:32:20 +0100 | Aboudou ZINSOU | feat(products): add complete CRUD with image upload and inventory| 
+|  convex/products/helpers.ts   |  56 +++++++
+|  convex/products/mutations.ts | 346 +++++++++++++++++++++++++++++++++++++++++
+|  convex/products/queries.ts   | 151 ++++++++++++++++++
+|  3 files changed, 553 insertions(+)
+
+* 97790de | 2026-02-22 11:32:20 +0100 | Aboudou ZINSOU | feat(categories): add CRUD mutations and queries| 
+|  convex/categories/mutations.ts | 113 +++++++++++++++++++++++++++++++++++++++
+|  convex/categories/queries.ts   |  61 +++++++++++++++++++++
+|  convex/categories/seed.ts      |  44 +++++++++++++++
+|  3 files changed, 218 insertions(+)
+
+* 631b4a4 | 2026-02-22 11:32:19 +0100 | Aboudou ZINSOU | feat(storage): add Convex File Storage upload and delete mutations| 
+|  convex/files/mutations.ts | 32 ++++++++++++++++++++++++++++++++
+|  1 file changed, 32 insertions(+)
+
+* 70c2912 | 2026-02-22 11:32:19 +0100 | Aboudou ZINSOU | refactor(auth): add requireVendor, requireAdmin, getVendorStore helpers| 
+|  convex/users/helpers.ts | 76 ++++++++++++++++++++++++++++++-----------------
+|  1 file changed, 48 insertions(+), 28 deletions(-)
+
+* bf99932 | 2026-02-22 11:21:48 +0100 | Aboudou ZINSOU | step 0.3 - some fixes| 
+|  convex/users/mutations.ts  | 24 +++++++++++-------------
+|  src/app/dashboard/page.tsx | 34 ++++++++++++++++++++++++++++++++++
+|  2 files changed, 45 insertions(+), 13 deletions(-)
+
+* 8d0ce0c | 2026-02-21 23:54:06 +0100 | Aboudou ZINSOU | step 0.3| 
+|  components.json |    6 +-
+|  pnpm-lock.yaml  | 1585 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+|  2 files changed, 1576 insertions(+), 15 deletions(-)
+
+* 9f26ed6 | 2026-02-21 23:53:37 +0100 | Aboudou ZINSOU | feat(auth): implement auth system with Better Auth + Google + react-email| 
+|  convex/auth.ts                          |  80 +++-
+|  convex/users/mutations.ts               |  88 ++++
+|  src/app/(admin)/layout.tsx              |   8 +
+|  src/app/(auth)/forgot-password/page.tsx |  93 ++++
+|  src/app/(auth)/layout.tsx               |  11 +
+|  src/app/(auth)/login/page.tsx           | 144 ++++++
+|  src/app/(auth)/register/page.tsx        | 189 ++++++++
+|  src/app/(auth)/reset-password/page.tsx  | 127 ++++++
+|  src/app/(vendor)/layout.tsx             |   9 +
+|  src/app/layout.tsx                      |  26 +-
+|  src/app/page.tsx                        |   4 +-
+|  src/components/auth/AuthGuard.tsx       |  54 +++
+|  src/components/icons/GoogleIcon.tsx     |  22 +
+|  src/components/ui/accordion.tsx         |  81 ++++
+|  src/components/ui/alert-dialog.tsx      | 184 ++++++++
+|  src/components/ui/alert.tsx             |  72 +++
+|  src/components/ui/aspect-ratio.tsx      |  11 +
+|  src/components/ui/avatar.tsx            |  18 +-
+|  src/components/ui/badge.tsx             |  17 +-
+|  src/components/ui/breadcrumb.tsx        | 122 ++++++
+|  src/components/ui/button-group.tsx      |  83 ++++
+|  src/components/ui/button.tsx            |  32 +-
+|  src/components/ui/calendar.tsx          | 222 ++++++++++
+|  src/components/ui/card.tsx              |  22 +-
+|  src/components/ui/carousel.tsx          | 242 +++++++++++
+|  src/components/ui/chart.tsx             | 353 +++++++++++++++
+|  src/components/ui/checkbox.tsx          |  33 ++
+|  src/components/ui/collapsible.tsx       |  33 ++
+|  src/components/ui/combobox.tsx          | 294 +++++++++++++
+|  src/components/ui/command.tsx           | 189 ++++++++
+|  src/components/ui/context-menu.tsx      | 257 +++++++++++
+|  src/components/ui/dialog.tsx            |  29 +-
+|  src/components/ui/direction.tsx         |  22 +
+|  src/components/ui/drawer.tsx            | 125 ++++++
+|  src/components/ui/dropdown-menu.tsx     |  64 +--
+|  src/components/ui/empty.tsx             | 104 +++++
+|  src/components/ui/field.tsx             | 227 ++++++++++
+|  src/components/ui/hover-card.tsx        |  44 ++
+|  src/components/ui/input-group.tsx       | 147 +++++++
+|  src/components/ui/input-otp.tsx         |  87 ++++
+|  src/components/ui/input.tsx             |   4 +-
+|  src/components/ui/item.tsx              | 195 +++++++++
+|  src/components/ui/kbd.tsx               |  26 ++
+|  src/components/ui/label.tsx             |   2 +-
+|  src/components/ui/menubar.tsx           | 271 ++++++++++++
+|  src/components/ui/native-select.tsx     |  52 +++
+|  src/components/ui/navigation-menu.tsx   | 161 +++++++
+|  src/components/ui/pagination.tsx        | 134 ++++++
+|  src/components/ui/popover.tsx           |  89 ++++
+|  src/components/ui/progress.tsx          |  31 ++
+|  src/components/ui/radio-group.tsx       |  44 ++
+|  src/components/ui/resizable.tsx         |  50 +++
+|  src/components/ui/scroll-area.tsx       |  55 +++
+|  src/components/ui/select.tsx            |  58 ++-
+|  src/components/ui/separator.tsx         |   2 +-
+|  src/components/ui/sheet.tsx             |  39 +-
+|  src/components/ui/sidebar.tsx           | 701 ++++++++++++++++++++++++++++++
+|  src/components/ui/skeleton.tsx          |   2 +-
+|  src/components/ui/slider.tsx            |  59 +++
+|  src/components/ui/sonner.tsx            |  33 +-
+|  src/components/ui/spinner.tsx           |  10 +
+|  src/components/ui/switch.tsx            |  33 ++
+|  src/components/ui/table.tsx             |  29 +-
+|  src/components/ui/tabs.tsx              |  15 +-
+|  src/components/ui/textarea.tsx          |   2 +-
+|  src/components/ui/toggle-group.tsx      |  89 ++++
+|  src/components/ui/toggle.tsx            |  46 ++
+|  src/components/ui/tooltip.tsx           |  57 +++
+|  src/hooks/use-mobile.ts                 |  19 +
+|  src/hooks/useCurrentUser.ts             |  20 +
+|  src/middleware.ts                       |  40 ++
+|  71 files changed, 6126 insertions(+), 211 deletions(-)
+
+* 2a8ed6a | 2026-02-21 23:53:37 +0100 | Aboudou ZINSOU | feat(email): add react-email templates for verification and reset| 
+|  emails/ResetPassword.tsx        |  65 ++++++++++++++++++
+|  emails/VerifyEmail.tsx          |  65 ++++++++++++++++++
+|  emails/components/CTAButton.tsx |  30 +++++++++
+|  emails/components/Layout.tsx    | 134 ++++++++++++++++++++++++++++++++++++++
+|  package.json                    |  16 ++++-
+|  5 files changed, 309 insertions(+), 1 deletion(-)
+
+* 088068a | 2026-02-21 23:53:37 +0100 | Aboudou ZINSOU | fix(ui): convert all hardcoded CSS values to variables| 
+|  src/app/globals.css | 301 +++++++++++++++++++++++++++++++++++++++-----------
+|  1 file changed, 238 insertions(+), 63 deletions(-)
+
+* 2551175 | 2026-02-21 02:02:26 +0100 | Aboudou ZINSOU | schema: implement complete Phase 0 database schema (12 tables)| 
+|  convex/auth.ts          | 78 +++++++++++++++++++++++++++++++++++++++++++++--
+|  convex/schema.ts        | 18 +++++------
+|  convex/users/helpers.ts | 59 +++++++++++++++++++++++++++++++++++
+|  convex/users/queries.ts | 13 ++++++++
+|  4 files changed, 156 insertions(+), 12 deletions(-)
+
+* e25638d | 2026-02-21 01:58:29 +0100 | Aboudou ZINSOU | schema(users): integrate Better Auth with triggers for user sync| 
+|  convex/schema.ts           | 538 +++++++++++++++++++++++++++++++++++++++++++
+|  src/constants/countries.ts |   5 +
+|  src/lib/utils.ts           |  16 +-
+|  3 files changed, 554 insertions(+), 5 deletions(-)
+
+* f669b43 | 2026-02-21 01:49:08 +0100 | Aboudou ZINSOU | config: bootstrap project with Next.js 14, Convex, Better Auth, shadcn/ui| 
+|  .gitignore                          |    4 +
+|  components.json                     |   23 +
+|  convex/README.md                    |   90 +
+|  convex/auth.config.ts               |    6 +
+|  convex/auth.ts                      |   22 +
+|  convex/convex.config.ts             |    7 +
+|  convex/http.ts                      |    8 +
+|  convex/tsconfig.json                |   25 +
+|  package.json                        |   18 +-
+|  pnpm-lock.yaml                      | 7247 ++++++++++++++++++++++++++-------
+|  src/app/ConvexClientProvider.tsx    |   26 +
+|  src/app/api/auth/[...all]/route.ts  |    3 +
+|  src/app/globals.css                 |  134 +-
+|  src/app/layout.tsx                  |   30 +-
+|  src/app/page.tsx                    |   76 +-
+|  src/components/ui/avatar.tsx        |  109 +
+|  src/components/ui/badge.tsx         |   48 +
+|  src/components/ui/button.tsx        |   64 +
+|  src/components/ui/card.tsx          |   92 +
+|  src/components/ui/dialog.tsx        |  158 +
+|  src/components/ui/dropdown-menu.tsx |  257 ++
+|  src/components/ui/form.tsx          |  167 +
+|  src/components/ui/input.tsx         |   21 +
+|  src/components/ui/label.tsx         |   24 +
+|  src/components/ui/select.tsx        |  190 +
+|  src/components/ui/separator.tsx     |   28 +
+|  src/components/ui/sheet.tsx         |  143 +
+|  src/components/ui/skeleton.tsx      |   13 +
+|  src/components/ui/sonner.tsx        |   40 +
+|  src/components/ui/table.tsx         |  116 +
+|  src/components/ui/tabs.tsx          |   91 +
+|  src/components/ui/textarea.tsx      |   18 +
+|  src/constants/countries.ts          |   19 +
+|  src/constants/orderStatuses.ts      |   57 +
+|  src/constants/routes.ts             |   34 +
+|  src/constants/subscriptionPlans.ts  |   48 +
+|  src/lib/auth-client.ts              |    6 +
+|  src/lib/auth-server.ts              |   14 +
+|  src/lib/utils.ts                    |   50 +
+|  src/types/index.ts                  |    1 +
+|  40 files changed, 8003 insertions(+), 1524 deletions(-)
+
+* c107e52 | 2026-02-21 01:26:57 +0100 | Aboudou ZINSOU | config: initialize Next.js 14 project with TypeScript, Tailwind, App Router| 
+|  package.json   |   1 +
+|  pnpm-lock.yaml | 319 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+|  2 files changed, 320 insertions(+)
+
+* 16088f3 | 2026-02-21 01:23:39 +0100 | Aboudou ZINSOU | Initial commit from Create Next App  
+   .gitignore          |   41 +
+   README.md           |   36 +
+   eslint.config.mjs   |   18 +
+   next.config.ts      |    7 +
+   package.json        |   26 +
+   pnpm-lock.yaml      | 4030 +++++++++++++++++++++++++++++++++++++++++++++++++
+   pnpm-workspace.yaml |    3 +
+   postcss.config.mjs  |    7 +
+   public/file.svg     |    1 +
+   public/globe.svg    |    1 +
+   public/next.svg     |    1 +
+   public/vercel.svg   |    1 +
+   public/window.svg   |    1 +
+   src/app/favicon.ico |  Bin 0 -> 25931 bytes
+   src/app/globals.css |   26 +
+   src/app/layout.tsx  |   34 +
+   src/app/page.tsx    |   65 +
+   tsconfig.json       |   34 +
+   18 files changed, 4332 insertions(+)
