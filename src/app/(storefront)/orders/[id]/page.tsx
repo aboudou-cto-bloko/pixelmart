@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Copy,
   Check,
+  RotateCcw,
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
@@ -49,6 +50,23 @@ import {
 } from "@/lib/order-helpers";
 import { ROUTES } from "@/constants/routes";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+
+function ReturnButton({ orderId }: { orderId: string }) {
+  const eligibility = useQuery(api.returns.queries.checkEligibility, {
+    orderId: orderId as Id<"orders">,
+  });
+
+  if (!eligibility?.eligible) return null;
+
+  return (
+    <Button variant="outline" asChild>
+      <Link href={`/orders/${orderId}/return`}>
+        <RotateCcw className="mr-2 h-4 w-4" />
+        Demander un retour
+      </Link>
+    </Button>
+  );
+}
 
 export default function OrderDetailPage({
   params,
@@ -419,6 +437,9 @@ export default function OrderDetailPage({
 
         {/* Actions */}
         <div className="flex gap-3">
+          {/* Bouton retour si commande livrée */}
+          {order.status === "delivered" && <ReturnButton orderId={order._id} />}
+
           {canPay && (
             <Button onClick={handlePay} disabled={isPaying} className="flex-1">
               {isPaying ? (
