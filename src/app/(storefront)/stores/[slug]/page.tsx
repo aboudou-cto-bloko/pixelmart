@@ -19,6 +19,7 @@ import { ProductGrid } from "@/components/products/ProductGrid";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ROUTES } from "@/constants/routes";
+import { StoreThemeProvider } from "@/components/store/StoreThemeProvider";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export default function StoreVitrinePage() {
@@ -90,113 +91,118 @@ export default function StoreVitrinePage() {
   );
 
   return (
-    <div>
-      {/* Banner */}
-      {store.banner_url && (
-        <div className="relative h-48 sm:h-64 bg-muted overflow-hidden">
-          <Image
-            src={store.banner_url}
-            alt={`Bannière ${store.name}`}
-            fill
-            sizes="100vw"
-            className="object-cover"
-            priority
-          />
-        </div>
-      )}
-
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-6">
-          <Link href={ROUTES.HOME} className="hover:text-foreground">
-            Accueil
-          </Link>
-          <ChevronRight className="size-3.5" />
-          <Link href={ROUTES.STORES} className="hover:text-foreground">
-            Boutiques
-          </Link>
-          <ChevronRight className="size-3.5" />
-          <span className="text-foreground font-medium">{store.name}</span>
-        </nav>
-
-        {/* Store header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start mb-8">
-          {/* Logo */}
-          {store.logo_url ? (
+    <StoreThemeProvider
+      themeId={store.theme_id}
+      primaryColor={store.primary_color}
+    >
+      <div>
+        {/* Banner */}
+        {store.banner_url && (
+          <div className="relative h-48 sm:h-64 bg-muted overflow-hidden">
             <Image
-              src={store.logo_url}
-              alt={store.name}
-              width={80}
-              height={80}
-              className="size-20 rounded-full object-cover border-4 border-background shadow-sm shrink-0"
+              src={store.banner_url}
+              alt={`Bannière ${store.name}`}
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority
             />
-          ) : (
-            <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold border-4 border-background shadow-sm shrink-0">
-              {store.name.charAt(0).toUpperCase()}
-            </div>
-          )}
+          </div>
+        )}
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold">{store.name}</h1>
-              {store.is_verified && (
-                <Badge variant="secondary" className="gap-1">
-                  <ShieldCheck className="size-3" />
-                  Vérifié
-                </Badge>
-              )}
-              <Badge variant="outline" className="capitalize">
-                {store.level}
-              </Badge>
-            </div>
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-6">
+            <Link href={ROUTES.HOME} className="hover:text-foreground">
+              Accueil
+            </Link>
+            <ChevronRight className="size-3.5" />
+            <Link href={ROUTES.STORES} className="hover:text-foreground">
+              Boutiques
+            </Link>
+            <ChevronRight className="size-3.5" />
+            <span className="text-foreground font-medium">{store.name}</span>
+          </nav>
 
-            {store.description && (
-              <p className="mt-2 text-sm text-muted-foreground line-clamp-3">
-                {store.description}
-              </p>
+          {/* Store header */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start mb-8">
+            {/* Logo */}
+            {store.logo_url ? (
+              <Image
+                src={store.logo_url}
+                alt={store.name}
+                width={80}
+                height={80}
+                className="size-20 rounded-full object-cover border-4 border-background shadow-sm shrink-0"
+              />
+            ) : (
+              <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center text-primary text-2xl font-bold border-4 border-background shadow-sm shrink-0">
+                {store.name.charAt(0).toUpperCase()}
+              </div>
             )}
 
-            {/* Stats */}
-            <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
-              {store.avg_rating > 0 && (
-                <span className="flex items-center gap-1">
-                  <Star className="size-4 fill-primary text-primary" />
-                  {store.avg_rating.toFixed(1)}
-                </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-2xl font-bold">{store.name}</h1>
+                {store.is_verified && (
+                  <Badge variant="secondary" className="gap-1">
+                    <ShieldCheck className="size-3" />
+                    Vérifié
+                  </Badge>
+                )}
+                <Badge variant="outline" className="capitalize">
+                  {store.level}
+                </Badge>
+              </div>
+
+              {store.description && (
+                <p className="mt-2 text-sm text-muted-foreground line-clamp-3">
+                  {store.description}
+                </p>
               )}
-              <span className="flex items-center gap-1">
-                <Package className="size-4" />
-                {store.product_count} produit
-                {store.product_count !== 1 ? "s" : ""}
-              </span>
-              <span className="flex items-center gap-1">
-                <MapPin className="size-4" />
-                {store.country}
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar className="size-4" />
-                Depuis {createdDate}
-              </span>
+
+              {/* Stats */}
+              <div className="flex flex-wrap gap-4 mt-3 text-sm text-muted-foreground">
+                {store.avg_rating > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Star className="size-4 fill-primary text-primary" />
+                    {store.avg_rating.toFixed(1)}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Package className="size-4" />
+                  {store.product_count} produit
+                  {store.product_count !== 1 ? "s" : ""}
+                </span>
+                <span className="flex items-center gap-1">
+                  <MapPin className="size-4" />
+                  {store.country}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Calendar className="size-4" />
+                  Depuis {createdDate}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Products */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">
-            Produits{" "}
-            {products !== undefined && (
-              <span className="text-muted-foreground font-normal text-base">
-                ({products.length})
-              </span>
-            )}
-          </h2>
-          <ProductGrid
-            products={products}
-            emptyMessage="Cette boutique n'a pas encore de produits."
-          />
+          {/* Products */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">
+              Produits{" "}
+              {products !== undefined && (
+                <span className="text-muted-foreground font-normal text-base">
+                  ({products.length})
+                </span>
+              )}
+            </h2>
+            <ProductGrid
+              products={products}
+              emptyMessage="Cette boutique n'a pas encore de produits."
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </StoreThemeProvider>
   );
 }

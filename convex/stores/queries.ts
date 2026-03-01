@@ -51,6 +51,8 @@ export const getBySlug = query({
       description: store.description,
       logo_url: logoUrl,
       banner_url: bannerUrl,
+      theme_id: store.theme_id,
+      primary_color: store.primary_color,
       country: store.country,
       currency: store.currency,
       level: store.level,
@@ -143,5 +145,55 @@ export const getMyStore = query({
   handler: async (ctx) => {
     const { store } = await getVendorStore(ctx);
     return store;
+  },
+});
+
+export const getMarketplaceStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const allStores = await ctx.db
+      .query("stores")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    const allProducts = await ctx.db
+      .query("products")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    // Calcul total commandes (somme des total_orders de chaque store)
+    const totalOrders = allStores.reduce((sum, s) => sum + s.total_orders, 0);
+
+    // Pays uniques
+    const uniqueCountries = new Set(allStores.map((s) => s.country));
+
+    return {
+      totalStores: allStores.length,
+      totalProducts: allProducts.length,
+      totalOrders,
+      totalCountries: uniqueCountries.size,
+    };
+  },
+});
+
+export const getFeaturedStores = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 6;
+
+    const stores = await ctx.db
+      .query("stores")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    // Trier par avg_rating desc, puis total_orders desc
+    const sorted = stores
+      .sort((a, b) => {
+        if (b.avg_rating !== a.avg_rating) return b.avg_rating - a.avg_rating;
+        return b.total_orders - a.total_orders;
+      })
+      .slice(0, limit);
+
+    return sorted;
   },
 });

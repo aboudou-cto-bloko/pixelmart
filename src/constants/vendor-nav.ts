@@ -63,7 +63,10 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     title: "Boutique",
     url: ROUTES.VENDOR_STORE_SETTINGS,
     icon: Store,
-    items: [{ title: "Paramètres", url: ROUTES.VENDOR_STORE_SETTINGS }],
+    items: [
+      { title: "Paramètres", url: "/vendor/store/settings" },
+      { title: "Thème", url: "/vendor/store/theme" },
+    ],
   },
   {
     title: "Notifications",

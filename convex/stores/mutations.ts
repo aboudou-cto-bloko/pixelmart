@@ -1,8 +1,9 @@
 // filepath: convex/stores/mutations.ts
 
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getVendorStore } from "../users/helpers";
+import { STORE_THEMES } from "./themes";
 
 /**
  * Met à jour les informations de la boutique.
@@ -72,5 +73,33 @@ export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     await getVendorStore(ctx);
     return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const updateStoreTheme = mutation({
+  args: {
+    theme_id: v.string(),
+    primary_color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    // Valider que le theme_id existe
+    if (!(args.theme_id in STORE_THEMES)) {
+      throw new ConvexError("Thème invalide");
+    }
+
+    // Valider le format hex si fourni
+    if (args.primary_color && !/^#[0-9A-Fa-f]{6}$/.test(args.primary_color)) {
+      throw new ConvexError("Format couleur invalide (attendu: #RRGGBB)");
+    }
+
+    await ctx.db.patch(store._id, {
+      theme_id: args.theme_id,
+      primary_color: args.primary_color,
+      updated_at: Date.now(),
+    });
+
+    return { success: true };
   },
 });
