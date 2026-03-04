@@ -390,3 +390,62 @@ export const notifyReturnStatus = internalAction({
     }
   },
 });
+
+// ─── New Review Notification (email + in-app) ──────────────────────────────
+
+export const notifyNewReview = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+
+    customerName: v.string(),
+    productTitle: v.string(),
+    rating: v.number(),
+    reviewTitle: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // 1. In-app notification
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "new_review",
+      title: `Nouvel avis ${args.rating}★ sur ${args.productTitle}`,
+      body: `${args.customerName} a donné ${args.rating}/5 étoiles`,
+      link: "/vendor/reviews",
+      channels: ["email", "in_app"],
+      sentVia: ["in_app"],
+      metadata: {
+        rating: args.rating,
+        reviewTitle: args.reviewTitle,
+        productTitle: args.productTitle,
+        customerName: args.customerName,
+      },
+    });
+
+    // 2. Email notification
+    try {
+      const resend = getResend();
+      const { default: NewReview } = await import("../../emails/NewReview");
+
+      const html = await render(
+        NewReview({
+          vendorName: args.vendorName,
+          customerName: args.customerName,
+          productTitle: args.productTitle,
+          rating: args.rating,
+          reviewTitle: args.reviewTitle,
+          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/vendor/reviews`,
+        }),
+      );
+
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Nouvel avis sur ${args.productTitle}`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] Review email failed:", error);
+    }
+  },
+});

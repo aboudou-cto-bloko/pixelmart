@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { ReviewForm } from "@/components/reviews";
 import { formatPrice } from "@/lib/utils";
 import {
   getOrderStatusConfig,
@@ -433,6 +434,20 @@ export default function OrderDetailPage({
               <p className="text-sm">{order.notes}</p>
             </CardContent>
           </Card>
+        )}
+
+        {order.status === "delivered" && (
+          <div className="space-y-4 mt-6">
+            <h3 className="font-semibold">Donner votre avis</h3>
+            {order.items.map((item) => (
+              <ReviewForm
+                key={item.product_id}
+                productId={item.product_id as Id<"products">}
+                orderId={order._id}
+                productTitle={item.title}
+              />
+            ))}
+          </div>
         )}
 
         {/* Actions */}

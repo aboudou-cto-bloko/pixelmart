@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
+import { ProductReviewList } from "@/components/reviews";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -306,7 +308,6 @@ export default function ProductDetailPage() {
               </Link>
             )}
           </div>
-
           {/* Price */}
           <div className="flex items-baseline gap-3">
             <span className="text-3xl font-bold text-primary">
@@ -328,9 +329,7 @@ export default function ProductDetailPage() {
               </>
             )}
           </div>
-
           <Separator />
-
           {/* Variants */}
           {product.variants.length > 0 && (
             <VariantSelector
@@ -342,7 +341,6 @@ export default function ProductDetailPage() {
               }}
             />
           )}
-
           {/* Quantity + Add to cart */}
           {!isOutOfStock && (
             <div className="space-y-4">
@@ -379,7 +377,6 @@ export default function ProductDetailPage() {
               </Button>
             </div>
           )}
-
           {isOutOfStock && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
               <p className="text-sm font-medium text-destructive">
@@ -387,9 +384,7 @@ export default function ProductDetailPage() {
               </p>
             </div>
           )}
-
           <Separator />
-
           {/* Description */}
           {product.description && (
             <div>
@@ -400,7 +395,6 @@ export default function ProductDetailPage() {
               />
             </div>
           )}
-
           {/* Tags */}
           {product.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -411,9 +405,7 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
-
           <Separator />
-
           {/* Delivery info */}
           <div className="flex items-start gap-3 text-sm">
             <Truck className="size-5 text-muted-foreground shrink-0 mt-0.5" />
@@ -425,6 +417,8 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
+          <Separator className="my-8" />
+          <ProductReviewList productId={product._id} />
           {/* Store card */}
           {product.store && <StoreInfoCard store={product.store} />}
         </div>

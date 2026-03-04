@@ -1,6 +1,7 @@
 // filepath: convex/crons_handlers.ts
 
 import { internalMutation, internalAction } from "./_generated/server";
+import { recalculateRatings } from "./reviews/helpers";
 import { internal } from "./_generated/api";
 
 const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
@@ -211,5 +212,36 @@ export const checkStalePayouts = internalMutation({
     }
 
     return { checkedCount };
+  },
+});
+
+/**
+ * Auto-publier les avis non-flagged après 24h
+ */
+export const autoPublishReviews = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+
+    // Récupérer les avis non publiés, non flagged, créés il y a > 24h
+    const pendingReviews = await ctx.db
+      .query("reviews")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("is_published"), false),
+          q.eq(q.field("flagged"), false),
+          q.lt(q.field("_creationTime"), twentyFourHoursAgo),
+        ),
+      )
+      .collect();
+
+    for (const review of pendingReviews) {
+      await ctx.db.patch(review._id, { is_published: true });
+      await recalculateRatings(ctx, review.product_id, review.store_id);
+    }
+
+    if (pendingReviews.length > 0) {
+      console.log(`Auto-published ${pendingReviews.length} reviews`);
+    }
   },
 });

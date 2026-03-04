@@ -37,4 +37,10 @@ crons.interval(
   internal.crons_handlers.checkStalePayouts,
 );
 
+crons.interval(
+  "auto-publish-reviews",
+  { hours: 1 }, // Vérifier toutes les heures
+  internal.crons_handlers.autoPublishReviews,
+);
+
 export default crons;
