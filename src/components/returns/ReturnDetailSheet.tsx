@@ -129,7 +129,7 @@ export function ReturnDetailSheet({
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2">
                 Retour — {ret.order_number}
-                <ReturnStatusBadge status={ret.status as any} />
+                <ReturnStatusBadge status={ret.status} />
               </SheetTitle>
               <SheetDescription>
                 Demandé par {ret.customer_name}
@@ -175,7 +175,7 @@ export function ReturnDetailSheet({
                 <div className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Motif</span>
-                  <ReturnReasonBadge category={ret.reason_category as any} />
+                  <ReturnReasonBadge category={ret.reason_category} />
                 </div>
                 <p className="text-sm text-muted-foreground bg-muted/30 rounded-md p-3">
                   {ret.reason}
@@ -191,7 +191,7 @@ export function ReturnDetailSheet({
                   Articles retournés
                 </p>
                 <div className="space-y-2">
-                  {ret.items.map((item: any, i: number) => (
+                  {ret.items.map((item, i: number) => (
                     <div
                       key={i}
                       className="flex items-center justify-between text-sm rounded-md border px-3 py-2"

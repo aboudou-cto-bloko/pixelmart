@@ -42,7 +42,7 @@ export default function CustomerReturnsPage() {
       {returns && returns.length > 0 && (
         <div className="space-y-3">
           {returns.map((ret) => (
-            <CustomerReturnCard key={ret._id} returnRequest={ret as any} />
+            <CustomerReturnCard key={ret._id} returnRequest={ret} />
           ))}
         </div>
       )}

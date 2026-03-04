@@ -1,9 +1,9 @@
-// filepath: src/components/returns/VendorReturnTable.tsx
 "use client";
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id, Doc } from "../../../convex/_generated/dataModel";
 
 import {
   Table,
@@ -27,7 +27,23 @@ import { formatPrice, formatRelativeTime } from "@/lib/format";
 import { Package, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ReturnDetailSheet } from "./ReturnDetailSheet";
-import type { Id } from "../../../convex/_generated/dataModel";
+
+// Type pour les retours enrichis (listByStore)
+type ReturnRow = Doc<"return_requests"> & {
+  customer_name: string;
+  order_number: string;
+  // Ajoutez d'autres champs si nécessaire (ex: order_total)
+};
+
+// Type pour les compteurs par statut
+type ReturnCounts = {
+  requested: number;
+  approved: number;
+  received: number;
+  refunded: number;
+  rejected: number;
+  pending_action: number;
+};
 
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "Tous les retours" },
@@ -46,9 +62,11 @@ export function VendorReturnTable() {
   const returns = useQuery(api.returns.queries.listByStore, {
     status: statusFilter === "all" ? undefined : statusFilter,
     limit: 50,
-  });
+  }) as ReturnRow[] | undefined;
 
-  const counts = useQuery(api.returns.queries.countByStatus);
+  const counts = useQuery(api.returns.queries.countByStatus) as
+    | ReturnCounts
+    | undefined;
 
   const isLoading = returns === undefined;
 
@@ -167,10 +185,10 @@ export function VendorReturnTable() {
                   {ret.customer_name}
                 </TableCell>
                 <TableCell>
-                  <ReturnStatusBadge status={ret.status as any} />
+                  <ReturnStatusBadge status={ret.status} />
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  <ReturnReasonBadge category={ret.reason_category as any} />
+                  <ReturnReasonBadge category={ret.reason_category} />
                 </TableCell>
                 <TableCell className="text-right text-sm font-medium">
                   {formatPrice(ret.refund_amount, "XOF")}

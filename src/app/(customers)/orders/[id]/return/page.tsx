@@ -4,7 +4,7 @@
 import { use } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
-import type { Id } from "../../../../../../convex/_generated/dataModel";
+import type { Id, Doc } from "../../../../../../convex/_generated/dataModel";
 import { ReturnRequestForm } from "@/components/returns/ReturnRequestForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
@@ -30,7 +30,7 @@ export default function ReturnRequestPage({
   // Pour les détails de la commande, on utilise une query existante.
   // Hypothèse : la query orders.queries.getById ou similaire existe.
   // Fallback : on récupère les données via le formulaire de retour directement.
-  const orderDetail = useQuery(api.orders.queries.getById as any, { orderId });
+  const orderDetail = useQuery(api.orders.queries.getById, { orderId });
 
   const isLoading = eligibility === undefined || orderDetail === undefined;
 
