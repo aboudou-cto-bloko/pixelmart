@@ -155,6 +155,10 @@ export default defineSchema({
     quantity: v.number(),
     low_stock_threshold: v.number(), // default: 5
 
+    // Rating
+    avg_rating: v.optional(v.number()), // 0.0 - 5.0
+    review_count: v.optional(v.number()), // total avis publiés
+
     // Physical
     weight: v.optional(v.number()), // grams
 
