@@ -17,6 +17,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { usePathname } from "next/navigation";
+import { NotificationDropdown } from "@/components/notifications/organisms/NotificationDropdown";
 
 const BREADCRUMB_MAP: Record<string, { parent?: string; label: string }> = {
   "/vendor/dashboard": { label: "Tableau de bord" },
@@ -90,6 +91,10 @@ export default function VendorLayout({
                 className="mr-2 data-[orientation=vertical]:h-4"
               />
               <VendorBreadcrumb />
+            </div>
+            {/* Ajout du dropdown de notifications aligné à droite */}
+            <div className="ml-auto flex items-center gap-2 px-4">
+              <NotificationDropdown notificationsPath="/vendor/notifications" />
             </div>
           </header>
           <main className="flex flex-1 flex-col gap-4 p-4 pt-0">

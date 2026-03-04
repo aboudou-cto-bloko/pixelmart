@@ -6,9 +6,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Store, ChevronRight } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { NotificationDropdown } from "@/components/notifications/organisms/NotificationDropdown";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import {
   Sidebar,
   SidebarContent,
@@ -66,9 +63,6 @@ function StoreHeader() {
             </div>
           </Link>
         </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
-        <NotificationDropdown notificationsPath="/vendor/notifications" />
       </SidebarMenuItem>
     </SidebarMenu>
   );
