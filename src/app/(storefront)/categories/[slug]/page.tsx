@@ -105,7 +105,6 @@ function CategoryContent() {
           <div className="flex-1 max-w-md">
             <SearchBar />
           </div>
-          <FilterSidebar fixedCategoryId={category._id} />
         </div>
         {products !== undefined && (
           <p className="text-sm text-muted-foreground">

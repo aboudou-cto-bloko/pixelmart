@@ -15,8 +15,6 @@ const SEED_CATEGORIES = [
 export const seedCategories = mutation({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
-
     // Vérifier si déjà seedé
     const existing = await ctx.db
       .query("categories")

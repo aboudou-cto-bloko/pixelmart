@@ -65,6 +65,7 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     icon: Store,
     items: [
       { title: "Paramètres", url: "/vendor/store/settings" },
+      { title: "Avis", url: "/vendor/reviews" },
       { title: "Thème", url: "/vendor/store/theme" },
     ],
   },
@@ -90,9 +91,6 @@ export const VENDOR_NAV_SETTINGS: NavItem[] = [
     title: "Paramètres",
     url: ROUTES.VENDOR_SETTINGS,
     icon: Settings,
-    items: [
-      { title: "Compte", url: ROUTES.VENDOR_SETTINGS },
-      { title: "Sécurité", url: ROUTES.VENDOR_SECURITY },
-    ],
+    items: [{ title: "Compte", url: ROUTES.VENDOR_SETTINGS }],
   },
 ];
