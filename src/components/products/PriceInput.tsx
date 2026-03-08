@@ -6,8 +6,8 @@ import { Label } from "@/components/ui/label";
 interface PriceInputProps {
   id: string;
   label: string;
-  value: number | undefined;
-  onChange: (valueInUnit: number | undefined) => void; // valeur dans l'unité de base (francs pour XOF, euros pour EUR, etc.)
+  value: number | undefined; // toujours en centimes (plus petite unité)
+  onChange: (valueInCents: number | undefined) => void;
   currency?: string;
   required?: boolean;
   error?: string;
@@ -15,10 +15,10 @@ interface PriceInputProps {
 
 /**
  * Input prix.
- * Pour les devises avec centimes (EUR, USD...), la valeur est stockée en centimes.
- * Pour les devises sans centimes (XOF, XAF...), la valeur est stockée en unité (francs).
- * L'affichage et la saisie se font dans l'unité courante (francs ou euros).
- * La conversion est interne.
+ * La valeur est toujours stockée dans la plus petite unité de la devise :
+ * - Devises avec centimes (EUR, USD...) : stocké en centimes (1 € = 100)
+ * - Devises sans centimes (XOF, XAF...) : stocké en unités (1 F = 1)
+ * L'affichage et la saisie se font dans l'unité courante.
  */
 export function PriceInput({
   id,
@@ -29,16 +29,15 @@ export function PriceInput({
   required = false,
   error,
 }: PriceInputProps) {
-  // Liste des devises sans sous-unité (à adapter selon vos besoins)
   const noSubunitCurrencies = ["XOF", "XAF", "XPF"];
   const hasSubunit = !noSubunitCurrencies.includes(currency);
 
-  // Valeur affichée : pour les devises avec sous-unité, on convertit les centimes en unités
+  // Convertir la valeur stockée (centimes) en valeur affichée (unités)
   const displayValue =
     value !== undefined
       ? hasSubunit
-        ? (value / 100).toFixed(2)
-        : value.toString()
+        ? (value / 100).toFixed(2) // ex: 1000 centimes -> 10.00 €
+        : value.toString() // ex: 1000 F -> 1000
       : "";
 
   function handleChange(raw: string) {
@@ -48,7 +47,7 @@ export function PriceInput({
     }
     const num = parseFloat(raw);
     if (isNaN(num)) return;
-    // Pour les devises avec sous-unité, on convertit en centimes
+    // Convertir la saisie (unités) en valeur stockée (centimes)
     const newValue = hasSubunit ? Math.round(num * 100) : num;
     onChange(newValue);
   }
