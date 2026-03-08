@@ -1,8 +1,6 @@
-// filepath: src/app/(vendor)/vendor/store/theme/page.tsx
-
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { THEME_PRESETS, type ThemePresetId } from "@/lib/themes";
@@ -24,17 +22,19 @@ export default function StoreThemePage() {
   const store = useQuery(api.stores.queries.getMyStore);
   const updateTheme = useMutation(api.stores.mutations.updateStoreTheme);
 
-  const [selectedTheme, setSelectedTheme] = useState<ThemePresetId>(
-    (store?.theme_id as ThemePresetId) ?? "default",
-  );
-  const [customColor, setCustomColor] = useState(store?.primary_color ?? "");
+  const [selectedTheme, setSelectedTheme] = useState<ThemePresetId>("default");
+  const [customColor, setCustomColor] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  // Sync quand le store charge
-  if (store && selectedTheme !== store.theme_id && !isSaving) {
-    setSelectedTheme(store.theme_id as ThemePresetId);
-    if (store.primary_color) setCustomColor(store.primary_color);
-  }
+  // Initialisation une fois que le store est chargé
+  useEffect(() => {
+    if (store && !initialized) {
+      setSelectedTheme((store.theme_id as ThemePresetId) ?? "default");
+      setCustomColor(store.primary_color ?? "");
+      setInitialized(true);
+    }
+  }, [store, initialized]);
 
   async function handleSave() {
     setIsSaving(true);
@@ -44,6 +44,8 @@ export default function StoreThemePage() {
         primary_color: customColor || undefined,
       });
       toast.success("Thème mis à jour");
+      // Optionnel : re-sync si besoin, mais la query va se mettre à jour automatiquement
+      // setInitialized(false); // si on veut forcer la relecture après sauvegarde, mais pas nécessaire car la query se met à jour.
     } catch (error) {
       toast.error("Erreur lors de la mise à jour du thème");
     } finally {
@@ -51,10 +53,20 @@ export default function StoreThemePage() {
     }
   }
 
+  // Calcul des changements seulement si store est chargé
   const hasChanges =
     store &&
     (selectedTheme !== store.theme_id ||
       (customColor || "") !== (store.primary_color || ""));
+
+  // Si le store n'est pas encore chargé, on peut afficher un loader
+  if (!store) {
+    return (
+      <div className="flex items-center justify-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
