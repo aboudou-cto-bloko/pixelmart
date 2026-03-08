@@ -1,5 +1,3 @@
-// filepath: src/app/(vendor)/vendor/store/settings/page.tsx
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -38,7 +36,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SUPPORTED_COUNTRIES } from "@/constants/countries";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils"; // IMPORT AJOUTÉ
 
 export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);
@@ -47,7 +45,7 @@ export default function StoreSettingsPage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [themeColor, setThemeColor] = useState("#6366f1");
+  const [primaryColor, setPrimaryColor] = useState("#6366f1"); // renommé
   const [country, setCountry] = useState("BJ");
   const [currency, setCurrency] = useState("XOF");
   const [logoUrl, setLogoUrl] = useState<string | undefined>();
@@ -66,7 +64,7 @@ export default function StoreSettingsPage() {
     if (store) {
       setName(store.name);
       setDescription(store.description ?? "");
-      setThemeColor(store.primary_color ?? "#6366f1");
+      setPrimaryColor(store.primary_color ?? "#6366f1");
       setCountry(store.country);
       setCurrency(store.currency);
       setLogoUrl(store.logo_url);
@@ -91,10 +89,9 @@ export default function StoreSettingsPage() {
 
       const { storageId } = await response.json();
 
-      // Obtenir l'URL servable
-      // Note: on stocke le storageId, la résolution URL se fait via ctx.storage.getUrl()
-      // Pour simplifier, on stocke directement l'URL
-      // En production, utiliser une httpAction pour servir le fichier
+      // TODO: Convertir storageId en URL réelle
+      // Pour l'instant on stocke le storageId, mais cela ne fonctionnera pas avec Image.
+      // Il faudrait appeler une query pour obtenir l'URL.
       setUrl(storageId);
     } catch (err) {
       setError("Erreur lors de l'upload de l'image");
@@ -112,7 +109,7 @@ export default function StoreSettingsPage() {
       await updateStore({
         name: name.trim(),
         description: description.trim(),
-        theme_color: themeColor,
+        primary_color: primaryColor, // corrigé ici
         country,
         currency,
         logo_url: logoUrl,
@@ -341,19 +338,19 @@ export default function StoreSettingsPage() {
               <input
                 id="theme-color"
                 type="color"
-                value={themeColor}
-                onChange={(e) => setThemeColor(e.target.value)}
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
                 className="size-10 rounded-lg border cursor-pointer"
               />
               <Input
-                value={themeColor}
-                onChange={(e) => setThemeColor(e.target.value)}
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
                 placeholder="#6366f1"
                 className="w-32 font-mono text-sm"
               />
               <div
                 className="size-10 rounded-lg border"
-                style={{ backgroundColor: themeColor }}
+                style={{ backgroundColor: primaryColor }}
               />
             </div>
           </div>
