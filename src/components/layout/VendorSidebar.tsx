@@ -2,6 +2,7 @@
 
 "use client";
 
+import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -48,12 +49,27 @@ import { VENDOR_NAV_MAIN, VENDOR_NAV_SETTINGS } from "@/constants/vendor-nav";
 import { ROUTES } from "@/constants/routes";
 import type { NavItem } from "@/constants/vendor-nav";
 
+// Hook personnalisé pour détecter les écrans mobiles
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = React.useState(false);
+
+  React.useEffect(() => {
+    const media = window.matchMedia(query);
+    if (media.matches !== matches) {
+      setMatches(media.matches);
+    }
+    const listener = () => setMatches(media.matches);
+    window.addEventListener("resize", listener);
+    return () => window.removeEventListener("resize", listener);
+  }, [matches, query]);
+
+  return matches;
+}
+
 // ---- Store Header ----
 function StoreHeader() {
   const { user } = useCurrentUser();
 
-  // Le vendor n'a qu'une seule boutique en Phase 0
-  // On affiche le nom de la boutique dans le header
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -149,6 +165,7 @@ function NavSection({ label, items }: { label: string; items: NavItem[] }) {
 function UserFooter() {
   const { user } = useCurrentUser();
   const router = useRouter();
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   if (!user) return null;
 
@@ -163,7 +180,7 @@ function UserFooter() {
     await authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
-          router.push("/login"); // Redirige vers la page de connexion après déconnexion
+          router.push("/login");
         },
       },
     });
@@ -193,8 +210,8 @@ function UserFooter() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-56 rounded-lg"
-            side="right"
-            align="end"
+            side={isMobile ? "bottom" : "right"}
+            align={isMobile ? "center" : "end"}
             sideOffset={4}
           >
             <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
