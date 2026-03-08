@@ -2,10 +2,18 @@
 
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Store, ChevronRight } from "lucide-react";
+import {
+  Store,
+  ChevronRight,
+  BadgeCheck,
+  ChevronsUpDown,
+  LogOut,
+  Settings,
+} from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { authClient } from "@/lib/auth-client";
 import {
   Sidebar,
   SidebarContent,
@@ -36,7 +44,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { BadgeCheck, ChevronsUpDown, LogOut, Settings } from "lucide-react";
 import { VENDOR_NAV_MAIN, VENDOR_NAV_SETTINGS } from "@/constants/vendor-nav";
 import { ROUTES } from "@/constants/routes";
 import type { NavItem } from "@/constants/vendor-nav";
@@ -141,6 +148,7 @@ function NavSection({ label, items }: { label: string; items: NavItem[] }) {
 // ---- User Footer ----
 function UserFooter() {
   const { user } = useCurrentUser();
+  const router = useRouter();
 
   if (!user) return null;
 
@@ -150,6 +158,16 @@ function UserFooter() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  const handleLogout = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          router.push("/login"); // Redirige vers la page de connexion après déconnexion
+        },
+      },
+    });
+  };
 
   return (
     <SidebarMenu>
@@ -196,7 +214,7 @@ function UserFooter() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Déconnexion
             </DropdownMenuItem>
