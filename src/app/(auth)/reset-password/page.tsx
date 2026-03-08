@@ -1,4 +1,3 @@
-// src/app/(auth)/reset-password/page.tsx
 "use client";
 
 import { Suspense, useState } from "react";
@@ -16,7 +15,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import {
+  getPasswordStrength,
+  getStrengthLabel,
+  getStrengthColor,
+} from "@/lib/password-strength";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -24,6 +28,13 @@ function ResetPasswordForm() {
   const token = searchParams.get("token");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Password visibility states
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Password value for strength indicator
+  const [newPassword, setNewPassword] = useState("");
 
   if (!token) {
     return (
@@ -48,9 +59,9 @@ function ResetPasswordForm() {
     setError("");
     setIsLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    const newPassword = formData.get("newPassword") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
+    const confirmPassword = (
+      document.getElementById("confirmPassword") as HTMLInputElement
+    ).value;
 
     if (newPassword !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas");
@@ -86,26 +97,85 @@ function ResetPasswordForm() {
           )}
           <div className="space-y-2">
             <Label htmlFor="newPassword">Nouveau mot de passe</Label>
-            <Input
-              id="newPassword"
-              name="newPassword"
-              type="password"
-              placeholder="Min. 8 caractères"
-              required
-              autoComplete="new-password"
-              minLength={8}
-            />
+            <div className="relative">
+              <Input
+                id="newPassword"
+                name="newPassword"
+                type={showNewPassword ? "text" : "password"}
+                placeholder="Min. 8 caractères"
+                required
+                autoComplete="new-password"
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showNewPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {/* Indicateur de force */}
+            {newPassword && (
+              <div className="space-y-1 mt-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${getStrengthColor(
+                        getPasswordStrength(newPassword),
+                      )}`}
+                      style={{
+                        width:
+                          getPasswordStrength(newPassword) === "weak"
+                            ? "33%"
+                            : getPasswordStrength(newPassword) === "medium"
+                              ? "66%"
+                              : "100%",
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {getStrengthLabel(getPasswordStrength(newPassword))}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Minimum 8 caractères, avec majuscule, minuscule, chiffre et
+                  caractère spécial.
+                </p>
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirmer</Label>
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              required
-              autoComplete="new-password"
-              minLength={8}
-            />
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                required
+                autoComplete="new-password"
+                minLength={8}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

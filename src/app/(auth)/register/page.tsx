@@ -16,8 +16,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import {
+  getPasswordStrength,
+  getStrengthLabel,
+  getStrengthColor,
+} from "@/lib/password-strength";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -26,16 +31,24 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Password visibility states
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Password value for strength indicator
+  const [password, setPassword] = useState("");
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
+    // Get values from uncontrolled inputs (name, email) and controlled password state
+    const name = (document.getElementById("name") as HTMLInputElement).value;
+    const email = (document.getElementById("email") as HTMLInputElement).value;
+    const confirmPassword = (
+      document.getElementById("confirmPassword") as HTMLInputElement
+    ).value;
 
     if (password !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas");
@@ -148,27 +161,86 @@ export default function RegisterPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Mot de passe</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Min. 8 caractères"
-              required
-              autoComplete="new-password"
-              minLength={8}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Min. 8 caractères"
+                required
+                autoComplete="new-password"
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {/* Indicateur de force */}
+            {password && (
+              <div className="space-y-1 mt-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${getStrengthColor(
+                        getPasswordStrength(password),
+                      )}`}
+                      style={{
+                        width:
+                          getPasswordStrength(password) === "weak"
+                            ? "33%"
+                            : getPasswordStrength(password) === "medium"
+                              ? "66%"
+                              : "100%",
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {getStrengthLabel(getPasswordStrength(password))}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Minimum 8 caractères, avec majuscule, minuscule, chiffre et
+                  caractère spécial.
+                </p>
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
-            <Input
-              id="confirmPassword"
-              name="confirmPassword"
-              type="password"
-              placeholder="Répéter le mot de passe"
-              required
-              autoComplete="new-password"
-              minLength={8}
-            />
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Répéter le mot de passe"
+                required
+                autoComplete="new-password"
+                minLength={8}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
