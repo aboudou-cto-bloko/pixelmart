@@ -15,7 +15,7 @@ export const updateStore = mutation({
     description: v.optional(v.string()),
     logo_url: v.optional(v.string()),
     banner_url: v.optional(v.string()),
-    theme_color: v.optional(v.string()),
+    primary_color: v.optional(v.string()),
     country: v.optional(v.string()),
     currency: v.optional(v.string()),
   },
@@ -56,7 +56,8 @@ export const updateStore = mutation({
     if (args.description !== undefined) updates.description = args.description;
     if (args.logo_url !== undefined) updates.logo_url = args.logo_url;
     if (args.banner_url !== undefined) updates.banner_url = args.banner_url;
-    if (args.theme_color !== undefined) updates.theme_color = args.theme_color;
+    if (args.primary_color !== undefined)
+      updates.primary_color = args.primary_color;
     if (args.country !== undefined) updates.country = args.country;
     if (args.currency !== undefined) updates.currency = args.currency;
 
