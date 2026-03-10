@@ -43,4 +43,10 @@ crons.interval(
   internal.crons_handlers.autoPublishReviews,
 );
 
+crons.interval(
+  "process-ad-bookings",
+  { minutes: 15 }, // Toutes les 15 min
+  internal.crons_handlers.processAdBookings,
+);
+
 export default crons;

@@ -1,0 +1,101 @@
+// filepath: convex/ads/constants.ts
+
+export const AD_SLOT_DEFINITIONS = {
+  top_banner: {
+    slot_id: "top_banner",
+    name: "Bandeau Promo Haut",
+    format: "banner",
+    width: 1200,
+    height: 40,
+    max_slots: 1,
+    base_price_daily: 500000, // 5000 XOF/jour
+    base_price_weekly: 2500000,
+    base_price_monthly: 8000000,
+  },
+  hero_main: {
+    slot_id: "hero_main",
+    name: "Héro Principal (Carrousel)",
+    format: "banner",
+    width: 760,
+    height: 400,
+    max_slots: 3,
+    base_price_daily: 1500000, // 15000 XOF/jour
+    base_price_weekly: 7500000,
+    base_price_monthly: 25000000,
+  },
+  hero_side: {
+    slot_id: "hero_side",
+    name: "Héro Latéral (Droite)",
+    format: "banner",
+    width: 400,
+    height: 400,
+    max_slots: 2,
+    base_price_daily: 1000000,
+    base_price_weekly: 5000000,
+    base_price_monthly: 17000000,
+  },
+  hero_sub: {
+    slot_id: "hero_sub",
+    name: "Sous-Héro (4 cartes)",
+    format: "card",
+    width: 280,
+    height: 180,
+    max_slots: 4,
+    base_price_daily: 300000,
+    base_price_weekly: 1500000,
+    base_price_monthly: 5000000,
+  },
+  deals_featured: {
+    slot_id: "deals_featured",
+    name: "Produit Sponsorisé (Offres)",
+    format: "card",
+    width: 280,
+    height: 320,
+    max_slots: 6,
+    base_price_daily: 200000,
+    base_price_weekly: 1000000,
+    base_price_monthly: 3000000,
+  },
+  mid_banner: {
+    slot_id: "mid_banner",
+    name: "Bannière Milieu Pleine Largeur",
+    format: "banner",
+    width: 1200,
+    height: 200,
+    max_slots: 1,
+    base_price_daily: 800000,
+    base_price_weekly: 4000000,
+    base_price_monthly: 13000000,
+  },
+  brands_row: {
+    slot_id: "brands_row",
+    name: "Marques Populaires",
+    format: "logo",
+    width: 150,
+    height: 80,
+    max_slots: 8,
+    base_price_daily: 100000,
+    base_price_weekly: 500000,
+    base_price_monthly: 1500000,
+  },
+  product_spotlight: {
+    slot_id: "product_spotlight",
+    name: "Spotlight Produit (Pleine Largeur)",
+    format: "spotlight",
+    width: 1200,
+    height: 300,
+    max_slots: 1,
+    base_price_daily: 1200000,
+    base_price_weekly: 6000000,
+    base_price_monthly: 20000000,
+  },
+} as const;
+
+export type AdSlotId = keyof typeof AD_SLOT_DEFINITIONS;
+
+export const AD_PRIORITY = {
+  ADMIN_OVERRIDE: 100,
+  VENDOR_PAID: 50,
+  QUEUED: 10,
+  FALLBACK: 0,
+} as const;

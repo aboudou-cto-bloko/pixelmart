@@ -635,4 +635,128 @@ export default defineSchema({
     .index("by_store", ["store_id"])
     .index("by_customer", ["customer_id"])
     .index("by_store_status", ["store_id", "status"]),
+
+  // ============================================
+  // AD SPACES — Emplacements publicitaires
+  // ============================================
+  ad_spaces: defineTable({
+    // Identification
+    slot_id: v.string(), // "hero_main", "mid_banner", etc.
+    name: v.string(), // "Héro Principal"
+    description: v.optional(v.string()),
+
+    // Dimensions & Format
+    format: v.string(), // "banner", "card", "logo", "spotlight"
+    width: v.number(), // px
+    height: v.number(), // px
+    max_slots: v.number(), // nb d'annonces simultanées (rotation)
+
+    // Pricing (en centimes XOF)
+    base_price_daily: v.number(), // prix de base par jour
+    base_price_weekly: v.number(), // prix par semaine
+    base_price_monthly: v.number(), // prix par mois
+
+    // Dynamic pricing
+    demand_multiplier: v.number(), // 1.0 = normal, 1.5 = haute demande
+    peak_periods: v.optional(
+      v.array(
+        v.object({
+          name: v.string(), // "Black Friday", "Noël"
+          starts_at: v.number(),
+          ends_at: v.number(),
+          multiplier: v.number(), // ex: 2.0
+        }),
+      ),
+    ),
+
+    // Status
+    is_active: v.boolean(),
+    sort_order: v.number(), // ordre d'affichage dans le catalogue admin
+
+    // Metadata
+    updated_at: v.number(),
+  })
+    .index("by_slot_id", ["slot_id"])
+    .index("by_active", ["is_active"]),
+
+  // ============================================
+  // AD BOOKINGS — Réservations d'espaces
+  // ============================================
+  ad_bookings: defineTable({
+    // Liens
+    ad_space_id: v.id("ad_spaces"),
+    slot_id: v.string(), // dénormalisé pour queries rapides
+    store_id: v.optional(v.id("stores")), // vendeur qui réserve
+    booked_by: v.id("users"), // user qui a fait la réservation
+
+    // Contenu de l'annonce
+    content_type: v.union(
+      v.literal("product"), // mise en avant produit
+      v.literal("store"), // mise en avant boutique
+      v.literal("banner"), // image custom
+      v.literal("promotion"), // coupon / offre spéciale
+    ),
+    // Référence vers le contenu
+    product_id: v.optional(v.id("products")),
+    // Contenu banner custom
+    image_url: v.optional(v.string()),
+    title: v.optional(v.string()),
+    subtitle: v.optional(v.string()),
+    cta_text: v.optional(v.string()), // "Découvrir" / "Acheter"
+    cta_link: v.optional(v.string()), // URL destination
+    background_color: v.optional(v.string()), // hex
+
+    // Période
+    starts_at: v.number(),
+    ends_at: v.number(),
+
+    // Pricing
+    total_price: v.number(), // centimes, calculé à la réservation
+    currency: v.string(), // XOF
+
+    // Source
+    source: v.union(
+      v.literal("vendor"), // réservé par le vendeur (payant)
+      v.literal("admin"), // placé par l'admin (override, peut être gratuit)
+    ),
+
+    // Priorité & Queue
+    priority: v.number(),
+    // 100 = admin override (toujours affiché)
+    // 50  = vendor payé confirmé
+    // 10  = en file d'attente
+    // 0   = fallback organique
+
+    // Status
+    status: v.union(
+      v.literal("pending"), // en attente de paiement ou validation
+      v.literal("confirmed"), // payé ou validé par admin
+      v.literal("active"), // actuellement affiché
+      v.literal("completed"), // période terminée
+      v.literal("cancelled"), // annulé
+      v.literal("queued"), // en file d'attente (slots pleins)
+    ),
+
+    // Paiement
+    payment_status: v.union(
+      v.literal("unpaid"),
+      v.literal("paid"),
+      v.literal("refunded"),
+      v.literal("waived"), // admin = gratuit
+    ),
+    transaction_id: v.optional(v.id("transactions")),
+
+    // Stats
+    impressions: v.number(), // nombre d'affichages
+    clicks: v.number(), // nombre de clics
+
+    // Metadata
+    admin_notes: v.optional(v.string()),
+    updated_at: v.number(),
+  })
+    .index("by_slot", ["slot_id", "status"])
+    .index("by_store", ["store_id"])
+    .index("by_status", ["status"])
+    .index("by_active_slot", ["slot_id", "status", "priority"])
+    .index("by_period", ["slot_id", "starts_at", "ends_at"]),
 });

@@ -1,6 +1,7 @@
 // filepath: convex/crons_handlers.ts
 
-import { internalMutation, internalAction } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
+import { promoteQueuedBookings } from "./ads/helpers";
 import { recalculateRatings } from "./reviews/helpers";
 import { internal } from "./_generated/api";
 
@@ -242,6 +243,59 @@ export const autoPublishReviews = internalMutation({
 
     if (pendingReviews.length > 0) {
       console.log(`Auto-published ${pendingReviews.length} reviews`);
+    }
+  },
+});
+
+/**
+ * Activer les bookings confirmés dont starts_at est passé.
+ * Compléter les bookings actifs dont ends_at est passé.
+ * Promouvoir les bookings en queue quand des slots se libèrent.
+ */
+export const processAdBookings = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    // 1. Activer les bookings confirmés dont la période a commencé
+    const toActivate = await ctx.db
+      .query("ad_bookings")
+      .withIndex("by_status", (q) => q.eq("status", "confirmed"))
+      .filter((q) => q.lte(q.field("starts_at"), now))
+      .collect();
+
+    for (const booking of toActivate) {
+      await ctx.db.patch(booking._id, {
+        status: "active",
+        updated_at: now,
+      });
+    }
+
+    // 2. Compléter les bookings actifs dont la période est terminée
+    const toComplete = await ctx.db
+      .query("ad_bookings")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) => q.lt(q.field("ends_at"), now))
+      .collect();
+
+    const slotsFreed = new Set<string>();
+    for (const booking of toComplete) {
+      await ctx.db.patch(booking._id, {
+        status: "completed",
+        updated_at: now,
+      });
+      slotsFreed.add(booking.slot_id);
+    }
+
+    // 3. Promouvoir les bookings en queue pour les slots libérés
+    for (const slotId of slotsFreed) {
+      await promoteQueuedBookings(ctx, slotId);
+    }
+
+    if (toActivate.length || toComplete.length) {
+      console.log(
+        `Ad bookings processed: ${toActivate.length} activated, ${toComplete.length} completed`,
+      );
     }
   },
 });
