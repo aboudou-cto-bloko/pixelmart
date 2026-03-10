@@ -8,6 +8,11 @@
  * @module
  */
 
+import type * as ads_constants from "../ads/constants.js";
+import type * as ads_helpers from "../ads/helpers.js";
+import type * as ads_mutations from "../ads/mutations.js";
+import type * as ads_queries from "../ads/queries.js";
+import type * as ads_seed from "../ads/seed.js";
 import type * as analytics_helpers from "../analytics/helpers.js";
 import type * as analytics_queries from "../analytics/queries.js";
 import type * as auth from "../auth.js";
@@ -71,6 +76,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ads/constants": typeof ads_constants;
+  "ads/helpers": typeof ads_helpers;
+  "ads/mutations": typeof ads_mutations;
+  "ads/queries": typeof ads_queries;
+  "ads/seed": typeof ads_seed;
   "analytics/helpers": typeof analytics_helpers;
   "analytics/queries": typeof analytics_queries;
   auth: typeof auth;
