@@ -146,7 +146,7 @@ export function SearchBar({
                       </span>
 
                       <span className="text-xs text-muted-foreground">
-                        {product.price.toFixed(2)} €
+                        {product.price.toFixed(2)}
                       </span>
                     </div>
                   </CommandItem>
