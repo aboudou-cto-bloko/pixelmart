@@ -1,5 +1,3 @@
-// filepath: src/components/storefront/organisms/HeroSection.tsx
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -19,8 +17,29 @@ export function HeroSection() {
   });
 
   const [currentSlide, setCurrentSlide] = useState(0);
-  const mainAds = heroMain ?? [];
-  const sideAds = heroSide ?? [];
+  const rawMainAds = heroMain ?? [];
+  const rawSideAds = heroSide ?? [];
+
+  // Normalisation des données : remplacer null par undefined
+  const mainAds = rawMainAds.map((ad) => ({
+    ...ad,
+    image_url: ad.image_url ?? undefined,
+    title: ad.title ?? undefined,
+    subtitle: ad.subtitle ?? undefined,
+    cta_text: ad.cta_text ?? undefined,
+    cta_link: ad.cta_link ?? undefined,
+    background_color: ad.background_color ?? undefined,
+  }));
+
+  const sideAds = rawSideAds.map((ad) => ({
+    ...ad,
+    image_url: ad.image_url ?? undefined,
+    title: ad.title ?? undefined,
+    subtitle: ad.subtitle ?? undefined,
+    cta_text: ad.cta_text ?? undefined,
+    cta_link: ad.cta_link ?? undefined,
+    background_color: ad.background_color ?? undefined,
+  }));
 
   // Auto-rotate
   useEffect(() => {
@@ -57,7 +76,7 @@ export function HeroSection() {
             </div>
           ))}
 
-          {/* Nav buttons */}
+          {/* Nav buttons (inchangé) */}
           {mainAds.length > 1 && (
             <>
               <Button

@@ -29,7 +29,7 @@ export const getActiveAdsForSlot = query({
               slug: product.slug,
               price: product.price,
               compare_price: product.compare_price,
-              images: product.images,
+              images: product.images, // si nécessaire, normaliser aussi
             };
           }
         }
@@ -51,11 +51,11 @@ export const getActiveAdsForSlot = query({
           _id: booking._id,
           content_type: booking.content_type,
           image_url: imageUrl,
-          title: booking.title,
-          subtitle: booking.subtitle,
-          cta_text: booking.cta_text,
-          cta_link: booking.cta_link,
-          background_color: booking.background_color,
+          title: booking.title ?? undefined,
+          subtitle: booking.subtitle ?? undefined,
+          cta_text: booking.cta_text ?? undefined,
+          cta_link: booking.cta_link ?? undefined,
+          background_color: booking.background_color ?? undefined,
           source: booking.source,
           product: productData,
           store: storeData,
