@@ -2,21 +2,20 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { resolveImageUrl } from "../products/helpers";
 import { getActiveBookingsForSlot } from "./helpers";
 
 /**
  * Récupérer les annonces actives pour un emplacement — PUBLIC
  * Utilisé par le storefront pour afficher les pubs
  */
+
 export const getActiveAdsForSlot = query({
-  args: {
-    slot_id: v.string(),
-  },
+  args: { slot_id: v.string() },
   handler: async (ctx, args) => {
     const now = Date.now();
     const bookings = await getActiveBookingsForSlot(ctx, args.slot_id, now);
 
-    // Enrichir avec les données produit/store si nécessaire
     const enriched = await Promise.all(
       bookings.map(async (booking) => {
         let productData = null;
@@ -41,15 +40,17 @@ export const getActiveAdsForSlot = query({
             storeData = {
               name: store.name,
               slug: store.slug,
-              logo_url: store.logo_url,
+              logo_url: await resolveImageUrl(ctx, store.logo_url),
             };
           }
         }
 
+        const imageUrl = await resolveImageUrl(ctx, booking.image_url);
+
         return {
           _id: booking._id,
           content_type: booking.content_type,
-          image_url: booking.image_url,
+          image_url: imageUrl,
           title: booking.title,
           subtitle: booking.subtitle,
           cta_text: booking.cta_text,
