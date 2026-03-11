@@ -1,5 +1,3 @@
-// filepath: src/components/storefront/organisms/CategoryBar.tsx
-
 "use client";
 
 import { useQuery } from "convex/react";
@@ -13,16 +11,17 @@ export function CategoryBar() {
 
   if (!categories) return null;
 
-  // Seulement les catégories racines
   const rootCategories = categories.filter((c) => !c.parent_id);
 
   return (
     <section className="border-b">
-      <div className="container flex items-center justify-between py-4">
-        <h2 className="text-base font-semibold shrink-0 mr-4">
+      <div className="container flex items-center justify-between py-4 gap-2 overflow-x-hidden">
+        <h2 className="text-sm sm:text-base font-semibold shrink-0 mr-2 sm:mr-4">
           Catégories Populaires
         </h2>
-        <ScrollArea className="flex-1">
+
+        {/* Le ScrollArea occupe l'espace restant et gère le défilement interne */}
+        <ScrollArea className="flex-1 min-w-0">
           <div className="flex gap-1">
             {rootCategories.map((cat) => (
               <CategoryIcon key={cat._id} category={cat} />
@@ -30,9 +29,10 @@ export function CategoryBar() {
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
+
         <Link
-          href="/categories"
-          className="text-sm text-primary font-medium shrink-0 ml-4 hover:underline"
+          href="/products"
+          className="text-xs sm:text-sm text-primary font-medium shrink-0 ml-2 sm:ml-4 hover:underline whitespace-nowrap"
         >
           Voir tout
         </Link>

@@ -30,7 +30,6 @@ export function HomepageTemplate() {
       {/* SuggestToday — à implémenter dans un second temps */}
       <ProductSpotlight />
       <JustLanding />
-      <NewsletterBar />
     </>
   );
 }

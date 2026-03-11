@@ -9,9 +9,15 @@ import {
   LayoutDashboard,
   Store,
 } from "lucide-react";
+
 import { api } from "../../../convex/_generated/api";
+
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,12 +25,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { NotificationDropdown } from "@/components/notifications/organisms/NotificationDropdown";
+
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
+
 import { ROUTES } from "@/constants/routes";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { SearchBar } from "./SearchBar";
 import { MobileNav } from "./MobileNav";
+
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { authClient } from "@/lib/auth-client";
 import { useCart } from "@/hooks/useCart";
@@ -36,8 +51,12 @@ export function Navbar() {
 
   const categories = categoryTree ?? [];
 
+  const visibleCategories = categories.slice(0, 5);
+  const extraCategories = categories.slice(5);
+
   function getUserInitials(): string {
     if (!user?.name) return "U";
+
     return user.name
       .split(" ")
       .map((n) => n[0])
@@ -53,45 +72,84 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
-        {/* Mobile nav */}
+        {/* Mobile navigation */}
         <MobileNav categories={categories} />
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-1 shrink-0">
+        <Link href={ROUTES.HOME} className="flex items-center gap-1 shrink-0">
           <span className="text-xl font-bold text-primary">Pixel</span>
           <span className="text-xl font-bold text-secondary">-Mart</span>
         </Link>
 
-        {/* Desktop search */}
+        {/* Search Desktop */}
         <div className="hidden lg:flex flex-1 max-w-md mx-4">
           <SearchBar className="w-full" />
         </div>
 
-        {/* Desktop categories */}
-        <nav className="hidden lg:flex items-center gap-1">
-          {categories.slice(0, 5).map((cat) => (
-            <Link
-              key={cat._id}
-              href={ROUTES.CATEGORY(cat.slug)}
-              className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              {cat.name}
-            </Link>
-          ))}
-          <Link
-            href={ROUTES.STORES}
-            className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            Boutiques
-          </Link>
-        </nav>
+        {/* Desktop Navigation */}
+        <NavigationMenu className="hidden lg:flex">
+          <NavigationMenuList>
+            {/* Catégories visibles */}
+            {visibleCategories.map((cat) => (
+              <NavigationMenuItem key={cat._id}>
+                <NavigationMenuLink asChild>
+                  <Link
+                    href={ROUTES.CATEGORY(cat.slug)}
+                    className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    {cat.name}
+                  </Link>
+                </NavigationMenuLink>
+              </NavigationMenuItem>
+            ))}
 
-        {/* Right section */}
+            {/* Catégories supplémentaires */}
+            {extraCategories.length > 0 && (
+              <NavigationMenuItem>
+                <NavigationMenuTrigger>Plus</NavigationMenuTrigger>
+
+                <NavigationMenuContent>
+                  <div className="grid w-[260px] gap-1 p-2">
+                    {extraCategories.map((cat) => (
+                      <NavigationMenuLink key={cat._id} asChild>
+                        <Link
+                          href={ROUTES.CATEGORY(cat.slug)}
+                          className="block rounded-md p-2 text-sm hover:bg-accent"
+                        >
+                          {cat.name}
+                        </Link>
+                      </NavigationMenuLink>
+                    ))}
+                  </div>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            )}
+
+            {/* Boutiques */}
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <Link
+                  href={ROUTES.STORES}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Boutiques
+                  <Badge variant="secondary" className="text-[10px]">
+                    New
+                  </Badge>
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+
+        {/* Right Section */}
         <div className="ml-auto flex items-center gap-2">
+          {/* Cart */}
           <Button variant="ghost" size="icon" className="relative" asChild>
             <Link href={ROUTES.CART}>
               <ShoppingCart className="size-5" />
               <span className="sr-only">Panier</span>
+
               {totalItems > 0 && (
                 <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                   {totalItems > 99 ? "99+" : totalItems}
@@ -99,10 +157,6 @@ export function Navbar() {
               )}
             </Link>
           </Button>
-          {/* Notifications */}
-          {isAuthenticated && (
-            <NotificationDropdown notificationsPath="/notifications" />
-          )}
 
           {/* Auth */}
           {isLoading ? (
@@ -118,7 +172,8 @@ export function Navbar() {
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+
+              <DropdownMenuContent align="end" className="w-52">
                 <div className="px-2 py-1.5">
                   <p className="text-sm font-medium truncate">
                     {user?.name ?? "Utilisateur"}
@@ -127,13 +182,16 @@ export function Navbar() {
                     {user?.email}
                   </p>
                 </div>
+
                 <DropdownMenuSeparator />
+
                 <DropdownMenuItem asChild>
                   <Link href={ROUTES.VENDOR_SETTINGS}>
                     <User className="size-4 mr-2" />
                     Mon profil
                   </Link>
                 </DropdownMenuItem>
+
                 {user?.role === "vendor" && (
                   <DropdownMenuItem asChild>
                     <Link href={ROUTES.VENDOR_DASHBOARD}>
@@ -142,6 +200,7 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                 )}
+
                 {user?.role === "customer" && (
                   <DropdownMenuItem asChild>
                     <Link href={ROUTES.ONBOARDING_VENDOR}>
@@ -150,7 +209,9 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                 )}
+
                 <DropdownMenuSeparator />
+
                 <DropdownMenuItem
                   onClick={handleSignOut}
                   className="text-destructive focus:text-destructive"
@@ -165,6 +226,7 @@ export function Navbar() {
               <Button variant="ghost" size="sm" asChild>
                 <Link href={ROUTES.LOGIN}>Se connecter</Link>
               </Button>
+
               <Button size="sm" asChild>
                 <Link href={ROUTES.REGISTER}>S&apos;inscrire</Link>
               </Button>

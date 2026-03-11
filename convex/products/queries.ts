@@ -347,3 +347,38 @@ export const listLatest = query({
     return productsWithImages;
   },
 });
+
+export const searchSuggestions = query({
+  args: {
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit ?? 5, 10); // max 10 suggestions
+    const searchQuery = args.query.trim();
+    if (searchQuery.length < 2) return []; // Pas de suggestion pour moins de 2 caractères
+
+    const results = await ctx.db
+      .query("products")
+      .withSearchIndex("search_title", (q) =>
+        q.search("title", searchQuery).eq("status", "active"),
+      )
+      .take(limit * 2); // On en prend un peu plus pour filtrer ensuite
+
+    // Résolution des URLs d'images miniatures
+    const suggestions = await Promise.all(
+      results.slice(0, limit).map(async (product) => {
+        const thumbnailUrl = await resolveImageUrl(ctx, product.images[0]);
+        return {
+          _id: product._id,
+          title: product.title,
+          slug: product.slug,
+          price: product.price,
+          thumbnailUrl,
+        };
+      }),
+    );
+
+    return suggestions;
+  },
+});
