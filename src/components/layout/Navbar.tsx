@@ -8,6 +8,7 @@ import {
   LogOut,
   LayoutDashboard,
   Store,
+  Package,
 } from "lucide-react";
 
 import { api } from "../../../convex/_generated/api";
@@ -206,6 +207,15 @@ export function Navbar() {
                     <Link href={ROUTES.ONBOARDING_VENDOR}>
                       <Store className="size-4 mr-2" />
                       Devenir vendeur
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+
+                {isAuthenticated && (
+                  <DropdownMenuItem asChild>
+                    <Link href={ROUTES.CUSTOMER_ORDERS}>
+                      <Package className="size-4 mr-2" />
+                      Mes commandes
                     </Link>
                   </DropdownMenuItem>
                 )}
