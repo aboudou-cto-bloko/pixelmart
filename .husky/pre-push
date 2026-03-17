@@ -1,0 +1,2 @@
+# filepath: .husky/pre-push
+npm run type-check

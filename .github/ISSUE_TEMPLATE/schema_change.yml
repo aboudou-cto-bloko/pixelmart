@@ -1,0 +1,54 @@
+# filepath: .github/ISSUE_TEMPLATE/schema_change.yml
+name: 🗄️ Schema Change
+description: Proposer une modification du schéma Convex
+labels: ["schema", "triage"]
+
+body:
+  - type: input
+    id: table
+    attributes:
+      label: Table(s) concernée(s)
+      placeholder: "Ex: orders, transactions"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: change_type
+    attributes:
+      label: Type de changement
+      options:
+        - "Ajout de champ"
+        - "Suppression de champ"
+        - "Nouveau index"
+        - "Nouvelle table"
+        - "Migration de données"
+    validations:
+      required: true
+
+  - type: textarea
+    id: schema_diff
+    attributes:
+      label: Diff de schéma proposé
+      render: typescript
+    validations:
+      required: true
+
+  - type: textarea
+    id: migration
+    attributes:
+      label: Plan de migration
+      placeholder: "Rétro-compatible ? Script de migration nécessaire ?"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Règles d'intégrité
+      options:
+        - label: Les transactions restent immuables (pas d'UPDATE)
+          required: true
+        - label: F-01 respecté (balance change = transaction dans la même mutation)
+          required: true
+        - label: Les montants sont en centimes (pas de float)
+          required: true

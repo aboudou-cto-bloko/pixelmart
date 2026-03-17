@@ -9,7 +9,7 @@ import { api } from "../../../../convex/_generated/api";
 import { SearchBar } from "@/components/layout/SearchBar";
 import { FilterSidebar } from "@/components/products/FilterSidebar";
 import { ProductGrid } from "@/components/products/ProductGrid";
-import { Id } from "../../../../convex/_generated/dataModel";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 function CatalogContent() {
   const searchParams = useSearchParams();

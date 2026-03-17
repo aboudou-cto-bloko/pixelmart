@@ -1,0 +1,10 @@
+// filepath: .prettierignore
+node_modules
+.next
+out
+dist
+convex/_generated
+*.md
+*.mdx
+.github/**/*.yml
+.github/**/*.yaml

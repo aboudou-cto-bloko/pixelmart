@@ -2,7 +2,7 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 import { getVendorStore } from "../users/helpers";
 import {
   type AnalyticsPeriod,

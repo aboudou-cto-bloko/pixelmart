@@ -1,0 +1,61 @@
+# filepath: .github/ISSUE_TEMPLATE/bug_report.yml
+name: 🐛 Bug Report
+description: Signaler un bug
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: "Merci de remplir ce formulaire avec précision."
+
+  - type: input
+    id: summary
+    attributes:
+      label: Résumé du bug
+      placeholder: "Ex: Le webhook Moneroo plante si le montant est 0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Aller sur...
+        2. Cliquer sur...
+        3. Voir l'erreur
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportement actuel
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Sévérité
+      options:
+        - "🔴 Critique (production down)"
+        - "🟠 Majeur (feature cassée)"
+        - "🟡 Mineur (workaround possible)"
+        - "⚪ Cosmétique"
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environnement
+      placeholder: "Ex: Chrome 120 / macOS / dev"

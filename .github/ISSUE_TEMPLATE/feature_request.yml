@@ -1,0 +1,49 @@
+# filepath: .github/ISSUE_TEMPLATE/feature_request.yml
+name: ✨ Feature Request
+description: Proposer une fonctionnalité
+labels: ["enhancement", "triage"]
+
+body:
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase cible
+      options:
+        - "Phase 0 (Foundation)"
+        - "Phase 1 (Vendor Empowerment)"
+        - "Phase 2 (AI Layer)"
+        - "Phase 3+"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problème à résoudre
+      placeholder: "En tant que [rôle], je veux [objectif] afin de [bénéfice]"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution proposée
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considérées
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Vérifications
+      options:
+        - label: Cette feature est dans le cahier des charges
+          required: false
+        - label: Cette feature n'est pas déjà implémentée
+          required: true
+        - label: Cette feature ne concerne pas une phase future
+          required: false

@@ -1,6 +1,6 @@
 // filepath: convex/users/helpers.ts
 
-import { QueryCtx, MutationCtx } from "../_generated/server";
+import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { authComponent } from "../auth";
 
 type Ctx = QueryCtx | MutationCtx;

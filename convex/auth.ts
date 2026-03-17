@@ -7,7 +7,7 @@ import {
 } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { components, internal } from "./_generated/api";
-import { DataModel } from "./_generated/dataModel";
+import type { DataModel } from "./_generated/dataModel";
 import { betterAuth } from "better-auth/minimal";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
