@@ -1,6 +1,6 @@
 // filepath: convex/ads/mutations.ts
 
-import { mutation } from "../_generated/server";
+import { mutation, internalMutation } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAdmin, getVendorStore } from "../users/helpers";
 import { calculateBookingPrice } from "./helpers";
@@ -326,5 +326,110 @@ export const addPeakPeriod = mutation({
     });
 
     return { success: true };
+  },
+});
+
+/**
+ * Stocke la référence de paiement Moneroo sur un booking.
+ * Appelé par l'action initiateAdPayment après succès Moneroo.
+ */
+export const setPaymentReference = mutation({
+  args: {
+    booking_id: v.id("ad_bookings"),
+    reference: v.string(),
+  },
+  handler: async (ctx, { booking_id, reference }) => {
+    const booking = await ctx.db.get(booking_id);
+    if (!booking) throw new ConvexError("Réservation introuvable");
+    if (booking.status !== "pending") {
+      throw new ConvexError("Statut booking invalide pour cette opération");
+    }
+
+    await ctx.db.patch(booking_id, {
+      updated_at: Date.now(),
+    });
+
+    // La référence Moneroo est stockée dans la transaction,
+    // pas directement sur le booking (pas de champ `reference` dans le schema)
+    // On stocke dans admin_notes temporairement pour traçabilité
+    await ctx.db.patch(booking_id, {
+      admin_notes: `moneroo_ref:${reference}`,
+      updated_at: Date.now(),
+    });
+  },
+});
+
+/**
+ * Confirmer un booking après paiement Moneroo réussi.
+ * Appelé uniquement depuis le webhook — jamais depuis le client.
+ */
+export const confirmAdPayment = internalMutation({
+  args: {
+    bookingId: v.id("ad_bookings"),
+    externalRef: v.string(),
+  },
+  handler: async (ctx, { bookingId, externalRef }) => {
+    const booking = await ctx.db.get(bookingId);
+    if (!booking) {
+      console.warn(`confirmAdPayment: booking ${bookingId} introuvable`);
+      return;
+    }
+    if (booking.payment_status === "paid") {
+      console.warn(
+        `confirmAdPayment: booking ${bookingId} déjà payé — idempotent skip`,
+      );
+      return;
+    }
+
+    await ctx.db.patch(bookingId, {
+      status: "confirmed",
+      payment_status: "paid",
+      priority: AD_PRIORITY.VENDOR_PAID,
+      updated_at: Date.now(),
+    });
+
+    // Les bookings admin sans store (bannières génériques) ne génèrent pas de transaction
+    if (!booking.store_id) return;
+
+    const store = await ctx.db.get(booking.store_id);
+    if (!store) return;
+
+    await ctx.db.insert("transactions", {
+      store_id: booking.store_id,
+      type: "ad_payment",
+      direction: "debit",
+      amount: booking.total_price,
+      currency: booking.currency,
+      balance_before: store.balance,
+      balance_after: store.balance,
+      status: "completed",
+      reference: externalRef,
+      description: `Publicité: ${booking.slot_id}`,
+      metadata: JSON.stringify({ booking_id: bookingId }),
+      processed_at: Date.now(),
+    });
+  },
+});
+
+/**
+ * Marquer un booking comme échoué après paiement Moneroo rejeté.
+ */
+export const failAdPayment = internalMutation({
+  args: {
+    bookingId: v.id("ad_bookings"),
+    reason: v.string(),
+  },
+  handler: async (ctx, { bookingId, reason }) => {
+    const booking = await ctx.db.get(bookingId);
+    if (!booking) {
+      console.warn(`failAdPayment: booking ${bookingId} introuvable`);
+      return;
+    }
+
+    await ctx.db.patch(bookingId, {
+      payment_status: "unpaid",
+      admin_notes: `Paiement échoué: ${reason}`,
+      updated_at: Date.now(),
+    });
   },
 });
