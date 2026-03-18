@@ -271,6 +271,8 @@ export default defineSchema({
       v.literal("delivered"),
       v.literal("cancelled"),
       v.literal("refunded"),
+      v.literal("ready_for_delivery"),
+      v.literal("delivery_failed"),
     ),
 
     // Payment

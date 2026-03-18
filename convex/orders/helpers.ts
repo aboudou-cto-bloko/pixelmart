@@ -42,9 +42,11 @@ type OrderStatus = Doc<"orders">["status"];
 const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["paid", "cancelled"],
   paid: ["processing", "cancelled", "refunded"],
-  processing: ["shipped", "cancelled"],
-  shipped: ["delivered"],
+  processing: ["ready_for_delivery", "shipped", "cancelled"],
+  ready_for_delivery: ["shipped", "cancelled"],
+  shipped: ["delivered", "delivery_failed"],
   delivered: ["refunded"],
+  delivery_failed: ["shipped", "refunded", "cancelled"],
   cancelled: [],
   refunded: [],
 };
