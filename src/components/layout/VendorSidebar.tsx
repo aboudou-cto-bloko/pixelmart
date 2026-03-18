@@ -12,6 +12,7 @@ import {
   ChevronsUpDown,
   LogOut,
   Settings,
+  ExternalLink,
 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { authClient } from "@/lib/auth-client";
@@ -252,6 +253,18 @@ export function VendorSidebar(props: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavSection label="Gestion" items={VENDOR_NAV_MAIN} />
         <NavSection label="Configuration" items={VENDOR_NAV_SETTINGS} />
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Voir ma boutique">
+                <Link href="/" target="_blank">
+                  <ExternalLink className="size-4" />
+                  <span>Accueil</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <UserFooter />
