@@ -5,18 +5,9 @@ import { internal } from "../_generated/api";
 import { verifyMonerooSignature } from "./helpers";
 import type { Id } from "../_generated/dataModel";
 
-/**
- * Webhook Moneroo unifié — reçoit les notifications de paiement ET de payout.
- *
- * Routing :
- * - metadata.order_id présent  → flow paiement (existant)
- * - metadata.payout_id présent → flow payout (nouveau)
- */
 export const handleMonerooWebhook = httpAction(async (ctx, request) => {
-  // 1. Lire le body brut
   const rawBody = await request.text();
 
-  // 2. Vérifier la signature
   const webhookSecret = process.env.MONEROO_WEBHOOK_SECRET;
   if (!webhookSecret) {
     console.error("MONEROO_WEBHOOK_SECRET non configurée");
@@ -39,7 +30,6 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
     return new Response("Invalid signature", { status: 401 });
   }
 
-  // 3. Parser le payload
   let payload: {
     event: string;
     data: {
@@ -52,6 +42,9 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
         order_number?: string;
         store_id?: string;
         payout_id?: string;
+        // ── Ajout : paiements publicitaires ──
+        type?: string;
+        booking_id?: string;
       };
     };
   };
@@ -69,19 +62,48 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
     return new Response("Invalid payload", { status: 400 });
   }
 
-  // 4. Router : paiement ou payout ?
   const orderId = data.metadata?.order_id as Id<"orders"> | undefined;
   const payoutId = data.metadata?.payout_id as Id<"payouts"> | undefined;
+  const bookingId = data.metadata?.booking_id as Id<"ad_bookings"> | undefined;
+  const isAdPayment =
+    data.metadata?.type === "ad_payment" && bookingId !== null;
 
-  if (!orderId && !payoutId) {
-    console.warn(
-      "Webhook Moneroo : ni order_id ni payout_id dans metadata",
-      data.id,
-    );
-    return new Response("No identifiable metadata", { status: 200 });
+  // Aucun identifiant reconnu → on accepte silencieusement (évite les retries Moneroo)
+  if (!orderId && !payoutId && !isAdPayment) {
+    console.warn("Webhook Moneroo : metadata non identifiable", data.id);
+    return new Response("OK", { status: 200 });
   }
 
   try {
+    // ── AD PAYMENT FLOW ──
+    if (isAdPayment) {
+      switch (data.status) {
+        case "success": {
+          await ctx.runMutation(internal.ads.mutations.confirmAdPayment, {
+            bookingId: bookingId!,
+            externalRef: data.id,
+          });
+          console.log(`Ad payment confirmed: booking ${bookingId}`);
+          break;
+        }
+        case "failed":
+        case "cancelled": {
+          await ctx.runMutation(internal.ads.mutations.failAdPayment, {
+            bookingId: bookingId!,
+            reason: `Moneroo: ${data.status} (ref: ${data.id})`,
+          });
+          console.log(`Ad payment ${data.status}: booking ${bookingId}`);
+          break;
+        }
+        default: {
+          console.log(
+            `Ad payment ${data.status} for booking ${bookingId} — no action`,
+          );
+        }
+      }
+      return new Response("OK", { status: 200 });
+    }
+
     // ── PAYOUT FLOW ──
     if (payoutId) {
       switch (data.status) {
@@ -105,11 +127,10 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
           console.log(`Payout ${data.status} for ${payoutId} — no action`);
         }
       }
-
       return new Response("OK", { status: 200 });
     }
 
-    // ── PAYMENT FLOW (existant) ──
+    // ── PAYMENT FLOW ──
     if (orderId) {
       switch (data.status) {
         case "success": {

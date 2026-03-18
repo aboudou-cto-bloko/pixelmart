@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as ads_actions from "../ads/actions.js";
 import type * as ads_constants from "../ads/constants.js";
 import type * as ads_helpers from "../ads/helpers.js";
 import type * as ads_mutations from "../ads/mutations.js";
@@ -76,6 +77,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ads/actions": typeof ads_actions;
   "ads/constants": typeof ads_constants;
   "ads/helpers": typeof ads_helpers;
   "ads/mutations": typeof ads_mutations;

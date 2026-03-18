@@ -224,3 +224,10 @@ export const previewPrice = query({
     return { totalPrice, breakdown, currency: "XOF" };
   },
 });
+
+export const getBookingById = query({
+  args: { booking_id: v.id("ad_bookings") },
+  handler: async (ctx, { booking_id }) => {
+    return await ctx.db.get(booking_id);
+  },
+});

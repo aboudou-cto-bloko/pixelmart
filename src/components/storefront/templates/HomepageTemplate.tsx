@@ -12,7 +12,7 @@ import {
   PopularBrands,
   ProductSpotlight,
   JustLanding,
-  NewsletterBar,
+  SuggestToday,
 } from "../organisms";
 
 export function HomepageTemplate() {
@@ -28,6 +28,7 @@ export function HomepageTemplate() {
       <BestSeller />
       <PopularBrands />
       {/* SuggestToday — à implémenter dans un second temps */}
+      <SuggestToday />
       <ProductSpotlight />
       <JustLanding />
     </>
