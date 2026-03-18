@@ -194,6 +194,19 @@ export const getFeaturedStores = query({
       })
       .slice(0, limit);
 
-    return sorted;
+    const storesWithLogos = await Promise.all(
+      sorted.map(async (store) => {
+        const logoUrl = store.logo_url
+          ? await resolveImageUrl(ctx, store.logo_url)
+          : null;
+
+        return {
+          ...store,
+          logo_url: logoUrl,
+        };
+      }),
+    );
+
+    return storesWithLogos;
   },
 });
