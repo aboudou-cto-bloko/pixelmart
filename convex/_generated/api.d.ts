@@ -26,6 +26,7 @@ import type * as coupons_queries from "../coupons/queries.js";
 import type * as crons from "../crons.js";
 import type * as crons_handlers from "../crons_handlers.js";
 import type * as dashboard_queries from "../dashboard/queries.js";
+import type * as delivery_constants from "../delivery/constants.js";
 import type * as emails_send from "../emails/send.js";
 import type * as files_mutations from "../files/mutations.js";
 import type * as files_queries from "../files/queries.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   crons_handlers: typeof crons_handlers;
   "dashboard/queries": typeof dashboard_queries;
+  "delivery/constants": typeof delivery_constants;
   "emails/send": typeof emails_send;
   "files/mutations": typeof files_mutations;
   "files/queries": typeof files_queries;
