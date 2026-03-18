@@ -5,7 +5,14 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, Package, ArrowRight, CreditCard } from "lucide-react";
+import {
+  CheckCircle2,
+  Package,
+  ArrowRight,
+  CreditCard,
+  Banknote,
+  Truck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +23,7 @@ function ConfirmationContent() {
   const searchParams = useSearchParams();
   const ordersParam = searchParams.get("orders") ?? "";
   const isPaid = searchParams.get("paid") === "true";
+  const isCOD = searchParams.get("cod") === "true";
 
   const orderNumbers = ordersParam
     .split(",")
@@ -66,6 +74,16 @@ function ConfirmationContent() {
             </Badge>
           )}
 
+          {isCOD && (
+            <Badge
+              variant="secondary"
+              className="gap-1.5 py-1.5 px-4 text-blue-700 bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400"
+            >
+              <Banknote className="size-3.5" />
+              Paiement à la livraison
+            </Badge>
+          )}
+
           <Separator />
 
           {/* Order numbers */}
@@ -101,6 +119,15 @@ function ConfirmationContent() {
                   <li>Vous recevrez un numéro de suivi par email</li>
                   <li>Suivez votre livraison depuis votre espace client</li>
                 </>
+              ) : isCOD ? (
+                <>
+                  <li>Le vendeur va préparer votre commande</li>
+                  <li>Un livreur vous contactera pour la livraison</li>
+                  <li className="flex items-center gap-1">
+                    <Banknote className="size-3.5 inline" />
+                    Préparez le montant exact pour le livreur
+                  </li>
+                </>
               ) : (
                 <>
                   <li>Finalisez le paiement via la méthode choisie</li>
@@ -110,6 +137,24 @@ function ConfirmationContent() {
               )}
             </ol>
           </div>
+
+          {/* COD reminder */}
+          {isCOD && (
+            <div className="text-left bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Truck className="size-5 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    Paiement à la livraison
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Le livreur collectera le paiement lors de la remise de votre
+                    colis. Assurez-vous d'avoir le montant exact.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col gap-3 pt-2">

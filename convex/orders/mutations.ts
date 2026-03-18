@@ -24,6 +24,8 @@ import {
 
 // ─── Create Order ────────────────────────────────────────────
 
+// filepath: convex/orders/mutations.ts — MODIFIER la mutation createOrder
+
 export const createOrder = mutation({
   args: {
     storeId: v.id("stores"),
@@ -59,6 +61,13 @@ export const createOrder = mutation({
     couponCode: v.optional(v.string()),
     notes: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
+    // ── NOUVEAUX CHAMPS DELIVERY ──
+    deliveryZoneId: v.optional(v.id("delivery_zones")),
+    deliveryType: v.optional(
+      v.union(v.literal("standard"), v.literal("urgent"), v.literal("fragile")),
+    ),
+    paymentMode: v.optional(v.union(v.literal("online"), v.literal("cod"))),
+    estimatedWeightKg: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
@@ -104,8 +113,24 @@ export const createOrder = mutation({
       );
     }
 
-    // 6. Frais de livraison (placeholder — calculé dynamiquement en Phase 1)
-    const shippingAmount = 0;
+    // 6. Calculer les frais de livraison
+    let shippingAmount = 0;
+    const deliveryZoneId = args.deliveryZoneId;
+    const deliveryType = args.deliveryType ?? "standard";
+    const paymentMode = args.paymentMode ?? "online";
+
+    if (args.deliveryZoneId) {
+      const zone = await ctx.db.get(args.deliveryZoneId);
+      if (zone && zone.is_active) {
+        // Import dynamique pour éviter les problèmes de bundling
+        const { calculateDeliveryFee } = await import("../delivery/constants");
+        shippingAmount = calculateDeliveryFee(
+          zone.default_distance_km,
+          deliveryType,
+          args.estimatedWeightKg ?? 0,
+        );
+      }
+    }
 
     // 7. Total — tout en XOF centimes
     const totalAmount = Math.max(0, subtotal - discountAmount + shippingAmount);
@@ -120,7 +145,13 @@ export const createOrder = mutation({
     // 10. Devise — toujours XOF pour les opérations backend
     const currency = DEFAULT_CURRENCY;
 
-    // 11. Créer la commande
+    // 11. Déterminer le statut initial selon le mode de paiement
+    // COD = "paid" directement (le paiement sera collecté à la livraison)
+    // Online = "pending" (en attente de confirmation Moneroo)
+    const initialStatus = paymentMode === "cod" ? "paid" : "pending";
+    const initialPaymentStatus = paymentMode === "cod" ? "pending" : "pending";
+
+    // 12. Créer la commande
     const orderId = await ctx.db.insert("orders", {
       order_number: orderNumber,
       customer_id: user._id,
@@ -131,30 +162,50 @@ export const createOrder = mutation({
       discount_amount: discountAmount,
       total_amount: totalAmount,
       currency,
-      status: "pending",
-      payment_status: "pending",
+      status: initialStatus,
+      payment_status: initialPaymentStatus,
       payment_method: args.paymentMethod,
       shipping_address: args.shippingAddress,
       billing_address: args.billingAddress,
       notes: args.notes,
       coupon_code: args.couponCode,
       commission_amount: commissionAmount,
+      // ── NOUVEAUX CHAMPS ──
+      delivery_zone_id: deliveryZoneId,
+      delivery_type: deliveryType,
+      payment_mode: paymentMode,
+      delivery_fee: shippingAmount,
+      estimated_weight_kg: args.estimatedWeightKg,
       updated_at: Date.now(),
     });
 
-    // 12. Décrémenter le stock
+    // 13. Décrémenter le stock
     await decrementInventory(ctx, validatedItems);
 
-    // 13. Incrémenter used_count du coupon
+    // 14. Incrémenter used_count du coupon
     if (args.couponCode) {
       await incrementCouponUsage(ctx, args.couponCode, args.storeId);
     }
+
+    // 15. Log event
+    await logOrderEvent(ctx, {
+      orderId,
+      storeId: store._id,
+      type: "created",
+      description:
+        paymentMode === "cod"
+          ? "Commande créée (paiement à la livraison)"
+          : "Commande créée",
+      actorType: "customer",
+      actorId: user._id,
+    });
 
     return {
       orderId,
       orderNumber,
       totalAmount,
       currency,
+      paymentMode,
     };
   },
 });
