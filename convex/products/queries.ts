@@ -70,6 +70,9 @@ export const getBySlug = query({
 
     // Fetch store info (minimal, for display)
     const store = await ctx.db.get(product.store_id);
+    const storeLogoUrl = store?.logo_url
+      ? await resolveImageUrl(ctx, store.logo_url)
+      : null;
 
     // Fetch category
     const category = await ctx.db.get(product.category_id);
@@ -83,7 +86,7 @@ export const getBySlug = query({
             _id: store._id,
             name: store.name,
             slug: store.slug,
-            logo_url: store.logo_url,
+            logo_url: storeLogoUrl,
             is_verified: store.is_verified,
             avg_rating: store.avg_rating,
             country: store.country,

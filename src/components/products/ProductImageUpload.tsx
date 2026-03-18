@@ -134,7 +134,9 @@ export function ProductImageUpload({
             <Image
               src={url}
               alt={`Produit ${index + 1}`}
-              className="h-full w-full object-cover"
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
             />
 
             {/* Overlay actions */}
