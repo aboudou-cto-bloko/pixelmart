@@ -262,14 +262,6 @@ function ProductFormInner({
                   </p>
                 </div>
               </div>
-
-              <div className="flex items-center gap-3 border-t pt-4">
-                <Switch
-                  checked={form.isDigital}
-                  onCheckedChange={(val) => updateField("isDigital", val)}
-                />
-                <Label>Produit digital (ebook, template...)</Label>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
