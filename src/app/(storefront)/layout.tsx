@@ -1,5 +1,5 @@
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
+import { HeaderNav } from "@/components/layout";
+import { FooterFull } from "@/components/storefront/organisms";
 
 export default function StorefrontLayout({
   children,
@@ -8,12 +8,12 @@ export default function StorefrontLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
+      <HeaderNav />
       <main className="flex-1">
         {/* Conteneur centré */}
         <div className="container mx-auto px-4 py-6">{children}</div>
       </main>
-      <Footer />
+      <FooterFull />
     </div>
   );
 }

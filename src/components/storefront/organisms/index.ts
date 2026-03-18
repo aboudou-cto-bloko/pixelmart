@@ -12,3 +12,5 @@ export { PopularBrands } from "./PopularBrands";
 export { ProductSpotlight } from "./ProductSpotlight";
 export { JustLanding } from "./JustLanding";
 export { NewsletterBar } from "./NewsletterBar";
+export { SuggestToday } from "./SuggestToday";
+export { FooterFull } from "./FooterFull";
