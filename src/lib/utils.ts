@@ -16,10 +16,10 @@ export function formatPrice(
   currency: string = "XOF",
   locale: string = "fr-FR",
 ): string {
-  const amount = centimes / 100;
-
-  // XOF/XAF have 0 decimal places
   const noDecimalCurrencies = ["XOF", "XAF", "GNF", "CDF"];
+  const amount = noDecimalCurrencies.includes(currency)
+    ? centimes
+    : centimes / 100;
   const minimumFractionDigits = noDecimalCurrencies.includes(currency) ? 0 : 2;
 
   return new Intl.NumberFormat(locale, {

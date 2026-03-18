@@ -8,8 +8,8 @@ export function formatPrice(
   centimes: number,
   currency: string = "XOF",
 ): string {
-  const amount = centimes / 100;
   const noDecimal = ["XOF", "XAF", "GNF", "CDF"];
+  const amount = noDecimal.includes(currency) ? centimes : centimes / 100;
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency,
