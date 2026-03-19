@@ -1074,3 +1074,872 @@ Handles three payment types via `metadata.type`:
 ---
 
 *Last updated: March 2026 — Phase 0 + Phase 1 + Storefront Refactor complete.*
+
+# PIXEL-MART — Technical Documentation (Part 2)
+
+> Suite du document principal — Système de Livraison + TODO
+
+---
+
+## Table of Contents (Part 2)
+
+25. [Delivery System](#delivery-system)
+26. [Feature Flags](#feature-flags)
+27. [Geocoding (OpenStreetMap)](#geocoding-openstreetmap)
+28. [Delivery Pricing Rules](#delivery-pricing-rules)
+29. [Delivery Batch Workflow](#delivery-batch-workflow)
+30. [Cash on Delivery (COD) Flow](#cash-on-delivery-cod-flow)
+31. [New Components — Delivery](#new-components--delivery)
+32. [New Hooks](#new-hooks)
+33. [Updated Schema Fields](#updated-schema-fields)
+34. [PDF Generation](#pdf-generation)
+35. [TODO — Pending Implementation](#todo--pending-implementation)
+36. [Complete File Index](#complete-file-index)
+
+---
+
+## Delivery System
+
+### Overview
+
+Pixel-Mart uses **OpenStreetMap Nominatim** for address geocoding (no static zones). Distance is calculated client-side using the **Haversine formula**, and delivery fees are computed based on distance tiers, delivery type, and weight.
+
+**Key Architecture Decisions:**
+- **NO static delivery zones** — replaced by GPS-based distance calculation
+- **Nominatim API** restricted to Benin (`countrycode=bj`), rate-limited 1 req/sec
+- **Distance calculation happens client-side** — never call Nominatim in Convex mutations
+- **Default collection point**: Centre de Cotonou (`lat: 6.3654, lon: 2.4183`)
+- All fees in **centimes** (1 XOF = 100 centimes)
+
+### Architecture Diagram
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                       CHECKOUT FLOW                               │
+│                                                                   │
+│  AddressAutocomplete ──► Nominatim API ──► GeocodingResult       │
+│        (debounced 400ms)                    {lat, lon, city}     │
+│                               │                                   │
+│                               ▼                                   │
+│  DeliveryDistanceCalculator ──► Haversine ──► distanceKm         │
+│        (vs collection point)                                      │
+│                               │                                   │
+│                               ▼                                   │
+│  calculateDeliveryFee() ──► fee (centimes)                       │
+│        (type + distance + weight + night)                        │
+│                               │                                   │
+│                               ▼                                   │
+│  DeliverySection ──► DeliveryConfig ──► createOrder()            │
+│        {lat, lon, distanceKm, fee, type, paymentMode}            │
+└──────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────┐
+│                    VENDOR DELIVERY WORKFLOW                       │
+│                                                                   │
+│  Order "processing" ──► markReadyForDelivery() ──► "ready"       │
+│                               │                                   │
+│                               ▼                                   │
+│  Select orders ──► createBatch() ──► LOT-YYYY-XXXX               │
+│                               │                                   │
+│                               ▼                                   │
+│  Download PDF ──► transmitBatch() ──► status: "transmitted"      │
+│                               │                                   │
+│                               ▼                                   │
+│  Admin assigns ──► Delivery ──► Client confirmDelivery()         │
+│                               │                                   │
+│                               ▼                                   │
+│  48h later ──► Cron releases pending_balance ──► store.balance   │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Feature Flags
+
+```typescript
+// filepath: src/constants/features.ts
+
+export const FEATURES = {
+  /**
+   * Paiement à la livraison (Cash on Delivery)
+   * Désactivé en attendant l'implémentation du flux financier COD.
+   */
+  COD_ENABLED: false,
+
+  /**
+   * Système de livraison par lots
+   * Activé — gestion des lots de livraison pour les vendeurs.
+   */
+  DELIVERY_BATCHES_ENABLED: true,
+
+  /**
+   * Calcul de distance OpenStreetMap
+   * Activé — remplace les zones statiques par le calcul GPS.
+   */
+  OSM_DELIVERY_ENABLED: true,
+} as const;
+
+export type FeatureFlag = keyof typeof FEATURES;
+```
+
+### Usage Pattern
+
+```tsx
+import { FEATURES } from "@/constants/features";
+
+// Conditional rendering
+{FEATURES.COD_ENABLED && (
+  <PaymentModeSelector ... />
+)}
+
+// Force default value when disabled
+useEffect(() => {
+  if (!FEATURES.COD_ENABLED && value.paymentMode === "cod") {
+    onChange({ ...value, paymentMode: "online" });
+  }
+}, [value, onChange]);
+```
+
+---
+
+## Geocoding (OpenStreetMap)
+
+### Library: `src/lib/geocoding.ts`
+
+```typescript
+// ─── Types ───────────────────────────────────────────────────
+
+export interface GeocodingResult {
+  placeId: string;
+  displayName: string;
+  lat: number;
+  lon: number;
+  city?: string;
+  country?: string;
+}
+
+// ─── Constants ───────────────────────────────────────────────
+
+export const DEFAULT_COLLECTION_POINT = {
+  lat: 6.3654,  // Centre de Cotonou
+  lon: 2.4183,
+};
+
+const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
+
+// ─── Functions ───────────────────────────────────────────────
+
+/** Search addresses via Nominatim (rate limit: 1 req/sec) */
+export async function searchAddress(
+  query: string,
+  countryCode: string = "bj",
+  signal?: AbortSignal
+): Promise<GeocodingResult[]>
+
+/** Reverse geocode coordinates to address */
+export async function reverseGeocode(
+  lat: number,
+  lon: number
+): Promise<GeocodingResult | null>
+
+/** Calculate distance between two points (Haversine formula) */
+export function calculateDistance(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number  // Returns km
+
+/** Calculate distance from collection point */
+export function calculateDeliveryDistance(
+  deliveryLat: number,
+  deliveryLon: number
+): number  // Returns km
+```
+
+### Rate Limiting Rules
+
+| Constraint | Value | Implementation |
+|------------|-------|----------------|
+| Max requests | 1/second | Debounce 400ms in `useAddressAutocomplete` |
+| User-Agent | Required | `Pixel-Mart/1.0 (contact@pixelmart.bj)` |
+| Country restriction | Benin only | `countrycode=bj` parameter |
+| Abort on new search | Yes | `AbortController` in hook |
+
+---
+
+## Delivery Pricing Rules
+
+### Tariff Grid (All amounts in XOF, stored as centimes)
+
+```typescript
+// filepath: convex/delivery/constants.ts
+
+// ─── Tarifs en centimes ───────────────────────────────────────
+
+export const DELIVERY_PRICING = {
+  // Standard delivery
+  STANDARD: {
+    BASE_FEE_1_5KM: 60000,        // 600 FCFA fixed for 1-5 km
+    RATE_PER_KM_6PLUS: 17000,     // 170 FCFA/km for 6+ km
+  },
+
+  // Urgent / Fragile delivery
+  URGENT_FRAGILE: {
+    BASE_FEE_1_5KM: 70000,        // 700 FCFA fixed for 1-5 km
+    RATE_PER_KM_6_10: 20000,      // 200 FCFA/km for 6-10 km
+    RATE_PER_KM_11PLUS: 15000,    // 150 FCFA/km for 11+ km
+  },
+
+  // Night delivery (21h - 06h)
+  NIGHT: {
+    RATE_PER_KM: 25000,           // 250 FCFA/km all tiers
+    START_HOUR: 21,
+    END_HOUR: 6,
+  },
+
+  // Weight surcharge (over 20kg)
+  WEIGHT: {
+    FREE_KG: 20,
+    RATE_PER_KG: 5000,            // 50 FCFA per additional kg
+  },
+} as const;
+```
+
+### Calculation Formula
+
+```typescript
+export function calculateDeliveryFee(
+  distanceKm: number,
+  deliveryType: "standard" | "urgent" | "fragile",
+  weightKg: number = 0,
+  isNight: boolean = false
+): number {
+  let baseFee = 0;
+
+  // 1. Night rate override
+  if (isNight) {
+    baseFee = Math.ceil(distanceKm) * DELIVERY_PRICING.NIGHT.RATE_PER_KM;
+  }
+  // 2. Standard pricing
+  else if (deliveryType === "standard") {
+    if (distanceKm <= 5) {
+      baseFee = DELIVERY_PRICING.STANDARD.BASE_FEE_1_5KM;
+    } else {
+      baseFee = Math.ceil(distanceKm) * DELIVERY_PRICING.STANDARD.RATE_PER_KM_6PLUS;
+    }
+  }
+  // 3. Urgent/Fragile pricing
+  else {
+    if (distanceKm <= 5) {
+      baseFee = DELIVERY_PRICING.URGENT_FRAGILE.BASE_FEE_1_5KM;
+    } else if (distanceKm <= 10) {
+      baseFee = Math.ceil(distanceKm) * DELIVERY_PRICING.URGENT_FRAGILE.RATE_PER_KM_6_10;
+    } else {
+      baseFee = Math.ceil(distanceKm) * DELIVERY_PRICING.URGENT_FRAGILE.RATE_PER_KM_11PLUS;
+    }
+  }
+
+  // 4. Weight surcharge
+  const extraWeight = Math.max(0, weightKg - DELIVERY_PRICING.WEIGHT.FREE_KG);
+  const weightSurcharge = Math.ceil(extraWeight) * DELIVERY_PRICING.WEIGHT.RATE_PER_KG;
+
+  return baseFee + weightSurcharge;
+}
+```
+
+### Price Examples
+
+| Distance | Type | Weight | Night | Fee (XOF) |
+|----------|------|--------|-------|-----------|
+| 3 km | Standard | 5 kg | No | 600 |
+| 3 km | Urgent | 5 kg | No | 700 |
+| 8 km | Standard | 10 kg | No | 1,360 (8×170) |
+| 8 km | Urgent | 10 kg | No | 1,600 (8×200) |
+| 15 km | Standard | 10 kg | No | 2,550 (15×170) |
+| 15 km | Urgent | 10 kg | No | 2,250 (15×150) |
+| 10 km | Standard | 25 kg | No | 1,950 (10×170 + 5×50) |
+| 10 km | Standard | 10 kg | Yes | 2,500 (10×250) |
+
+---
+
+## Delivery Batch Workflow
+
+### Batch Number Format
+
+`LOT-YYYY-XXXX` where:
+- `YYYY` = current year
+- `XXXX` = auto-incremented counter (reset yearly)
+
+Example: `LOT-2026-0001`, `LOT-2026-0042`
+
+### Status Flow
+
+```
+pending ──► transmitted ──► assigned ──► in_progress ──► completed
+   │                                                        │
+   └────────────────────► cancelled ◄───────────────────────┘
+```
+
+| Status | Meaning | Actions |
+|--------|---------|---------|
+| `pending` | Lot created, not yet transmitted | Transmit, Cancel, Add/Remove orders |
+| `transmitted` | PDF sent to delivery partner | Assign |
+| `assigned` | Assigned to delivery person | Start delivery |
+| `in_progress` | Deliveries in progress | Mark individual orders delivered |
+| `completed` | All orders delivered | Archive |
+| `cancelled` | Lot cancelled | — |
+
+### Backend Functions
+
+```typescript
+// convex/delivery/mutations.ts
+
+/** Mark order ready for delivery */
+export const markReadyForDelivery = mutation({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, { orderId }) => {
+    // Updates order.status to "ready_for_delivery"
+    // Sets order.ready_for_delivery = true
+    // Sets order.ready_at = Date.now()
+  },
+});
+
+/** Create a delivery batch from selected orders */
+export const createBatch = mutation({
+  args: {
+    orderIds: v.array(v.id("orders")),
+    groupingType: v.optional(v.union(v.literal("zone"), v.literal("manual"))),
+  },
+  handler: async (ctx, { orderIds, groupingType }) => {
+    // Validates all orders belong to vendor
+    // Validates all orders are "ready_for_delivery"
+    // Generates batch_number (LOT-YYYY-XXXX)
+    // Creates delivery_batch record
+    // Updates all orders with batch_id
+    // Returns batchId
+  },
+});
+
+/** Transmit batch to delivery partner */
+export const transmitBatch = mutation({
+  args: { batchId: v.id("delivery_batches") },
+  handler: async (ctx, { batchId }) => {
+    // Updates batch status to "transmitted"
+    // Sets transmitted_at = Date.now()
+  },
+});
+
+/** Cancel a batch */
+export const cancelBatch = mutation({
+  args: { batchId: v.id("delivery_batches") },
+  handler: async (ctx, { batchId }) => {
+    // Updates batch status to "cancelled"
+    // Removes batch_id from all orders
+    // Reverts orders to "processing" status
+  },
+});
+```
+
+---
+
+## Cash on Delivery (COD) Flow
+
+> **⚠️ STATUS: DESIGNED BUT NOT IMPLEMENTED**
+> 
+> COD is disabled via `FEATURES.COD_ENABLED = false` pending financial flow implementation.
+
+### Designed Flow
+
+```
+1. CHECKOUT (COD selected)
+   └─► createOrder()
+       ├─► payment_status: "pending"
+       ├─► status: "paid" (immediately, no Moneroo)
+       └─► payment_method: "cod"
+
+2. DELIVERY
+   └─► Delivery person collects cash from customer
+       └─► total_amount + delivery_fee
+
+3. CLIENT CONFIRMATION
+   └─► confirmDelivery()
+       ├─► status: "delivered"
+       ├─► payment_status: "paid"
+       ├─► delivered_at: Date.now()
+       └─► createSaleTransaction()
+           └─► Credits vendor pending_balance (net amount)
+
+4. BALANCE RELEASE (Cron, every hour)
+   └─► processBalanceRelease()
+       └─► After 48h: pending_balance → store.balance
+```
+
+### Pending Files to Create
+
+| File | Purpose |
+|------|---------|
+| `convex/finance/mutations.ts` | `createSaleTransaction`, `releasePendingBalance` |
+| `convex/finance/crons.ts` | `processBalanceRelease` handler |
+| `convex/crons.ts` | Add hourly cron for balance release |
+
+### Modified `confirmDelivery` Logic
+
+```typescript
+// convex/orders/mutations.ts — confirmDelivery (modified)
+
+export const confirmDelivery = mutation({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, { orderId }) => {
+    const order = await ctx.db.get(orderId);
+    
+    // Update order status
+    await ctx.db.patch(orderId, {
+      status: "delivered",
+      delivered_at: Date.now(),
+    });
+
+    // If COD, mark payment as paid and create transaction
+    if (order.payment_mode === "cod") {
+      await ctx.db.patch(orderId, {
+        payment_status: "paid",
+      });
+      
+      // Create sale transaction (credits pending_balance)
+      await ctx.runMutation(internal.finance.mutations.createSaleTransaction, {
+        orderId,
+        storeId: order.store_id,
+        amount: order.total_amount - order.commission_amount,
+      });
+    }
+  },
+});
+```
+
+---
+
+## New Components — Delivery
+
+### Atomic Design Structure
+
+```
+src/components/
+├── checkout/
+│   ├── AddressAutocomplete.tsx      # OSM address search
+│   ├── DeliveryDistanceCalculator.tsx # Distance + fee display
+│   ├── DeliveryTypeSelector.tsx      # standard/urgent/fragile
+│   ├── PaymentModeSelector.tsx       # online/cod (disabled via flag)
+│   ├── DeliverySection.tsx           # Orchestrates all above
+│   └── index.ts
+│
+├── delivery/
+│   ├── atoms/
+│   │   ├── BatchStatusBadge.tsx      # Badge with status color
+│   │   ├── DeliveryTypeBadge.tsx     # standard/urgent/fragile badge
+│   │   ├── PaymentModeBadge.tsx      # online/cod badge
+│   │   └── index.ts
+│   │
+│   ├── molecules/
+│   │   ├── ReadyOrderCard.tsx        # Order card in ready list
+│   │   ├── ZoneGroupHeader.tsx       # Group header by zone/city
+│   │   └── index.ts
+│   │
+│   ├── organisms/
+│   │   ├── ReadyOrdersList.tsx       # Selectable list of ready orders
+│   │   ├── BatchList.tsx             # List of batches
+│   │   ├── BatchPDFDownloadButton.tsx # PDF download button
+│   │   └── index.ts
+│   │
+│   └── pdf/
+│       ├── DeliveryBatchPDF.tsx      # react-pdf template
+│       └── index.ts
+```
+
+### Key Component Interfaces
+
+```typescript
+// DeliverySection — Main orchestrator
+interface DeliveryConfig {
+  deliveryLat?: number;
+  deliveryLon?: number;
+  deliveryAddress?: string;
+  deliveryCity?: string;
+  deliveryDistanceKm?: number;
+  deliveryFee?: number;  // centimes
+  deliveryType: "standard" | "urgent" | "fragile";
+  paymentMode: "online" | "cod";
+  estimatedWeightKg?: number;
+}
+
+interface DeliverySectionProps {
+  estimatedWeightKg?: number;
+  value: DeliveryConfig;
+  onChange: (config: DeliveryConfig) => void;
+  addressError?: string;
+}
+
+// AddressAutocomplete — OSM search
+interface AddressAutocompleteProps {
+  label: string;
+  placeholder?: string;
+  countryCode?: string;  // default: "bj"
+  value?: string;
+  onSelect: (result: GeocodingResult) => void;
+  error?: string;
+  required?: boolean;
+}
+
+// DeliveryDistanceCalculator — Fee display
+interface DeliveryDistanceCalculatorProps {
+  selectedAddress: GeocodingResult | null;
+  deliveryType: DeliveryType;
+  weightKg?: number;
+  onDistanceCalculated: (distanceKm: number, fee: number) => void;
+}
+```
+
+---
+
+## New Hooks
+
+### `useAddressAutocomplete`
+
+```typescript
+// filepath: src/hooks/useAddressAutocomplete.ts
+
+interface UseAddressAutocompleteOptions {
+  countryCode?: string;
+  debounceMs?: number;
+}
+
+interface UseAddressAutocompleteReturn {
+  query: string;
+  setQuery: (value: string) => void;
+  results: GeocodingResult[];
+  isLoading: boolean;
+  error: string | null;
+  selectResult: (result: GeocodingResult) => void;
+  selectedResult: GeocodingResult | null;
+  clearSelection: () => void;
+}
+
+export function useAddressAutocomplete(
+  options?: UseAddressAutocompleteOptions
+): UseAddressAutocompleteReturn
+```
+
+### `useDeliveryBatchPDF`
+
+```typescript
+// filepath: src/hooks/useDeliveryBatchPDF.tsx  (Note: .tsx for JSX)
+
+interface UseDeliveryBatchPDFReturn {
+  isGenerating: boolean;
+  error: string | null;
+  generatePDF: () => Promise<void>;
+}
+
+export function useDeliveryBatchPDF(
+  batchId: Id<"delivery_batches">
+): UseDeliveryBatchPDFReturn
+```
+
+---
+
+## Updated Schema Fields
+
+### `orders` Table — New Fields
+
+```typescript
+// Add after commission_amount in convex/schema.ts
+
+// ─── Delivery Fields (OpenStreetMap) ─────────────────────────
+delivery_lat: v.optional(v.number()),           // GPS latitude
+delivery_lon: v.optional(v.number()),           // GPS longitude
+delivery_distance_km: v.optional(v.number()),   // Calculated distance
+delivery_type: v.optional(v.union(
+  v.literal("standard"),
+  v.literal("urgent"),
+  v.literal("fragile")
+)),
+payment_mode: v.optional(v.union(
+  v.literal("online"),
+  v.literal("cod")
+)),
+delivery_fee: v.optional(v.number()),           // Fee in centimes
+estimated_weight_kg: v.optional(v.number()),
+
+// ─── Batch Fields ────────────────────────────────────────────
+batch_id: v.optional(v.id("delivery_batches")),
+ready_for_delivery: v.optional(v.boolean()),
+ready_at: v.optional(v.number()),               // Unix ms
+
+// ─── COD Balance Release ─────────────────────────────────────
+balance_released: v.optional(v.boolean()),      // For 48h cron
+
+// ─── New Indexes ─────────────────────────────────────────────
+// .index("by_batch", ["batch_id"])
+// .index("by_ready_for_delivery", ["store_id", "ready_for_delivery"])
+```
+
+### `delivery_batches` Table — New Table
+
+```typescript
+// convex/schema.ts — Add new table
+
+delivery_batches: defineTable({
+  batch_number: v.string(),                     // LOT-YYYY-XXXX
+  store_id: v.id("stores"),
+  created_by: v.id("users"),
+  order_ids: v.array(v.id("orders")),
+  order_count: v.number(),
+  grouping_type: v.union(
+    v.literal("zone"),
+    v.literal("manual")
+  ),
+  status: v.union(
+    v.literal("pending"),
+    v.literal("transmitted"),
+    v.literal("assigned"),
+    v.literal("in_progress"),
+    v.literal("completed"),
+    v.literal("cancelled")
+  ),
+  total_delivery_fee: v.number(),               // centimes
+  currency: v.string(),                         // "XOF"
+  pdf_url: v.optional(v.string()),
+  
+  // Timestamps
+  created_at: v.number(),
+  transmitted_at: v.optional(v.number()),
+  assigned_at: v.optional(v.number()),
+  started_at: v.optional(v.number()),
+  completed_at: v.optional(v.number()),
+  cancelled_at: v.optional(v.number()),
+  updated_at: v.number(),
+})
+  .index("by_store", ["store_id"])
+  .index("by_status", ["status"])
+  .index("by_store_status", ["store_id", "status"])
+  .index("by_batch_number", ["batch_number"]),
+```
+
+### Order Status Updates
+
+```typescript
+// src/constants/orderStatuses.ts — Add new statuses
+
+export const ORDER_STATUSES = {
+  // ... existing statuses ...
+  ready_for_delivery: {
+    label: "Prêt pour livraison",
+    color: "cyan",
+    icon: "Package",
+    description: "Commande prête à être livrée",
+  },
+  delivery_failed: {
+    label: "Échec livraison",
+    color: "orange",
+    icon: "AlertTriangle",
+    description: "La livraison a échoué",
+  },
+} as const;
+```
+
+---
+
+## PDF Generation
+
+### DeliveryBatchPDF Template
+
+```typescript
+// filepath: src/components/delivery/pdf/DeliveryBatchPDF.tsx
+
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+} from "@react-pdf/renderer";
+
+interface DeliveryBatchPDFProps {
+  batch: {
+    batch_number: string;
+    created_at: number;
+    order_count: number;
+    total_delivery_fee: number;
+    store_name: string;
+    store_phone?: string;
+    store_address?: string;
+  };
+  orders: Array<{
+    order_number: string;
+    customer_name: string;
+    customer_phone?: string;
+    delivery_address: string;
+    delivery_city?: string;
+    delivery_type: string;
+    payment_mode: string;
+    total_amount: number;
+    delivery_fee: number;
+  }>;
+  totalToCollect: number;  // For COD orders
+}
+
+// A4 format, professional styling
+// Sections: Header, Store Info, Orders Table, Totals, Signatures
+```
+
+### PDF Contents
+
+1. **Header**: Logo, batch number, date
+2. **Store Info**: Name, phone, address
+3. **Orders Table**: Order#, Customer, Address, Type, Payment, Amount
+4. **Summary**: Total orders, total delivery fees, total to collect (COD)
+5. **Signatures**: Delivery partner, vendor, spaces for signatures
+
+---
+
+## TODO — Pending Implementation
+
+### 🔴 Critical (Block COD Activation)
+
+| Priority | Task | Files | Notes |
+|----------|------|-------|-------|
+| P0 | **COD Financial Flow** | `convex/finance/mutations.ts` | `createSaleTransaction()`, `releasePendingBalance()` |
+| P0 | **Balance Release Cron** | `convex/crons.ts`, `convex/crons_handlers.ts` | Process orders 48h after delivery |
+| P0 | **Modify confirmDelivery** | `convex/orders/mutations.ts` | Call `createSaleTransaction` for COD |
+| P0 | **Add balance_released field** | `convex/schema.ts` | Track which orders have been processed |
+
+### 🟡 Important (Before Production)
+
+| Priority | Task | Files | Notes |
+|----------|------|-------|-------|
+| P1 | **Deploy Schema** | — | `npx convex deploy` |
+| P1 | **Checkout page wiring** | `src/app/(storefront)/checkout/page.tsx` | Verify `DeliverySection` integration |
+| P1 | **Admin delivery dashboard** | `src/app/(admin)/admin/delivery/page.tsx` | View all batches, assign to delivery |
+| P1 | **Handle delivery_failed** | `convex/delivery/mutations.ts` | Admin mutation to mark delivery failed |
+| P1 | **Notifications** | `convex/notifications/send.ts` | Email/in-app when lot transmitted, assigned |
+
+### 🟢 Nice to Have (Post-Launch)
+
+| Priority | Task | Files | Notes |
+|----------|------|-------|-------|
+| P2 | **Delivery tracking page** | `src/app/(storefront)/track/[id]/page.tsx` | Public tracking with map |
+| P2 | **SMS notifications** | — | Twilio/Africa's Talking integration |
+| P2 | **Delivery person app** | — | Mobile app for delivery partners |
+| P2 | **Route optimization** | — | OSRM or GraphHopper integration |
+| P2 | **Multiple collection points** | `convex/schema.ts` | Per-store pickup locations |
+
+### ⬜ Technical Debt
+
+| Task | Files | Notes |
+|------|-------|-------|
+| Type sync pattern | All frontend components | Use `Doc<"table">["field"]` everywhere |
+| Remove legacy AddressForm | `src/components/checkout/AddressForm.tsx` | Replaced by `AddressAutocomplete` |
+| Test coverage | `e2e/delivery/` | Playwright tests for delivery flow |
+
+---
+
+## Complete File Index
+
+### New Files Created (Delivery System)
+
+```
+convex/
+├── delivery/
+│   ├── constants.ts           # DELIVERY_PRICING, calculateDeliveryFee
+│   ├── helpers.ts             # getNextBatchNumber, validateOrdersOwnership
+│   ├── queries.ts             # listReadyForDelivery, listBatches, getBatchDetail
+│   └── mutations.ts           # markReadyForDelivery, createBatch, transmitBatch
+
+src/
+├── constants/
+│   ├── features.ts            # Feature flags (COD_ENABLED, etc.)
+│   └── deliveryTypes.ts       # DELIVERY_TYPES, PAYMENT_MODES, BATCH_STATUSES
+│
+├── lib/
+│   └── geocoding.ts           # Nominatim API, Haversine, DEFAULT_COLLECTION_POINT
+│
+├── hooks/
+│   ├── useAddressAutocomplete.ts
+│   └── useDeliveryBatchPDF.tsx
+│
+├── components/
+│   ├── checkout/
+│   │   ├── AddressAutocomplete.tsx
+│   │   ├── DeliveryDistanceCalculator.tsx
+│   │   ├── DeliveryTypeSelector.tsx
+│   │   ├── PaymentModeSelector.tsx
+│   │   ├── DeliverySection.tsx
+│   │   └── index.ts
+│   │
+│   └── delivery/
+│       ├── atoms/
+│       │   ├── BatchStatusBadge.tsx
+│       │   ├── DeliveryTypeBadge.tsx
+│       │   ├── PaymentModeBadge.tsx
+│       │   └── index.ts
+│       ├── molecules/
+│       │   ├── ReadyOrderCard.tsx
+│       │   ├── ZoneGroupHeader.tsx
+│       │   └── index.ts
+│       ├── organisms/
+│       │   ├── ReadyOrdersList.tsx
+│       │   ├── BatchList.tsx
+│       │   ├── BatchPDFDownloadButton.tsx
+│       │   └── index.ts
+│       └── pdf/
+│           ├── DeliveryBatchPDF.tsx
+│           └── index.ts
+│
+└── app/
+    ├── (storefront)/
+    │   ├── checkout/
+    │   │   └── page.tsx                    # Updated with DeliverySection
+    │   └── orders/
+    │       └── [id]/
+    │           └── page.tsx                # Updated with delivery confirmation
+    │
+    └── (vendor)/
+        └── vendor/
+            └── delivery/
+                ├── page.tsx                # Delivery dashboard
+                ├── [id]/
+                │   ├── page.tsx            # Batch detail
+                │   └── loading.tsx
+                └── loading.tsx
+```
+
+### Modified Files
+
+| File | Changes |
+|------|---------|
+| `convex/schema.ts` | Add `delivery_batches` table, update `orders` fields |
+| `convex/orders/mutations.ts` | `createOrder` accepts delivery fields |
+| `convex/orders/helpers.ts` | `assertValidTransition` with new statuses |
+| `src/constants/orderStatuses.ts` | Add `ready_for_delivery`, `delivery_failed` |
+| `src/lib/order-helpers.ts` | Update ORDER_STATUS_MAP |
+| `src/components/orders/atoms/OrderStatusBadge.tsx` | Use `Doc<"orders">["status"]` |
+| `src/components/orders/molecules/OrderStatusActions.tsx` | Handle new statuses |
+| `src/components/orders/organisms/OrderDetailPanel.tsx` | Delivery info section |
+
+---
+
+## Architecture Reminders
+
+- **All amounts in centimes** (700 FCFA = 70000 centimes)
+- **All timestamps in Unix milliseconds** (`Date.now()`)
+- **NEVER call Nominatim inside a Convex mutation** — calculate client-side
+- **Type sync pattern**: `type OrderStatus = Doc<"orders">["status"]`
+- **`useDeliveryBatchPDF` must be `.tsx`** (contains JSX for react-pdf)
+- **Atomic Design**: atoms → molecules → organisms → templates
+- **Rule F-01**: Every balance change MUST create a transaction in the same mutation
+- **Transactions are IMMUTABLE** — never UPDATE, create a reversal instead
+- **Commission formula**: `commission_amount = total_amount × commission_rate / 10000`
+- **COD disabled via** `FEATURES.COD_ENABLED = false`
+
+---
+
+*Last updated: March 19, 2026 — Delivery System implementation complete, COD pending.*
