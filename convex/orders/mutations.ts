@@ -218,6 +218,8 @@ export const updateStatus = mutation({
       v.literal("processing"),
       v.literal("shipped"),
       v.literal("delivered"),
+      v.literal("ready_for_delivery"),
+      v.literal("delivery_failed"),
     ),
     trackingNumber: v.optional(v.string()),
     carrier: v.optional(v.string()),
