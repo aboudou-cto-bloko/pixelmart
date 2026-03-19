@@ -2,9 +2,10 @@
 
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { GeocodingResult } from "@/lib/geocoding";
 import type { DeliveryType, PaymentMode } from "@/constants/deliveryTypes";
+import { FEATURES } from "@/constants/features";
 import { AddressAutocomplete } from "./AddressAutocomplete";
 import { DeliveryTypeSelector } from "./DeliveryTypeSelector";
 import { PaymentModeSelector } from "./PaymentModeSelector";
@@ -37,8 +38,6 @@ export interface DeliveryConfig {
 interface DeliverySectionProps {
   /** Poids estimé des articles */
   estimatedWeightKg?: number;
-  /** Autoriser le paiement à la livraison */
-  codEnabled?: boolean;
   /** Configuration actuelle */
   value: DeliveryConfig;
   /** Callback de mise à jour */
@@ -51,11 +50,17 @@ interface DeliverySectionProps {
 
 export function DeliverySection({
   estimatedWeightKg = 0,
-  codEnabled = true,
   value,
   onChange,
   addressError,
 }: DeliverySectionProps) {
+  // ── Forcer paymentMode à "online" si COD désactivé ──
+  useEffect(() => {
+    if (!FEATURES.COD_ENABLED && value.paymentMode === "cod") {
+      onChange({ ...value, paymentMode: "online" });
+    }
+  }, [value, onChange]);
+
   // ── Handlers ──
 
   const handleAddressSelect = useCallback(
@@ -158,11 +163,11 @@ export function DeliverySection({
 
         <Separator />
 
-        {/* 3. Mode de paiement */}
+        {/* 3. Mode de paiement (conditionnel selon feature flag) */}
         <PaymentModeSelector
           value={value.paymentMode}
           onChange={handlePaymentModeChange}
-          codDisabled={!codEnabled}
+          codDisabled={!FEATURES.COD_ENABLED}
         />
 
         <Separator />

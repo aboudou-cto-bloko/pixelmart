@@ -2,93 +2,105 @@
 
 "use client";
 
-import { PAYMENT_MODES, type PaymentMode } from "@/constants/deliveryTypes";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CreditCard, Banknote, Lock } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { CreditCard, Banknote } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const ICONS = {
-  CreditCard,
-  Banknote,
-} as const;
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { PaymentMode } from "@/constants/deliveryTypes";
 
 interface PaymentModeSelectorProps {
   value: PaymentMode;
   onChange: (mode: PaymentMode) => void;
-  disabled?: boolean;
-  /** Si le vendeur n'accepte pas le COD */
+  /** Désactiver l'option COD */
   codDisabled?: boolean;
 }
+
+const PAYMENT_MODES: {
+  value: PaymentMode;
+  label: string;
+  description: string;
+  icon: React.ElementType;
+}[] = [
+  {
+    value: "online",
+    label: "Paiement en ligne",
+    description: "Payez maintenant par Mobile Money",
+    icon: CreditCard,
+  },
+  {
+    value: "cod",
+    label: "Paiement à la livraison",
+    description: "Payez en espèces au livreur",
+    icon: Banknote,
+  },
+];
 
 export function PaymentModeSelector({
   value,
   onChange,
-  disabled = false,
   codDisabled = false,
 }: PaymentModeSelectorProps) {
   return (
     <div className="space-y-3">
-      <Label>Mode de paiement</Label>
+      <Label className="text-sm font-medium">Mode de paiement</Label>
       <RadioGroup
         value={value}
         onValueChange={(v) => onChange(v as PaymentMode)}
-        disabled={disabled}
-        className="grid gap-3 sm:grid-cols-2"
+        className="grid gap-3"
       >
-        {(
-          Object.entries(PAYMENT_MODES) as [
-            PaymentMode,
-            (typeof PAYMENT_MODES)[PaymentMode],
-          ][]
-        ).map(([key, config]) => {
-          const Icon = ICONS[config.icon as keyof typeof ICONS];
-          const isSelected = value === key;
-          const isDisabled = disabled || (key === "cod" && codDisabled);
+        {PAYMENT_MODES.map((mode) => {
+          const Icon = mode.icon;
+          const isDisabled = mode.value === "cod" && codDisabled;
 
           return (
-            <Label
-              key={key}
-              htmlFor={`payment-mode-${key}`}
-              className={cn(
-                "flex items-center gap-3 rounded-lg border p-4 cursor-pointer transition-colors",
-                isSelected
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50",
-                isDisabled && "opacity-50 cursor-not-allowed",
-              )}
+            <label
+              key={mode.value}
+              className={`
+                flex items-center gap-4 rounded-lg border p-4 cursor-pointer
+                transition-colors
+                ${
+                  isDisabled
+                    ? "opacity-50 cursor-not-allowed bg-muted/30"
+                    : "hover:bg-accent/50"
+                }
+                ${
+                  value === mode.value && !isDisabled
+                    ? "border-primary bg-primary/5"
+                    : "border-border"
+                }
+              `}
             >
               <RadioGroupItem
-                value={key}
-                id={`payment-mode-${key}`}
+                value={mode.value}
                 disabled={isDisabled}
-                className="sr-only"
+                className="shrink-0"
               />
-              <div
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-full",
-                  isSelected
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">{config.label}</p>
+              <Icon
+                className={`size-5 shrink-0 ${
+                  isDisabled ? "text-muted-foreground" : "text-muted-foreground"
+                }`}
+              />
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`text-sm font-medium ${
+                    isDisabled ? "text-muted-foreground" : ""
+                  }`}
+                >
+                  {mode.label}
+                  {isDisabled && (
+                    <span className="ml-2 inline-flex items-center text-xs text-muted-foreground">
+                      <Lock className="size-3 mr-1" />
+                      Bientôt disponible
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  {config.description}
+                  {mode.description}
                 </p>
               </div>
-            </Label>
+            </label>
           );
         })}
       </RadioGroup>
-      {codDisabled && (
-        <p className="text-xs text-muted-foreground">
-          Le paiement à la livraison n'est pas disponible pour cette boutique.
-        </p>
-      )}
     </div>
   );
 }

@@ -454,7 +454,6 @@ export default function CheckoutPage() {
           {/* 2. Options de livraison (avec AddressAutocomplete OSM) */}
           <DeliverySection
             estimatedWeightKg={0}
-            codEnabled={true}
             value={deliveryConfig}
             onChange={handleDeliveryConfigChange}
             addressError={deliveryAddressError ?? undefined}
