@@ -12,7 +12,9 @@ type OrderStatus =
   | "shipped"
   | "delivered"
   | "cancelled"
-  | "refunded";
+  | "refunded"
+  | "ready_for_delivery"
+  | "delivery_failed";
 
 interface OrderStatusBadgeProps {
   status: OrderStatus;
@@ -39,6 +41,15 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; variant: string }> = {
   delivered: {
     label: "Livré",
     variant: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  },
+  delivery_failed: {
+    label: "Échec livraison",
+    variant:
+      "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  },
+  ready_for_delivery: {
+    label: "Prête",
+    variant: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
   },
   cancelled: {
     label: "Annulé",

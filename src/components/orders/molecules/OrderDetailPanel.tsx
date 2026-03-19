@@ -5,10 +5,11 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
+import type { Id, Doc } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { OrderStatusBadge } from "../atoms/OrderStatusBadge";
 import { TrackingLink } from "../atoms/TrackingLink";
 import { OrderTimeline } from "../molecules/OrderTimeline";
@@ -28,18 +29,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { FileText } from "lucide-react";
-
+import {
+  FileText,
+  PackageCheck,
+  Truck,
+  Banknote,
+  CreditCard,
+  MapPin,
+} from "lucide-react";
+import { formatPrice } from "@/lib/utils";
 import Image from "next/image";
 
-type OrderStatus =
-  | "pending"
-  | "paid"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "refunded";
+// ─── Types (inférés depuis le schema Convex) ─────────────────
+
+type OrderStatus = Doc<"orders">["status"];
+type PaymentMode = Doc<"orders">["payment_mode"];
+type DeliveryType = Doc<"orders">["delivery_type"];
 
 interface OrderItem {
   product_id: string;
@@ -88,11 +93,39 @@ interface OrderDetail {
     avatar_url?: string;
   } | null;
   _creationTime: number;
+  // ── Champs Delivery ──
+  delivery_type?: DeliveryType;
+  payment_mode?: PaymentMode;
+  delivery_fee?: number;
+  delivery_distance_km?: number;
+  delivery_lat?: number;
+  delivery_lon?: number;
+  ready_for_delivery?: boolean;
+  ready_at?: number;
+  batch_id?: Id<"delivery_batches">;
 }
 
 interface OrderDetailPanelProps {
   order: OrderDetail | null | undefined;
 }
+
+// ─── Helpers ─────────────────────────────────────────────────
+
+const DELIVERY_TYPE_LABELS: Record<string, string> = {
+  standard: "Standard",
+  urgent: "Urgente",
+  fragile: "Fragile",
+};
+
+const PAYMENT_MODE_LABELS: Record<
+  string,
+  { label: string; icon: typeof CreditCard }
+> = {
+  online: { label: "Paiement en ligne", icon: CreditCard },
+  cod: { label: "Paiement à la livraison", icon: Banknote },
+};
+
+// ─── Component ───────────────────────────────────────────────
 
 export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -100,6 +133,9 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
   const updateStatus = useMutation(api.orders.mutations.updateStatus);
   const addTracking = useMutation(api.orders.mutations.addTracking);
+  const markReadyForDelivery = useMutation(
+    api.delivery.mutations.markReadyForDelivery,
+  );
 
   const {
     download: downloadInvoice,
@@ -130,13 +166,29 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
     );
   }
 
+  // ── Handlers ──
+
   const handleStatusChange = async (
-    status: "processing" | "shipped" | "delivered",
+    status: "processing" | "ready_for_delivery" | "shipped" | "delivered",
   ) => {
     setIsLoading(true);
     try {
       await updateStatus({ orderId: order._id, status });
       toast.success("Statut mis à jour");
+    } catch (err) {
+      toast.error("Erreur", {
+        description: err instanceof Error ? err.message : "Erreur inconnue",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMarkReady = async () => {
+    setIsLoading(true);
+    try {
+      await markReadyForDelivery({ orderId: order._id });
+      toast.success("Commande marquée prête pour livraison");
     } catch (err) {
       toast.error("Erreur", {
         description: err instanceof Error ? err.message : "Erreur inconnue",
@@ -192,34 +244,131 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         <OrderStatusBadge status={order.status} />
       </div>
 
-      {/* Actions */}
-      <OrderStatusActions
-        status={order.status}
-        onProcess={() => handleStatusChange("processing")}
-        onShip={handleShipWithTracking}
-        onDeliver={() => handleStatusChange("delivered")}
-        isLoading={isLoading}
-      />
+      {/* ── Infos Livraison (si configurées) ── */}
+      {(order.delivery_type || order.payment_mode) && (
+        <div className="rounded-lg border p-4 space-y-3 bg-muted/30">
+          <h3 className="text-sm font-medium flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Informations de livraison
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+            {/* Type */}
+            {order.delivery_type && (
+              <div>
+                <p className="text-xs text-muted-foreground">Type</p>
+                <p className="font-medium">
+                  {DELIVERY_TYPE_LABELS[order.delivery_type] ??
+                    order.delivery_type}
+                </p>
+              </div>
+            )}
 
-      {invoiceReady && (
-        <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              <FileText className="mr-1.5 h-3.5 w-3.5" />
-              Facture PDF
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Générer une facture</DialogTitle>
-            </DialogHeader>
-            <InvoiceVendorInfoForm
-              onSubmit={handleInvoiceGenerate}
-              isLoading={isInvoiceGenerating}
-            />
-          </DialogContent>
-        </Dialog>
+            {/* Mode paiement */}
+            {order.payment_mode && (
+              <div>
+                <p className="text-xs text-muted-foreground">Paiement</p>
+                <div className="flex items-center gap-1.5">
+                  {order.payment_mode === "cod" ? (
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                    >
+                      <Banknote className="h-3 w-3 mr-1" />À la livraison
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="secondary"
+                      className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    >
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      En ligne
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Distance */}
+            {order.delivery_distance_km && (
+              <div>
+                <p className="text-xs text-muted-foreground">Distance</p>
+                <p className="font-medium flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  {order.delivery_distance_km.toFixed(1)} km
+                </p>
+              </div>
+            )}
+
+            {/* Frais */}
+            {order.delivery_fee && order.delivery_fee > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground">Frais livraison</p>
+                <p className="font-medium">
+                  {formatPrice(order.delivery_fee, order.currency)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Statut batch */}
+          {order.batch_id && (
+            <div className="pt-2 border-t">
+              <Badge variant="outline" className="text-xs">
+                <PackageCheck className="h-3 w-3 mr-1" />
+                Ajoutée à un lot de livraison
+              </Badge>
+            </div>
+          )}
+        </div>
       )}
+
+      {/* ── Actions de statut ── */}
+      <div className="flex flex-wrap gap-2">
+        {/* Actions standard */}
+        <OrderStatusActions
+          status={order.status}
+          onProcess={() => handleStatusChange("processing")}
+          onShip={handleShipWithTracking}
+          onDeliver={() => handleStatusChange("delivered")}
+          isLoading={isLoading}
+        />
+
+        {/* ── BOUTON MARQUER PRÊT (processing → ready_for_delivery) ── */}
+        {order.status === "processing" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleMarkReady}
+            disabled={isLoading}
+            className="border-cyan-500 text-cyan-700 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-950/30"
+          >
+            <PackageCheck className="h-4 w-4 mr-1.5" />
+            Marquer prêt pour livraison
+          </Button>
+        )}
+
+        {/* Bouton facture */}
+        {invoiceReady && (
+          <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                Facture PDF
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Générer une facture</DialogTitle>
+              </DialogHeader>
+              <InvoiceVendorInfoForm
+                onSubmit={handleInvoiceGenerate}
+                isLoading={isInvoiceGenerating}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
       {/* Tracking form (affiché quand on clique "Marquer comme expédié") */}
       {showTrackingForm && (
         <div className="rounded-lg border p-4 space-y-3">
@@ -228,8 +377,11 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
             currentTrackingNumber={order.tracking_number}
             currentCarrier={order.carrier}
             onSubmit={async (data) => {
-              // Si en processing, on passe à shipped + tracking
-              if (order.status === "processing") {
+              // Si en processing ou ready_for_delivery, on passe à shipped + tracking
+              if (
+                order.status === "processing" ||
+                order.status === "ready_for_delivery"
+              ) {
                 setIsLoading(true);
                 try {
                   await updateStatus({
@@ -262,7 +414,9 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         <div className="rounded-lg border p-4 space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium">Suivi du colis</h3>
-            {(order.status === "processing" || order.status === "shipped") && (
+            {(order.status === "processing" ||
+              order.status === "ready_for_delivery" ||
+              order.status === "shipped") && (
               <button
                 className="text-xs text-primary hover:underline"
                 onClick={() => setShowTrackingForm(true)}
@@ -299,6 +453,8 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
                 <Image
                   src={item.resolved_image_url}
                   alt={item.title}
+                  width={40}
+                  height={40}
                   className="h-10 w-10 rounded-md object-cover bg-muted"
                 />
               ) : (
@@ -308,13 +464,11 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
                 <p className="text-sm line-clamp-1">{item.title}</p>
                 <p className="text-xs text-muted-foreground">
                   {item.quantity} ×{" "}
-                  {(item.unit_price / 100).toLocaleString("fr-FR")}{" "}
-                  {order.currency}
+                  {formatPrice(item.unit_price, order.currency)}
                 </p>
               </div>
               <span className="text-sm font-medium tabular-nums">
-                {(item.total_price / 100).toLocaleString("fr-FR")}{" "}
-                {order.currency}
+                {formatPrice(item.total_price, order.currency)}
               </span>
             </div>
           ))}

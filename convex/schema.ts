@@ -271,6 +271,8 @@ export default defineSchema({
       v.literal("delivered"),
       v.literal("cancelled"),
       v.literal("refunded"),
+      v.literal("ready_for_delivery"),
+      v.literal("delivery_failed"),
     ),
 
     // Payment
@@ -317,6 +319,18 @@ export default defineSchema({
     notes: v.optional(v.string()), // customer note
     coupon_code: v.optional(v.string()),
     commission_amount: v.optional(v.number()), // centimes — Pixel-Mart fee
+    delivery_lat: v.optional(v.number()), // latitude client
+    delivery_lon: v.optional(v.number()), // longitude client
+    delivery_distance_km: v.optional(v.number()), // distance calculée
+    delivery_type: v.optional(
+      v.union(v.literal("standard"), v.literal("urgent"), v.literal("fragile")),
+    ),
+    payment_mode: v.optional(v.union(v.literal("online"), v.literal("cod"))),
+    delivery_fee: v.optional(v.number()),
+    estimated_weight_kg: v.optional(v.number()),
+    batch_id: v.optional(v.id("delivery_batches")),
+    ready_for_delivery: v.optional(v.boolean()),
+    ready_at: v.optional(v.number()),
 
     // Metadata
     updated_at: v.number(),
@@ -325,7 +339,9 @@ export default defineSchema({
     .index("by_store", ["store_id"])
     .index("by_status", ["store_id", "status"])
     .index("by_order_number", ["order_number"])
-    .index("by_payment_status", ["payment_status"]),
+    .index("by_payment_status", ["payment_status"])
+    .index("by_batch", ["batch_id"])
+    .index("by_ready_for_delivery", ["store_id", "ready_for_delivery"]),
 
   // ============================================
   // ORDER EVENTS (IMMUTABLE TIMELINE)
@@ -759,4 +775,93 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_active_slot", ["slot_id", "status", "priority"])
     .index("by_period", ["slot_id", "starts_at", "ends_at"]),
+
+  // ============================================
+  // DELIVERY BATCHES — Lots de livraison
+  // ============================================
+  delivery_batches: defineTable({
+    // Identification
+    batch_number: v.string(), // "LOT-2026-0001"
+
+    // Source
+    store_id: v.id("stores"),
+    created_by: v.id("users"), // vendeur qui a créé le lot
+
+    // Contenu
+    order_ids: v.array(v.id("orders")), // commandes incluses
+    order_count: v.number(), // dénormalisé pour affichage rapide
+
+    // Regroupement
+    grouping_type: v.union(
+      v.literal("zone"), // regroupé par zone
+      v.literal("manual"), // sélection manuelle
+    ),
+    delivery_zone_id: v.optional(v.id("delivery_zones")), // si grouping_type = "zone"
+
+    // Workflow status
+    status: v.union(
+      v.literal("pending"), // créé par vendeur, en attente de transmission
+      v.literal("transmitted"), // envoyé à l'admin
+      v.literal("assigned"), // assigné au service de livraison
+      v.literal("in_progress"), // livraisons en cours
+      v.literal("completed"), // toutes les livraisons terminées
+      v.literal("cancelled"), // annulé
+    ),
+
+    // Timestamps workflow
+    transmitted_at: v.optional(v.number()), // quand envoyé à l'admin
+    assigned_at: v.optional(v.number()), // quand assigné au livreur
+    completed_at: v.optional(v.number()), // quand toutes livraisons terminées
+
+    // Admin
+    admin_notes: v.optional(v.string()),
+    processed_by: v.optional(v.id("users")), // admin qui a traité
+
+    // PDF
+    pdf_url: v.optional(v.string()), // URL du récapitulatif généré
+
+    // Stats
+    total_delivery_fee: v.number(), // somme des frais de livraison (centimes)
+    currency: v.string(), // XOF
+
+    // Metadata
+    updated_at: v.number(),
+  })
+    .index("by_store", ["store_id"])
+    .index("by_status", ["status"])
+    .index("by_store_status", ["store_id", "status"])
+    .index("by_batch_number", ["batch_number"]),
+
+  // ============================================
+  // DELIVERY RATES — Grille tarifaire (optionnel, peut être en constants)
+  // ============================================
+  delivery_rates: defineTable({
+    // Type de course
+    delivery_type: v.union(
+      v.literal("standard"),
+      v.literal("urgent"),
+      v.literal("fragile"),
+    ),
+
+    // Période
+    is_night_rate: v.boolean(), // 21h-06h
+
+    // Tarification par palier de distance
+    distance_min_km: v.number(), // 0, 6, 11
+    distance_max_km: v.optional(v.number()), // 5, 10, null (= infini)
+
+    // Prix
+    base_price: v.number(), // prix fixe en centimes (pour palier 1-5km)
+    price_per_km: v.optional(v.number()), // prix par km en centimes
+
+    // Supplément poids
+    weight_threshold_kg: v.number(), // 20 kg
+    weight_surcharge_per_kg: v.number(), // 50 FCFA = 5000 centimes par kg au-dessus
+
+    // Status
+    is_active: v.boolean(),
+
+    // Metadata
+    updated_at: v.number(),
+  }).index("by_type", ["delivery_type", "is_night_rate", "is_active"]),
 });

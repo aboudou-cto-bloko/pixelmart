@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   Wallet,
   Store,
+  Truck,
   MessageSquare,
   Star,
   Settings,
@@ -44,6 +45,11 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     title: "Commandes",
     url: ROUTES.VENDOR_ORDERS,
     icon: ShoppingCart,
+  },
+  {
+    title: "Livraisons",
+    url: "/vendor/delivery",
+    icon: Truck,
   },
   {
     title: "Analytics",

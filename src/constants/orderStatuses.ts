@@ -1,3 +1,4 @@
+// filepath: src/constants/orderStatuses.ts
 export const ORDER_STATUSES = {
   pending: {
     label: "En attente",
@@ -17,6 +18,12 @@ export const ORDER_STATUSES = {
     textColor: "text-indigo-500",
     icon: "Package",
   },
+  ready_for_delivery: {
+    label: "Prêt pour livraison",
+    color: "bg-cyan-500",
+    textColor: "text-cyan-500",
+    icon: "PackageCheck",
+  },
   shipped: {
     label: "Expédié",
     color: "bg-purple-500",
@@ -28,6 +35,12 @@ export const ORDER_STATUSES = {
     color: "bg-green-500",
     textColor: "text-green-500",
     icon: "CheckCircle",
+  },
+  delivery_failed: {
+    label: "Échec livraison",
+    color: "bg-orange-500",
+    textColor: "text-orange-500",
+    icon: "XCircle",
   },
   cancelled: {
     label: "Annulé",
@@ -45,13 +58,15 @@ export const ORDER_STATUSES = {
 
 export type OrderStatus = keyof typeof ORDER_STATUSES;
 
-// Transitions autorisées
+// Transitions autorisées — mise à jour avec le workflow livraison
 export const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["paid", "cancelled"],
   paid: ["processing", "cancelled", "refunded"],
-  processing: ["shipped", "cancelled"],
-  shipped: ["delivered"],
+  processing: ["ready_for_delivery", "shipped", "cancelled"],
+  ready_for_delivery: ["shipped", "cancelled"],
+  shipped: ["delivered", "delivery_failed"],
   delivered: ["refunded"],
+  delivery_failed: ["shipped", "refunded", "cancelled"], // peut être re-expédié
   cancelled: [],
   refunded: [],
 };

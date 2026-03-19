@@ -15,15 +15,10 @@ import { OrderStatusBadge } from "../atoms/OrderStatusBadge";
 import { formatPrice } from "@/lib/utils";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Doc } from "../../../../convex/_generated/dataModel";
 
-type OrderStatus =
-  | "pending"
-  | "paid"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "refunded";
+// ── Utiliser le type du schema Convex ──
+type OrderStatus = Doc<"orders">["status"];
 
 interface OrderRow {
   _id: string;

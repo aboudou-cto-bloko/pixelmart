@@ -14,15 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Download } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/atoms/OrderStatusBadge";
+import type { Doc } from "../../../../convex/_generated/dataModel";
 
-type OrderStatus =
-  | "pending"
-  | "paid"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "refunded";
+type OrderStatus = Doc<"orders">["status"];
 
 interface InvoiceRow {
   _id: string;

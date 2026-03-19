@@ -22,6 +22,9 @@ import {
   Copy,
   Check,
   RotateCcw,
+  Banknote,
+  PackageCheck,
+  Navigation,
 } from "lucide-react";
 import { useState } from "react";
 import { api } from "../../../../../convex/_generated/api";
@@ -52,6 +55,16 @@ import {
 import { ROUTES } from "@/constants/routes";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
+// ─── Delivery Type Labels ────────────────────────────────────
+
+const DELIVERY_TYPE_LABELS: Record<string, string> = {
+  standard: "Standard (2-5 jours)",
+  urgent: "Urgente (24-48h)",
+  fragile: "Fragile (manipulation précaution)",
+};
+
+// ─── Return Button ───────────────────────────────────────────
+
 function ReturnButton({ orderId }: { orderId: string }) {
   const eligibility = useQuery(api.returns.queries.checkEligibility, {
     orderId: orderId as Id<"orders">,
@@ -69,6 +82,8 @@ function ReturnButton({ orderId }: { orderId: string }) {
   );
 }
 
+// ─── Main Page ───────────────────────────────────────────────
+
 export default function OrderDetailPage({
   params,
 }: {
@@ -84,9 +99,11 @@ export default function OrderDetailPage({
   );
 
   const cancelOrder = useMutation(api.orders.mutations.cancelOrder);
+  const confirmDelivery = useMutation(api.orders.mutations.confirmDelivery);
   const initializePayment = useAction(api.payments.moneroo.initializePayment);
 
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,6 +166,11 @@ export default function OrderDetailPage({
 
   const canPay = order.status === "pending" && order.payment_status !== "paid";
 
+  // Peut confirmer la livraison si expédiée
+  const canConfirmDelivery = order.status === "shipped";
+
+  // ── Handlers ──
+
   async function handleCancel() {
     setIsCancelling(true);
     setError(null);
@@ -158,6 +180,18 @@ export default function OrderDetailPage({
       setError(err instanceof Error ? err.message : "Erreur d'annulation");
     } finally {
       setIsCancelling(false);
+    }
+  }
+
+  async function handleConfirmDelivery() {
+    setIsConfirming(true);
+    setError(null);
+    try {
+      await confirmDelivery({ orderId: order!._id });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur de confirmation");
+    } finally {
+      setIsConfirming(false);
     }
   }
 
@@ -208,12 +242,24 @@ export default function OrderDetailPage({
             {formatOrderDate(order._creationTime)}
           </p>
         </div>
-        <Badge
-          variant="secondary"
-          className={`${statusConfig.color} ${statusConfig.bgColor}`}
-        >
-          {statusConfig.label}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {/* Badge COD */}
+          {order.payment_mode === "cod" && (
+            <Badge
+              variant="secondary"
+              className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+            >
+              <Banknote className="size-3 mr-1" />
+              COD
+            </Badge>
+          )}
+          <Badge
+            variant="secondary"
+            className={`${statusConfig.color} ${statusConfig.bgColor}`}
+          >
+            {statusConfig.label}
+          </Badge>
+        </div>
       </div>
 
       {error && (
@@ -224,6 +270,77 @@ export default function OrderDetailPage({
       )}
 
       <div className="space-y-6">
+        {/* Confirm Delivery Banner (si shipped) */}
+        {canConfirmDelivery && (
+          <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="size-10 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center shrink-0">
+                    <PackageCheck className="size-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-green-800 dark:text-green-300">
+                      Avez-vous reçu votre commande ?
+                    </p>
+                    <p className="text-sm text-green-700/80 dark:text-green-400/80">
+                      Confirmez la réception pour finaliser la transaction.
+                    </p>
+                  </div>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      disabled={isConfirming}
+                    >
+                      {isConfirming ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle2 className="size-4 mr-1.5" />
+                          Confirmer la réception
+                        </>
+                      )}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Confirmer la réception ?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        En confirmant, vous attestez avoir bien reçu votre
+                        commande en bon état. Le vendeur recevra son paiement.
+                        {order.payment_mode === "cod" && (
+                          <span className="block mt-2 text-amber-600 dark:text-amber-400">
+                            ⚠️ Assurez-vous d'avoir payé le livreur avant de
+                            confirmer.
+                          </span>
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annuler</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleConfirmDelivery}
+                        disabled={isConfirming}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {isConfirming ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          "Oui, j'ai reçu ma commande"
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Timeline */}
         <Card>
           <CardHeader className="pb-3">
@@ -285,6 +402,99 @@ export default function OrderDetailPage({
                   {order.tracking_number}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Delivery Info */}
+        {(order.delivery_type || order.payment_mode || order.delivery_fee) && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Truck className="size-4 text-muted-foreground" />
+                Informations de livraison
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Type livraison */}
+                {order.delivery_type && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Type de livraison
+                    </p>
+                    <p className="text-sm font-medium">
+                      {DELIVERY_TYPE_LABELS[order.delivery_type] ??
+                        order.delivery_type}
+                    </p>
+                  </div>
+                )}
+
+                {/* Mode paiement */}
+                {order.payment_mode && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Mode de paiement
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      {order.payment_mode === "cod" ? (
+                        <>
+                          <Banknote className="size-4 text-blue-600" />
+                          <span className="text-sm font-medium">
+                            Paiement à la livraison
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="size-4 text-green-600" />
+                          <span className="text-sm font-medium">
+                            Paiement en ligne
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Distance */}
+                {order.delivery_distance_km && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Distance</p>
+                    <p className="text-sm font-medium flex items-center gap-1">
+                      <Navigation className="size-3.5" />
+                      {order.delivery_distance_km.toFixed(1)} km
+                    </p>
+                  </div>
+                )}
+
+                {/* Frais */}
+                {order.delivery_fee && order.delivery_fee > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Frais de livraison
+                    </p>
+                    <p className="text-sm font-medium">
+                      {formatPrice(order.delivery_fee, order.currency)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Message COD */}
+              {order.payment_mode === "cod" &&
+                order.status !== "delivered" &&
+                order.status !== "cancelled" && (
+                  <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 mt-3">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <Banknote className="size-4 inline mr-1.5" />
+                      Préparez le montant de{" "}
+                      <strong>
+                        {formatPrice(order.total_amount, order.currency)}
+                      </strong>{" "}
+                      pour le livreur.
+                    </p>
+                  </div>
+                )}
             </CardContent>
           </Card>
         )}
@@ -373,9 +583,15 @@ export default function OrderDetailPage({
               </span>
             </div>
             <div className="flex items-center gap-2 pt-1">
-              <CreditCard className="size-3.5 text-muted-foreground" />
+              {order.payment_mode === "cod" ? (
+                <Banknote className="size-3.5 text-blue-600" />
+              ) : (
+                <CreditCard className="size-3.5 text-muted-foreground" />
+              )}
               <span className="text-xs text-muted-foreground">
-                {order.payment_method ?? "Méthode non définie"}
+                {order.payment_mode === "cod"
+                  ? "Paiement à la livraison"
+                  : (order.payment_method ?? "Méthode non définie")}
               </span>
               <Badge
                 variant="outline"
@@ -436,6 +652,7 @@ export default function OrderDetailPage({
           </Card>
         )}
 
+        {/* Reviews (si livré) */}
         {order.status === "delivered" && (
           <div className="space-y-4 mt-6">
             <h3 className="font-semibold">Donner votre avis</h3>

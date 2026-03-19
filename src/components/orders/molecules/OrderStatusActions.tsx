@@ -2,30 +2,20 @@
 
 "use client";
 
-import { Package, Truck, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Loader2, PlayCircle, Truck, CheckCircle } from "lucide-react";
+import type { Doc } from "../../../../convex/_generated/dataModel";
 
-type OrderStatus =
-  | "pending"
-  | "paid"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "refunded";
+type OrderStatus = Doc<"orders">["status"];
 
 interface OrderStatusActionsProps {
   status: OrderStatus;
   onProcess: () => void;
   onShip: () => void;
   onDeliver: () => void;
-  isLoading?: boolean;
+  isLoading: boolean;
 }
 
-/**
- * Boutons d'action contextuels selon le statut actuel.
- * Seules les transitions autorisées sont affichées.
- */
 export function OrderStatusActions({
   status,
   onProcess,
@@ -33,29 +23,67 @@ export function OrderStatusActions({
   onDeliver,
   isLoading,
 }: OrderStatusActionsProps) {
+  // Pas d'actions pour les statuts terminaux
+  if (
+    status === "cancelled" ||
+    status === "refunded" ||
+    status === "delivered"
+  ) {
+    return null;
+  }
+
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex flex-wrap gap-2">
+      {/* Paid → Processing */}
       {status === "paid" && (
-        <Button onClick={onProcess} disabled={isLoading} size="sm">
-          <Package className="mr-1.5 h-3.5 w-3.5" />
+        <Button size="sm" onClick={onProcess} disabled={isLoading}>
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <PlayCircle className="h-4 w-4 mr-1.5" />
+          )}
           Prendre en charge
         </Button>
       )}
-      {status === "processing" && (
-        <Button onClick={onShip} disabled={isLoading} size="sm">
-          <Truck className="mr-1.5 h-3.5 w-3.5" />
+
+      {/* Processing ou Ready → Shipped */}
+      {(status === "processing" || status === "ready_for_delivery") && (
+        <Button size="sm" onClick={onShip} disabled={isLoading}>
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Truck className="h-4 w-4 mr-1.5" />
+          )}
           Marquer comme expédié
         </Button>
       )}
+
+      {/* Shipped → Delivered */}
       {status === "shipped" && (
+        <Button size="sm" onClick={onDeliver} disabled={isLoading}>
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <CheckCircle className="h-4 w-4 mr-1.5" />
+          )}
+          Confirmer la livraison
+        </Button>
+      )}
+
+      {/* Delivery failed → Retry */}
+      {status === "delivery_failed" && (
         <Button
-          onClick={onDeliver}
-          disabled={isLoading}
           size="sm"
           variant="outline"
+          onClick={onShip}
+          disabled={isLoading}
         >
-          <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-          Confirmer la livraison
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Truck className="h-4 w-4 mr-1.5" />
+          )}
+          Réexpédier
         </Button>
       )}
     </div>

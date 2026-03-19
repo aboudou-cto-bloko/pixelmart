@@ -21,6 +21,7 @@ import {
   canVendorCancel,
   type OrderItemInput,
 } from "./helpers";
+import { calculateDeliveryFee } from "../delivery/constants";
 
 // ─── Create Order ────────────────────────────────────────────
 
@@ -59,6 +60,16 @@ export const createOrder = mutation({
     couponCode: v.optional(v.string()),
     notes: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
+    // ── CHAMPS DELIVERY (OpenStreetMap) ──
+    deliveryLat: v.optional(v.number()),
+    deliveryLon: v.optional(v.number()),
+    deliveryDistanceKm: v.optional(v.number()),
+    deliveryFee: v.optional(v.number()), // calculé côté client, validé ici
+    deliveryType: v.optional(
+      v.union(v.literal("standard"), v.literal("urgent"), v.literal("fragile")),
+    ),
+    paymentMode: v.optional(v.union(v.literal("online"), v.literal("cod"))),
+    estimatedWeightKg: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
@@ -104,8 +115,20 @@ export const createOrder = mutation({
       );
     }
 
-    // 6. Frais de livraison (placeholder — calculé dynamiquement en Phase 1)
-    const shippingAmount = 0;
+    // 6. Frais de livraison
+    const deliveryType = args.deliveryType ?? "standard";
+    const paymentMode = args.paymentMode ?? "online";
+
+    // Utiliser le fee calculé côté client, ou recalculer si distance fournie
+    let shippingAmount = args.deliveryFee ?? 0;
+
+    if (!shippingAmount && args.deliveryDistanceKm) {
+      shippingAmount = calculateDeliveryFee(
+        args.deliveryDistanceKm,
+        deliveryType,
+        args.estimatedWeightKg ?? 0,
+      );
+    }
 
     // 7. Total — tout en XOF centimes
     const totalAmount = Math.max(0, subtotal - discountAmount + shippingAmount);
@@ -120,7 +143,13 @@ export const createOrder = mutation({
     // 10. Devise — toujours XOF pour les opérations backend
     const currency = DEFAULT_CURRENCY;
 
-    // 11. Créer la commande
+    // 11. Déterminer le statut initial selon le mode de paiement
+    // COD = "paid" directement (le paiement sera collecté à la livraison)
+    // Online = "pending" (en attente de confirmation Moneroo)
+    const initialStatus = paymentMode === "cod" ? "paid" : "pending";
+    const initialPaymentStatus = "pending";
+
+    // 12. Créer la commande
     const orderId = await ctx.db.insert("orders", {
       order_number: orderNumber,
       customer_id: user._id,
@@ -131,34 +160,55 @@ export const createOrder = mutation({
       discount_amount: discountAmount,
       total_amount: totalAmount,
       currency,
-      status: "pending",
-      payment_status: "pending",
+      status: initialStatus,
+      payment_status: initialPaymentStatus,
       payment_method: args.paymentMethod,
       shipping_address: args.shippingAddress,
       billing_address: args.billingAddress,
       notes: args.notes,
       coupon_code: args.couponCode,
       commission_amount: commissionAmount,
+      // ── CHAMPS DELIVERY ──
+      delivery_lat: args.deliveryLat,
+      delivery_lon: args.deliveryLon,
+      delivery_distance_km: args.deliveryDistanceKm,
+      delivery_type: deliveryType,
+      payment_mode: paymentMode,
+      delivery_fee: shippingAmount,
+      estimated_weight_kg: args.estimatedWeightKg,
       updated_at: Date.now(),
     });
 
-    // 12. Décrémenter le stock
+    // 13. Décrémenter le stock
     await decrementInventory(ctx, validatedItems);
 
-    // 13. Incrémenter used_count du coupon
+    // 14. Incrémenter used_count du coupon
     if (args.couponCode) {
       await incrementCouponUsage(ctx, args.couponCode, args.storeId);
     }
+
+    // 15. Log event
+    await logOrderEvent(ctx, {
+      orderId,
+      storeId: store._id,
+      type: "created",
+      description:
+        paymentMode === "cod"
+          ? "Commande créée (paiement à la livraison)"
+          : "Commande créée",
+      actorType: "customer",
+      actorId: user._id,
+    });
 
     return {
       orderId,
       orderNumber,
       totalAmount,
       currency,
+      paymentMode,
     };
   },
 });
-
 // ─── Update Order Status (Vendor) ────────────────────────────
 
 export const updateStatus = mutation({
@@ -168,6 +218,8 @@ export const updateStatus = mutation({
       v.literal("processing"),
       v.literal("shipped"),
       v.literal("delivered"),
+      v.literal("ready_for_delivery"),
+      v.literal("delivery_failed"),
     ),
     trackingNumber: v.optional(v.string()),
     carrier: v.optional(v.string()),

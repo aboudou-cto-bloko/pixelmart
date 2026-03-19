@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import type { Id } from "../../../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { OrderStatusBadge } from "../atoms/OrderStatusBadge";
@@ -16,15 +16,6 @@ import { OrderStatusActions } from "../molecules/OrderStatusActions";
 import { OrderSummaryCard } from "../molecules/OrderSummaryCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
-
-type OrderStatus =
-  | "pending"
-  | "paid"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "refunded";
 
 interface OrderItem {
   product_id: string;
@@ -41,7 +32,7 @@ interface OrderItem {
 interface OrderDetail {
   _id: Id<"orders">;
   order_number: string;
-  status: OrderStatus;
+  status: Doc<"orders">["status"];
   payment_status: string;
   items: OrderItem[];
   subtotal: number;
@@ -74,7 +65,6 @@ interface OrderDetail {
   } | null;
   _creationTime: number;
 }
-
 interface OrderDetailPanelProps {
   order: OrderDetail | null | undefined;
 }

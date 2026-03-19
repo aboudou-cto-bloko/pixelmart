@@ -201,6 +201,8 @@ export const search = query({
         v.literal("newest"),
         v.literal("price_asc"),
         v.literal("price_desc"),
+        v.literal("discount"),
+        v.literal("popular"),
       ),
     ),
     limit: v.optional(v.number()),
@@ -273,6 +275,16 @@ export const search = query({
       products.sort((a, b) => a.price - b.price);
     } else if (sort === "price_desc") {
       products.sort((a, b) => b.price - a.price);
+    } else if (sort === "discount") {
+      // Trier par réduction décroissante (compare_price - price)
+      products.sort((a, b) => {
+        const discountA = (a.compare_price ?? a.price) - a.price;
+        const discountB = (b.compare_price ?? b.price) - b.price;
+        return discountB - discountA;
+      });
+    } else if (sort === "popular") {
+      // Trier par nombre d'avis ou note moyenne (si disponible)
+      products.sort((a, b) => (b.review_count ?? 0) - (a.review_count ?? 0));
     }
     // "relevance" = search engine order, no re-sort needed
 

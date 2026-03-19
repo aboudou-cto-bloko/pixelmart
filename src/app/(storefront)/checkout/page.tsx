@@ -4,7 +4,7 @@
 
 import { useAction } from "convex/react";
 import { setPaymentQueue } from "@/lib/payment-queue";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import Link from "next/link";
@@ -14,9 +14,9 @@ import {
   Loader2,
   ShieldCheck,
   CreditCard,
-  Smartphone,
   Store,
   AlertCircle,
+  Banknote,
 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { useCart } from "@/hooks/useCart";
@@ -27,18 +27,19 @@ import {
   type ShippingAddress,
 } from "@/components/checkout/AddressForm";
 import { CouponInput } from "@/components/checkout/CouponInput";
+import {
+  DeliverySection,
+  type DeliveryConfig,
+} from "@/components/checkout/DeliverySection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
-import type { CountryCode } from "@/constants/countries";
-import { getPaymentMethodsForCountry } from "@/constants/paymentMethods";
 import type { CartStore } from "@/types/cart";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -54,6 +55,7 @@ interface OrderResult {
   orderNumber: string;
   totalAmount: number;
   currency: string;
+  paymentMode: "online" | "cod";
 }
 
 type AddressErrors = Partial<Record<keyof ShippingAddress, string>>;
@@ -63,17 +65,21 @@ type AddressErrors = Partial<Record<keyof ShippingAddress, string>>;
 function StoreOrderCard({
   store,
   coupon,
+  deliveryFee,
   onCouponApply,
   onCouponRemove,
 }: {
   store: CartStore;
   coupon: StoreCoupon | null;
+  deliveryFee: number;
   onCouponApply: (code: string, discount: number) => void;
   onCouponRemove: () => void;
 }) {
-  const discountedTotal = coupon
+  const discountedSubtotal = coupon
     ? Math.max(0, store.subtotal - coupon.discount)
     : store.subtotal;
+
+  const storeTotal = discountedSubtotal + deliveryFee;
 
   return (
     <Card>
@@ -159,15 +165,15 @@ function StoreOrderCard({
           )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Livraison</span>
-            <span className="text-muted-foreground text-xs">
-              Calculée après
+            <span>
+              {deliveryFee > 0 ? formatPrice(deliveryFee, "XOF") : "À définir"}
             </span>
           </div>
           <Separator />
           <div className="flex justify-between font-semibold">
             <span>Total boutique</span>
             <span className="text-primary">
-              {formatPrice(discountedTotal, "XOF")}
+              {formatPrice(storeTotal, "XOF")}
             </span>
           </div>
         </div>
@@ -186,54 +192,35 @@ export default function CheckoutPage() {
   const initializePayment = useAction(api.payments.moneroo.initializePayment);
 
   // ── State ──
-  const [address, setAddress] = useState<ShippingAddress>({
-    full_name: "",
+  const [address, setAddress] = useState<ShippingAddress>(() => ({
+    full_name: user?.name ?? "",
     line1: "",
     city: "",
     country: DEFAULT_COUNTRY,
-  });
+  }));
   const [addressErrors, setAddressErrors] = useState<AddressErrors | null>(
     null,
   );
   const [notes, setNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("");
+
+  // ── Delivery State (OpenStreetMap) ──
+  const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig>({
+    deliveryType: "standard",
+    paymentMode: "online",
+  });
+  const [deliveryAddressError, setDeliveryAddressError] = useState<
+    string | null
+  >(null);
+
   const [storeCoupons, setStoreCoupons] = useState<Record<string, StoreCoupon>>(
     {},
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // ── Méthodes de paiement dynamiques selon le pays ──
-  const availableMethods = useMemo(
-    () => getPaymentMethodsForCountry(address.country as CountryCode),
-    [address.country],
-  );
-
-  // ── Pré-remplir le nom si connecté ──
-  useEffect(() => {
-    if (user?.name && !address.full_name) {
-      setAddress((prev) => ({ ...prev, full_name: user.name }));
-    }
-    // Uniquement au changement de user.name, pas à chaque keystroke adresse
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.name]);
-
-  // ── Auto-sélection de la première méthode quand le pays change ──
-  useEffect(() => {
-    const isCurrentMethodAvailable = availableMethods.some(
-      (m) => m.id === paymentMethod,
-    );
-    if (availableMethods.length > 0 && !isCurrentMethodAvailable) {
-      setPaymentMethod(availableMethods[0].id);
-    }
-  }, [availableMethods, paymentMethod]);
-
   // ── Coupon handlers ──
   function handleCouponApply(storeId: string, code: string, discount: number) {
-    setStoreCoupons((prev) => ({
-      ...prev,
-      [storeId]: { code, discount },
-    }));
+    setStoreCoupons((prev) => ({ ...prev, [storeId]: { code, discount } }));
   }
 
   function handleCouponRemove(storeId: string) {
@@ -244,16 +231,48 @@ export default function CheckoutPage() {
     });
   }
 
-  // ── Grand total avec réductions ──
+  // ── Delivery config handler ──
+  function handleDeliveryChange(config: DeliveryConfig) {
+    setDeliveryConfig(config);
+    setDeliveryAddressError(null);
+  }
+
+  // ── Sync address city from delivery selection ──
+  function handleDeliveryConfigChange(config: DeliveryConfig) {
+    handleDeliveryChange(config);
+
+    // Mettre à jour la ville de l'adresse si on a sélectionné une adresse de livraison
+    if (config.deliveryCity && config.deliveryCity !== address.city) {
+      setAddress((prev) => ({
+        ...prev,
+        city: config.deliveryCity ?? prev.city,
+        line1: config.deliveryAddress ?? prev.line1,
+      }));
+    }
+  }
+
+  // ── Frais de livraison (depuis DeliveryDistanceCalculator) ──
+  const deliveryFee = deliveryConfig.deliveryFee ?? 0;
+
+  // ── Grand total avec réductions et livraison ──
   const grandTotal = useMemo(() => {
-    return stores.reduce((sum, store) => {
+    const subtotalWithDiscounts = stores.reduce((sum, store) => {
       const coupon = storeCoupons[store.storeId];
-      const storeTotal = coupon
-        ? Math.max(0, store.subtotal - coupon.discount)
-        : store.subtotal;
-      return sum + storeTotal;
+      return (
+        sum +
+        (coupon
+          ? Math.max(0, store.subtotal - coupon.discount)
+          : store.subtotal)
+      );
     }, 0);
-  }, [stores, storeCoupons]);
+
+    return subtotalWithDiscounts + deliveryFee;
+  }, [stores, storeCoupons, deliveryFee]);
+
+  // ── Validation ──
+  const isDeliveryAddressValid =
+    deliveryConfig.deliveryLat !== undefined &&
+    deliveryConfig.deliveryLon !== undefined;
 
   // ── Submit ──
   async function handleSubmit() {
@@ -262,6 +281,7 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Valider l'adresse de facturation/contact
     const errors = validateAddress(address);
     if (errors) {
       setAddressErrors(errors);
@@ -269,18 +289,22 @@ export default function CheckoutPage() {
     }
     setAddressErrors(null);
 
-    if (!paymentMethod) {
-      setSubmitError("Veuillez sélectionner une méthode de paiement");
+    // Valider l'adresse de livraison (coordonnées GPS requises)
+    if (!isDeliveryAddressValid) {
+      setDeliveryAddressError(
+        "Veuillez sélectionner une adresse de livraison valide",
+      );
       return;
     }
+    setDeliveryAddressError(null);
 
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      // 1. Créer toutes les commandes
-      const orderIds: Id<"orders">[] = [];
+      const orderResults: OrderResult[] = [];
 
+      // 1. Créer toutes les commandes
       for (const store of stores) {
         const coupon = storeCoupons[store.storeId];
 
@@ -293,9 +317,9 @@ export default function CheckoutPage() {
           })),
           shippingAddress: {
             full_name: address.full_name,
-            line1: address.line1,
+            line1: deliveryConfig.deliveryAddress ?? address.line1,
             line2: address.line2,
-            city: address.city,
+            city: deliveryConfig.deliveryCity ?? address.city,
             state: address.state,
             postal_code: address.postal_code,
             country: address.country,
@@ -303,23 +327,39 @@ export default function CheckoutPage() {
           },
           couponCode: coupon?.code,
           notes: notes.trim() || undefined,
-          paymentMethod,
+          paymentMethod:
+            deliveryConfig.paymentMode === "cod" ? "cod" : "moneroo",
+          // ── Champs delivery OpenStreetMap ──
+          deliveryLat: deliveryConfig.deliveryLat,
+          deliveryLon: deliveryConfig.deliveryLon,
+          deliveryDistanceKm: deliveryConfig.deliveryDistanceKm,
+          deliveryFee: deliveryConfig.deliveryFee,
+          deliveryType: deliveryConfig.deliveryType,
+          paymentMode: deliveryConfig.paymentMode,
         });
 
-        orderIds.push(result.orderId);
+        orderResults.push(result as OrderResult);
         clearStore(store.storeId);
       }
 
-      // 2. Stocker la queue de paiement
-      setPaymentQueue(orderIds);
+      // 2. Gérer le flux selon le mode de paiement
+      if (deliveryConfig.paymentMode === "cod") {
+        // COD : Rediriger directement vers la confirmation
+        const orderNumbers = orderResults.map((r) => r.orderNumber).join(",");
+        router.push(
+          `${ROUTES.ORDER_CONFIRMATION}?orders=${encodeURIComponent(orderNumbers)}&paid=false&cod=true`,
+        );
+      } else {
+        // Online : Initialiser le paiement Moneroo
+        const orderIds = orderResults.map((r) => r.orderId);
+        setPaymentQueue(orderIds);
 
-      // 3. Initialiser le paiement pour la première commande
-      const { checkoutUrl } = await initializePayment({
-        orderId: orderIds[0],
-      });
+        const { checkoutUrl } = await initializePayment({
+          orderId: orderIds[0],
+        });
 
-      // 4. Rediriger vers Moneroo
-      window.location.href = checkoutUrl;
+        window.location.href = checkoutUrl;
+      }
     } catch (error) {
       const message =
         error instanceof Error
@@ -328,7 +368,6 @@ export default function CheckoutPage() {
       setSubmitError(message);
       setIsSubmitting(false);
     }
-    // Pas de finally setIsSubmitting(false) — on quitte la page
   }
 
   // ── Guards ──
@@ -392,11 +431,13 @@ export default function CheckoutPage() {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
         {/* Left — Forms */}
-        <div className="lg:col-span-3 space-y-8">
-          {/* 1. Adresse de livraison */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* 1. Informations de contact */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Adresse de livraison</CardTitle>
+              <CardTitle className="text-base">
+                Informations de contact
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <AddressForm
@@ -410,51 +451,13 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
 
-          {/* 2. Méthode de paiement */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Méthode de paiement</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup
-                value={paymentMethod}
-                onValueChange={setPaymentMethod}
-                className="space-y-3"
-              >
-                {availableMethods.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    Aucune méthode de paiement disponible pour ce pays.
-                    Sélectionnez un autre pays de livraison.
-                  </p>
-                ) : (
-                  availableMethods.map((method) => (
-                    <label
-                      key={method.id}
-                      htmlFor={method.id}
-                      className={`flex items-center gap-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                        paymentMethod === method.id
-                          ? "border-primary bg-primary/5"
-                          : "hover:border-muted-foreground/30"
-                      }`}
-                    >
-                      <RadioGroupItem value={method.id} id={method.id} />
-                      {method.type === "mobile_money" ? (
-                        <Smartphone className="size-5 text-muted-foreground shrink-0" />
-                      ) : (
-                        <CreditCard className="size-5 text-muted-foreground shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{method.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {method.description}
-                        </p>
-                      </div>
-                    </label>
-                  ))
-                )}
-              </RadioGroup>
-            </CardContent>
-          </Card>
+          {/* 2. Options de livraison (avec AddressAutocomplete OSM) */}
+          <DeliverySection
+            estimatedWeightKg={0}
+            value={deliveryConfig}
+            onChange={handleDeliveryConfigChange}
+            addressError={deliveryAddressError ?? undefined}
+          />
 
           {/* 3. Notes */}
           <Card>
@@ -488,12 +491,27 @@ export default function CheckoutPage() {
               key={store.storeId}
               store={store}
               coupon={storeCoupons[store.storeId] ?? null}
+              deliveryFee={stores.length === 1 ? deliveryFee : 0}
               onCouponApply={(code, discount) =>
                 handleCouponApply(store.storeId, code, discount)
               }
               onCouponRemove={() => handleCouponRemove(store.storeId)}
             />
           ))}
+
+          {/* Multi-store delivery fee notice */}
+          {stores.length > 1 && deliveryFee > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Livraison ({deliveryConfig.deliveryCity ?? "—"})
+                  </span>
+                  <span>{formatPrice(deliveryFee, "XOF")}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Grand total + Submit */}
           <Card className="sticky top-20">
@@ -502,6 +520,22 @@ export default function CheckoutPage() {
                 <p className="text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
                   {stores.length} commandes seront créées (une par boutique).
                 </p>
+              )}
+
+              {/* Payment mode indicator */}
+              {deliveryConfig.paymentMode === "cod" && (
+                <div className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-md p-3">
+                  <Banknote className="size-4" />
+                  <span>Paiement à la livraison sélectionné</span>
+                </div>
+              )}
+
+              {/* Distance info */}
+              {deliveryConfig.deliveryDistanceKm && (
+                <div className="text-xs text-muted-foreground">
+                  Distance estimée :{" "}
+                  {deliveryConfig.deliveryDistanceKm.toFixed(1)} km
+                </div>
               )}
 
               <div className="flex justify-between text-lg font-bold">
@@ -522,20 +556,31 @@ export default function CheckoutPage() {
                 className="w-full"
                 size="lg"
                 onClick={handleSubmit}
-                disabled={isSubmitting || availableMethods.length === 0}
+                disabled={isSubmitting || !isDeliveryAddressValid}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="size-4 mr-2 animate-spin" />
                     Traitement en cours…
                   </>
-                ) : (
+                ) : deliveryConfig.paymentMode === "cod" ? (
                   <>
                     <ShieldCheck className="size-4 mr-2" />
-                    Confirmer la commande
+                    Confirmer (paiement à la livraison)
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="size-4 mr-2" />
+                    Payer {formatPrice(grandTotal, "XOF")}
                   </>
                 )}
               </Button>
+
+              {!isDeliveryAddressValid && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                  Sélectionnez une adresse de livraison pour continuer
+                </p>
+              )}
 
               <p className="text-[11px] text-muted-foreground text-center">
                 En confirmant, vous acceptez nos{" "}
