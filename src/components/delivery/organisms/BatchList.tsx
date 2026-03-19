@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -13,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
@@ -25,9 +27,12 @@ import {
   FileText,
   Eye,
   MapPin,
+  Loader2,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 import type { DeliveryBatchStatus } from "@/constants/deliveryTypes";
+import { BatchPDFDownloadButton } from "./BatchPDFDownloadButton";
 
 interface BatchListProps {
   status?: DeliveryBatchStatus;
@@ -125,6 +130,9 @@ export function BatchList({ status }: BatchListProps) {
                   </p>
                 </div>
 
+                {/* PDF Download Button */}
+                <BatchPDFDownloadButton batchId={batch._id} />
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon">
@@ -138,8 +146,10 @@ export function BatchList({ status }: BatchListProps) {
                         Voir le détail
                       </Link>
                     </DropdownMenuItem>
+
                     {batch.status === "pending" && (
                       <>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleTransmit(batch._id)}
                         >
@@ -154,18 +164,6 @@ export function BatchList({ status }: BatchListProps) {
                           Annuler le lot
                         </DropdownMenuItem>
                       </>
-                    )}
-                    {batch.pdf_url && (
-                      <DropdownMenuItem asChild>
-                        <a
-                          href={batch.pdf_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Télécharger PDF
-                        </a>
-                      </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -146,10 +146,18 @@ export const getBatchDetail = query({
         ? validOrders[0]?.shipping_address?.city
         : undefined;
 
+    // Calculer le total à collecter (COD)
+    const totalToCollect = validOrders
+      .filter((o) => o?.payment_mode === "cod")
+      .reduce((sum, o) => sum + (o?.total_amount ?? 0), 0);
+
     return {
       ...batch,
       zone_name: zoneName,
       orders: validOrders,
+      total_to_collect: totalToCollect,
+      // Infos store pour le PDF
+      store_name: store.name,
     };
   },
 });
