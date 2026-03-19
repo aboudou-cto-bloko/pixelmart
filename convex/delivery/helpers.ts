@@ -99,21 +99,3 @@ export function validateOrdersForBatch(orders: Doc<"orders">[]): void {
 export function calculateBatchTotalFee(orders: Doc<"orders">[]): number {
   return orders.reduce((sum, order) => sum + (order.delivery_fee ?? 0), 0);
 }
-
-/**
- * Groupe les commandes par zone de livraison.
- */
-export function groupOrdersByZone(
-  orders: Doc<"orders">[],
-): Map<Id<"delivery_zones"> | "unknown", Doc<"orders">[]> {
-  const groups = new Map<Id<"delivery_zones"> | "unknown", Doc<"orders">[]>();
-
-  for (const order of orders) {
-    const zoneId = order.delivery_zone_id ?? "unknown";
-    const existing = groups.get(zoneId) ?? [];
-    existing.push(order);
-    groups.set(zoneId, existing);
-  }
-
-  return groups;
-}

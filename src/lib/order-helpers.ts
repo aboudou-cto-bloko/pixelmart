@@ -29,6 +29,11 @@ const ORDER_STATUS_MAP: Record<OrderStatus, StatusConfig> = {
     color: "text-indigo-700 dark:text-indigo-400",
     bgColor: "bg-indigo-100 dark:bg-indigo-900/20",
   },
+  ready_for_delivery: {
+    label: "Prête pour livraison",
+    color: "text-cyan-700 dark:text-cyan-400",
+    bgColor: "bg-cyan-100 dark:bg-cyan-900/20",
+  },
   shipped: {
     label: "Expédiée",
     color: "text-purple-700 dark:text-purple-400",
@@ -38,6 +43,11 @@ const ORDER_STATUS_MAP: Record<OrderStatus, StatusConfig> = {
     label: "Livrée",
     color: "text-green-700 dark:text-green-400",
     bgColor: "bg-green-100 dark:bg-green-900/20",
+  },
+  delivery_failed: {
+    label: "Échec livraison",
+    color: "text-orange-700 dark:text-orange-400",
+    bgColor: "bg-orange-100 dark:bg-orange-900/20",
   },
   cancelled: {
     label: "Annulée",
@@ -95,6 +105,7 @@ const STATUS_ORDER: OrderStatus[] = [
   "pending",
   "paid",
   "processing",
+  "ready_for_delivery",
   "shipped",
   "delivered",
 ];
@@ -103,14 +114,24 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "Commande créée",
   paid: "Paiement confirmé",
   processing: "En préparation",
+  ready_for_delivery: "Prête",
   shipped: "Expédiée",
   delivered: "Livrée",
 };
 
 export function getOrderTimeline(status: OrderStatus): TimelineStep[] {
+  // Statuts terminaux
   if (status === "cancelled" || status === "refunded") {
     const config = getOrderStatusConfig(status);
     return [{ label: config.label, status: "active" }];
+  }
+
+  // Échec livraison — afficher la timeline avec le statut actif sur "shipped"
+  if (status === "delivery_failed") {
+    return STATUS_ORDER.map((s, i) => ({
+      label: STATUS_LABELS[s] ?? s,
+      status: s === "shipped" ? "active" : i < 4 ? "done" : "upcoming",
+    }));
   }
 
   const currentIndex = STATUS_ORDER.indexOf(status);

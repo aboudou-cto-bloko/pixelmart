@@ -319,21 +319,18 @@ export default defineSchema({
     notes: v.optional(v.string()), // customer note
     coupon_code: v.optional(v.string()),
     commission_amount: v.optional(v.number()), // centimes — Pixel-Mart fee
-    delivery_zone_id: v.optional(v.id("delivery_zones")),
+    delivery_lat: v.optional(v.number()), // latitude client
+    delivery_lon: v.optional(v.number()), // longitude client
+    delivery_distance_km: v.optional(v.number()), // distance calculée
     delivery_type: v.optional(
       v.union(v.literal("standard"), v.literal("urgent"), v.literal("fragile")),
     ),
-    payment_mode: v.optional(
-      v.union(
-        v.literal("online"), // paiement en ligne (Moneroo)
-        v.literal("cod"), // cash on delivery
-      ),
-    ),
-    delivery_fee: v.optional(v.number()), // frais de livraison calculés (centimes)
-    estimated_weight_kg: v.optional(v.number()), // poids total estimé
-    batch_id: v.optional(v.id("delivery_batches")), // lot de livraison
-    ready_for_delivery: v.optional(v.boolean()), // prêt à être expédié
-    ready_at: v.optional(v.number()), // timestamp quand marqué prêt
+    payment_mode: v.optional(v.union(v.literal("online"), v.literal("cod"))),
+    delivery_fee: v.optional(v.number()),
+    estimated_weight_kg: v.optional(v.number()),
+    batch_id: v.optional(v.id("delivery_batches")),
+    ready_for_delivery: v.optional(v.boolean()),
+    ready_at: v.optional(v.number()),
 
     // Metadata
     updated_at: v.number(),
@@ -778,39 +775,6 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_active_slot", ["slot_id", "status", "priority"])
     .index("by_period", ["slot_id", "starts_at", "ends_at"]),
-
-  // ============================================
-  // DELIVERY ZONES — Zones de livraison
-  // ============================================
-  delivery_zones: defineTable({
-    // Identification
-    name: v.string(), // "Fidjrossè", "Akpakpa", "Calavi"
-    slug: v.string(), // "fidjrosse", "akpakpa", "calavi"
-
-    // Géolocalisation (centre de la zone)
-    latitude: v.optional(v.number()),
-    longitude: v.optional(v.number()),
-
-    // Zone parente (pour regroupement régional)
-    parent_zone_id: v.optional(v.id("delivery_zones")),
-
-    // Couverture
-    city: v.string(), // "Cotonou", "Abomey-Calavi"
-    country: v.string(), // "BJ"
-
-    // Distance depuis le point de collecte par défaut (en km)
-    default_distance_km: v.number(),
-
-    // Status
-    is_active: v.boolean(),
-    sort_order: v.number(),
-
-    // Metadata
-    updated_at: v.number(),
-  })
-    .index("by_slug", ["slug"])
-    .index("by_city", ["city", "is_active"])
-    .index("by_active", ["is_active", "sort_order"]),
 
   // ============================================
   // DELIVERY BATCHES — Lots de livraison

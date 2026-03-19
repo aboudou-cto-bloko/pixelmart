@@ -21,10 +21,9 @@ import {
   canVendorCancel,
   type OrderItemInput,
 } from "./helpers";
+import { calculateDeliveryFee } from "../delivery/constants";
 
 // ─── Create Order ────────────────────────────────────────────
-
-// filepath: convex/orders/mutations.ts — MODIFIER la mutation createOrder
 
 export const createOrder = mutation({
   args: {
@@ -61,8 +60,11 @@ export const createOrder = mutation({
     couponCode: v.optional(v.string()),
     notes: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
-    // ── NOUVEAUX CHAMPS DELIVERY ──
-    deliveryZoneId: v.optional(v.id("delivery_zones")),
+    // ── CHAMPS DELIVERY (OpenStreetMap) ──
+    deliveryLat: v.optional(v.number()),
+    deliveryLon: v.optional(v.number()),
+    deliveryDistanceKm: v.optional(v.number()),
+    deliveryFee: v.optional(v.number()), // calculé côté client, validé ici
     deliveryType: v.optional(
       v.union(v.literal("standard"), v.literal("urgent"), v.literal("fragile")),
     ),
@@ -113,23 +115,19 @@ export const createOrder = mutation({
       );
     }
 
-    // 6. Calculer les frais de livraison
-    let shippingAmount = 0;
-    const deliveryZoneId = args.deliveryZoneId;
+    // 6. Frais de livraison
     const deliveryType = args.deliveryType ?? "standard";
     const paymentMode = args.paymentMode ?? "online";
 
-    if (args.deliveryZoneId) {
-      const zone = await ctx.db.get(args.deliveryZoneId);
-      if (zone && zone.is_active) {
-        // Import dynamique pour éviter les problèmes de bundling
-        const { calculateDeliveryFee } = await import("../delivery/constants");
-        shippingAmount = calculateDeliveryFee(
-          zone.default_distance_km,
-          deliveryType,
-          args.estimatedWeightKg ?? 0,
-        );
-      }
+    // Utiliser le fee calculé côté client, ou recalculer si distance fournie
+    let shippingAmount = args.deliveryFee ?? 0;
+
+    if (!shippingAmount && args.deliveryDistanceKm) {
+      shippingAmount = calculateDeliveryFee(
+        args.deliveryDistanceKm,
+        deliveryType,
+        args.estimatedWeightKg ?? 0,
+      );
     }
 
     // 7. Total — tout en XOF centimes
@@ -149,7 +147,7 @@ export const createOrder = mutation({
     // COD = "paid" directement (le paiement sera collecté à la livraison)
     // Online = "pending" (en attente de confirmation Moneroo)
     const initialStatus = paymentMode === "cod" ? "paid" : "pending";
-    const initialPaymentStatus = paymentMode === "cod" ? "pending" : "pending";
+    const initialPaymentStatus = "pending";
 
     // 12. Créer la commande
     const orderId = await ctx.db.insert("orders", {
@@ -170,8 +168,10 @@ export const createOrder = mutation({
       notes: args.notes,
       coupon_code: args.couponCode,
       commission_amount: commissionAmount,
-      // ── NOUVEAUX CHAMPS ──
-      delivery_zone_id: deliveryZoneId,
+      // ── CHAMPS DELIVERY ──
+      delivery_lat: args.deliveryLat,
+      delivery_lon: args.deliveryLon,
+      delivery_distance_km: args.deliveryDistanceKm,
       delivery_type: deliveryType,
       payment_mode: paymentMode,
       delivery_fee: shippingAmount,
@@ -209,7 +209,6 @@ export const createOrder = mutation({
     };
   },
 });
-
 // ─── Update Order Status (Vendor) ────────────────────────────
 
 export const updateStatus = mutation({

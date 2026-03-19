@@ -7,15 +7,9 @@ import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../../../convex/_generated/api";
 import { VendorOrdersTemplate } from "@/components/orders/templates/VendorOrdersTemplate";
+import type { Doc } from "../../../../../convex/_generated/dataModel";
 
-type OrderStatus =
-  | "pending"
-  | "paid"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "refunded";
+type OrderStatus = Doc<"orders">["status"];
 type StatusFilter = OrderStatus | "all";
 
 export default function VendorOrdersPage() {

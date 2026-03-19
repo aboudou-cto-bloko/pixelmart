@@ -4,16 +4,10 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VendorOrdersTable } from "../organisms/VendorOrdersTable";
+import type { Doc } from "../../../../convex/_generated/dataModel";
 
-type OrderStatus =
-  | "pending"
-  | "paid"
-  | "processing"
-  | "shipped"
-  | "delivered"
-  | "cancelled"
-  | "refunded";
-
+// ── Utiliser le type du schema Convex ──
+type OrderStatus = Doc<"orders">["status"];
 type StatusFilter = OrderStatus | "all";
 
 interface OrderRow {
@@ -42,6 +36,7 @@ const STATUS_TABS: Array<{ value: StatusFilter; label: string; key: string }> =
     { value: "all", label: "Toutes", key: "all" },
     { value: "paid", label: "À traiter", key: "paid" },
     { value: "processing", label: "En cours", key: "processing" },
+    { value: "ready_for_delivery", label: "Prêtes", key: "ready_for_delivery" },
     { value: "shipped", label: "Expédiées", key: "shipped" },
     { value: "delivered", label: "Livrées", key: "delivered" },
     { value: "cancelled", label: "Annulées", key: "cancelled" },
@@ -72,7 +67,7 @@ export function VendorOrdersTemplate({
         value={statusFilter}
         onValueChange={(v) => onStatusFilterChange(v as StatusFilter)}
       >
-        <TabsList className="h-9 flex-wrap">
+        <TabsList className="h-auto flex-wrap gap-1">
           {STATUS_TABS.map((tab) => (
             <TabsTrigger
               key={tab.key}

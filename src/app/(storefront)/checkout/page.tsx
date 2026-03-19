@@ -4,7 +4,7 @@
 
 import { useAction } from "convex/react";
 import { setPaymentQueue } from "@/lib/payment-queue";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import Link from "next/link";
@@ -14,9 +14,9 @@ import {
   Loader2,
   ShieldCheck,
   CreditCard,
-  Smartphone,
   Store,
   AlertCircle,
+  Banknote,
 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { useCart } from "@/hooks/useCart";
@@ -59,64 +59,6 @@ interface OrderResult {
 }
 
 type AddressErrors = Partial<Record<keyof ShippingAddress, string>>;
-
-// ─── Calcul frais livraison (client-side mirror) ─────────────
-
-const URGENT_FRAGILE_RATES = {
-  tier1: { maxKm: 5, fixedPrice: 70000 },
-  tier2: { minKm: 6, maxKm: 10, pricePerKm: 20000 },
-  tier3: { minKm: 11, pricePerKm: 15000 },
-} as const;
-
-const STANDARD_RATES = {
-  tier1: { maxKm: 5, fixedPrice: 60000 },
-  tier2: { minKm: 6, pricePerKm: 17000 },
-} as const;
-
-const NIGHT_RATES = { startHour: 21, endHour: 6, pricePerKm: 25000 } as const;
-const WEIGHT_SURCHARGE = { thresholdKg: 20, pricePerKg: 5000 } as const;
-
-function isNightTime(): boolean {
-  const hour = new Date().getHours();
-  return hour >= NIGHT_RATES.startHour || hour < NIGHT_RATES.endHour;
-}
-
-function calculateDeliveryFeeClient(
-  distanceKm: number,
-  deliveryType: "standard" | "urgent" | "fragile",
-  weightKg: number = 0,
-): number {
-  const distance = Math.ceil(distanceKm);
-  const nightRate = isNightTime();
-
-  let baseFee: number;
-
-  if (nightRate) {
-    baseFee = distance * NIGHT_RATES.pricePerKm;
-  } else if (deliveryType === "urgent" || deliveryType === "fragile") {
-    if (distance <= URGENT_FRAGILE_RATES.tier1.maxKm) {
-      baseFee = URGENT_FRAGILE_RATES.tier1.fixedPrice;
-    } else if (distance <= URGENT_FRAGILE_RATES.tier2.maxKm) {
-      baseFee = distance * URGENT_FRAGILE_RATES.tier2.pricePerKm;
-    } else {
-      baseFee = distance * URGENT_FRAGILE_RATES.tier3.pricePerKm;
-    }
-  } else {
-    if (distance <= STANDARD_RATES.tier1.maxKm) {
-      baseFee = STANDARD_RATES.tier1.fixedPrice;
-    } else {
-      baseFee = distance * STANDARD_RATES.tier2.pricePerKm;
-    }
-  }
-
-  let weightSurcharge = 0;
-  if (weightKg > WEIGHT_SURCHARGE.thresholdKg) {
-    weightSurcharge =
-      (weightKg - WEIGHT_SURCHARGE.thresholdKg) * WEIGHT_SURCHARGE.pricePerKg;
-  }
-
-  return Math.round(baseFee + weightSurcharge);
-}
 
 // ─── Store Order Card ────────────────────────────────────────
 
@@ -261,11 +203,14 @@ export default function CheckoutPage() {
   );
   const [notes, setNotes] = useState("");
 
-  // ── Delivery State ──
+  // ── Delivery State (OpenStreetMap) ──
   const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig>({
     deliveryType: "standard",
     paymentMode: "online",
   });
+  const [deliveryAddressError, setDeliveryAddressError] = useState<
+    string | null
+  >(null);
 
   const [storeCoupons, setStoreCoupons] = useState<Record<string, StoreCoupon>>(
     {},
@@ -286,15 +231,28 @@ export default function CheckoutPage() {
     });
   }
 
-  // ── Calcul des frais de livraison ──
-  const deliveryFee = useMemo(() => {
-    if (!deliveryConfig.distanceKm) return 0;
-    return calculateDeliveryFeeClient(
-      deliveryConfig.distanceKm,
-      deliveryConfig.deliveryType,
-      0, // TODO: calculer le poids total des items
-    );
-  }, [deliveryConfig.distanceKm, deliveryConfig.deliveryType]);
+  // ── Delivery config handler ──
+  function handleDeliveryChange(config: DeliveryConfig) {
+    setDeliveryConfig(config);
+    setDeliveryAddressError(null);
+  }
+
+  // ── Sync address city from delivery selection ──
+  function handleDeliveryConfigChange(config: DeliveryConfig) {
+    handleDeliveryChange(config);
+
+    // Mettre à jour la ville de l'adresse si on a sélectionné une adresse de livraison
+    if (config.deliveryCity && config.deliveryCity !== address.city) {
+      setAddress((prev) => ({
+        ...prev,
+        city: config.deliveryCity ?? prev.city,
+        line1: config.deliveryAddress ?? prev.line1,
+      }));
+    }
+  }
+
+  // ── Frais de livraison (depuis DeliveryDistanceCalculator) ──
+  const deliveryFee = deliveryConfig.deliveryFee ?? 0;
 
   // ── Grand total avec réductions et livraison ──
   const grandTotal = useMemo(() => {
@@ -308,9 +266,13 @@ export default function CheckoutPage() {
       );
     }, 0);
 
-    // Frais de livraison unique (pas par boutique dans ce modèle)
     return subtotalWithDiscounts + deliveryFee;
   }, [stores, storeCoupons, deliveryFee]);
+
+  // ── Validation ──
+  const isDeliveryAddressValid =
+    deliveryConfig.deliveryLat !== undefined &&
+    deliveryConfig.deliveryLon !== undefined;
 
   // ── Submit ──
   async function handleSubmit() {
@@ -319,6 +281,7 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Valider l'adresse de facturation/contact
     const errors = validateAddress(address);
     if (errors) {
       setAddressErrors(errors);
@@ -326,11 +289,14 @@ export default function CheckoutPage() {
     }
     setAddressErrors(null);
 
-    // Validation livraison
-    if (!deliveryConfig.zoneId) {
-      setSubmitError("Veuillez sélectionner une zone de livraison");
+    // Valider l'adresse de livraison (coordonnées GPS requises)
+    if (!isDeliveryAddressValid) {
+      setDeliveryAddressError(
+        "Veuillez sélectionner une adresse de livraison valide",
+      );
       return;
     }
+    setDeliveryAddressError(null);
 
     setIsSubmitting(true);
     setSubmitError(null);
@@ -351,9 +317,9 @@ export default function CheckoutPage() {
           })),
           shippingAddress: {
             full_name: address.full_name,
-            line1: address.line1,
+            line1: deliveryConfig.deliveryAddress ?? address.line1,
             line2: address.line2,
-            city: address.city,
+            city: deliveryConfig.deliveryCity ?? address.city,
             state: address.state,
             postal_code: address.postal_code,
             country: address.country,
@@ -363,8 +329,11 @@ export default function CheckoutPage() {
           notes: notes.trim() || undefined,
           paymentMethod:
             deliveryConfig.paymentMode === "cod" ? "cod" : "moneroo",
-          // ── Nouveaux champs delivery ──
-          deliveryZoneId: deliveryConfig.zoneId,
+          // ── Champs delivery OpenStreetMap ──
+          deliveryLat: deliveryConfig.deliveryLat,
+          deliveryLon: deliveryConfig.deliveryLon,
+          deliveryDistanceKm: deliveryConfig.deliveryDistanceKm,
+          deliveryFee: deliveryConfig.deliveryFee,
           deliveryType: deliveryConfig.deliveryType,
           paymentMode: deliveryConfig.paymentMode,
         });
@@ -463,10 +432,12 @@ export default function CheckoutPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
         {/* Left — Forms */}
         <div className="lg:col-span-3 space-y-6">
-          {/* 1. Adresse de livraison */}
+          {/* 1. Informations de contact */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Adresse de livraison</CardTitle>
+              <CardTitle className="text-base">
+                Informations de contact
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <AddressForm
@@ -480,12 +451,13 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
 
-          {/* 2. Options de livraison */}
+          {/* 2. Options de livraison (avec AddressAutocomplete OSM) */}
           <DeliverySection
-            city={address.city || undefined}
-            value={deliveryConfig}
-            onChange={setDeliveryConfig}
+            estimatedWeightKg={0}
             codEnabled={true}
+            value={deliveryConfig}
+            onChange={handleDeliveryConfigChange}
+            addressError={deliveryAddressError ?? undefined}
           />
 
           {/* 3. Notes */}
@@ -534,7 +506,7 @@ export default function CheckoutPage() {
               <CardContent className="p-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    Livraison ({deliveryConfig.zoneName})
+                    Livraison ({deliveryConfig.deliveryCity ?? "—"})
                   </span>
                   <span>{formatPrice(deliveryFee, "XOF")}</span>
                 </div>
@@ -554,8 +526,16 @@ export default function CheckoutPage() {
               {/* Payment mode indicator */}
               {deliveryConfig.paymentMode === "cod" && (
                 <div className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-md p-3">
-                  <CreditCard className="size-4" />
+                  <Banknote className="size-4" />
                   <span>Paiement à la livraison sélectionné</span>
+                </div>
+              )}
+
+              {/* Distance info */}
+              {deliveryConfig.deliveryDistanceKm && (
+                <div className="text-xs text-muted-foreground">
+                  Distance estimée :{" "}
+                  {deliveryConfig.deliveryDistanceKm.toFixed(1)} km
                 </div>
               )}
 
@@ -577,7 +557,7 @@ export default function CheckoutPage() {
                 className="w-full"
                 size="lg"
                 onClick={handleSubmit}
-                disabled={isSubmitting || !deliveryConfig.zoneId}
+                disabled={isSubmitting || !isDeliveryAddressValid}
               >
                 {isSubmitting ? (
                   <>
@@ -591,11 +571,17 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <>
-                    <ShieldCheck className="size-4 mr-2" />
+                    <CreditCard className="size-4 mr-2" />
                     Payer {formatPrice(grandTotal, "XOF")}
                   </>
                 )}
               </Button>
+
+              {!isDeliveryAddressValid && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                  Sélectionnez une adresse de livraison pour continuer
+                </p>
+              )}
 
               <p className="text-[11px] text-muted-foreground text-center">
                 En confirmant, vous acceptez nos{" "}

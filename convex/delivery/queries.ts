@@ -1,59 +1,16 @@
 // filepath: convex/delivery/queries.ts
 
 import { query } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { getVendorStore } from "../users/helpers";
 
 /**
- * Liste les zones de livraison actives.
- */
-export const listZones = query({
-  args: {
-    city: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    let zones;
-
-    if (args.city) {
-      zones = await ctx.db
-        .query("delivery_zones")
-        .withIndex("by_city", (q) =>
-          q.eq("city", args.city!).eq("is_active", true),
-        )
-        .collect();
-    } else {
-      zones = await ctx.db
-        .query("delivery_zones")
-        .withIndex("by_active", (q) => q.eq("is_active", true))
-        .collect();
-    }
-
-    return zones.sort((a, b) => a.sort_order - b.sort_order);
-  },
-});
-
-/**
- * Récupère une zone par son slug.
- */
-export const getZoneBySlug = query({
-  args: { slug: v.string() },
-  handler: async (ctx, args) => {
-    return ctx.db
-      .query("delivery_zones")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique();
-  },
-});
-
-/**
  * Liste les commandes prêtes pour livraison (vendeur).
+ * Groupées par proximité géographique.
  */
 export const listReadyForDelivery = query({
-  args: {
-    zoneId: v.optional(v.id("delivery_zones")),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
     const { store } = await getVendorStore(ctx);
 
     // Récupérer les commandes prêtes ou en préparation, sans lot assigné
@@ -68,26 +25,24 @@ export const listReadyForDelivery = query({
       const notInBatch = !order.batch_id;
       const paymentOk =
         order.payment_status === "paid" || order.payment_mode === "cod";
-      const zoneMatch = args.zoneId
-        ? order.delivery_zone_id === args.zoneId
-        : true;
 
-      return eligibleStatus && notInBatch && paymentOk && zoneMatch;
+      return eligibleStatus && notInBatch && paymentOk;
     });
 
-    // Enrichir avec les infos client et zone
+    // Enrichir avec les infos client
     return Promise.all(
       eligibleOrders.map(async (order) => {
         const customer = await ctx.db.get(order.customer_id);
-        const zone = order.delivery_zone_id
-          ? await ctx.db.get(order.delivery_zone_id)
-          : null;
+
+        // Déterminer la zone approximative basée sur la ville
+        const zoneName = order.shipping_address.city || "Zone non définie";
 
         return {
           ...order,
           customer_name: customer?.name ?? "Client",
           customer_phone: customer?.phone ?? order.shipping_address.phone,
-          zone_name: zone?.name ?? "Zone non définie",
+          zone_name: zoneName,
+          distance_km: order.delivery_distance_km ?? 0,
         };
       }),
     );
@@ -133,16 +88,21 @@ export const listBatches = query({
         .take(limit);
     }
 
-    // Enrichir avec zone et premier order number pour preview
+    // Enrichir avec le nom de zone (première commande du lot)
     return Promise.all(
       batches.map(async (batch) => {
-        const zone = batch.delivery_zone_id
-          ? await ctx.db.get(batch.delivery_zone_id)
-          : null;
+        // Récupérer la première commande pour avoir la zone
+        let zoneName: string | undefined;
+        if (batch.order_ids.length > 0) {
+          const firstOrder = await ctx.db.get(batch.order_ids[0]);
+          if (firstOrder) {
+            zoneName = firstOrder.shipping_address.city;
+          }
+        }
 
         return {
           ...batch,
-          zone_name: zone?.name,
+          zone_name: zoneName,
         };
       }),
     );
@@ -161,10 +121,6 @@ export const getBatchDetail = query({
     if (!batch) return null;
     if (batch.store_id !== store._id) return null;
 
-    const zone = batch.delivery_zone_id
-      ? await ctx.db.get(batch.delivery_zone_id)
-      : null;
-
     // Récupérer toutes les commandes du lot
     const orders = await Promise.all(
       batch.order_ids.map(async (orderId) => {
@@ -172,23 +128,28 @@ export const getBatchDetail = query({
         if (!order) return null;
 
         const customer = await ctx.db.get(order.customer_id);
-        const orderZone = order.delivery_zone_id
-          ? await ctx.db.get(order.delivery_zone_id)
-          : null;
 
         return {
           ...order,
           customer_name: customer?.name ?? "Client",
           customer_phone: customer?.phone ?? order.shipping_address.phone,
-          zone_name: orderZone?.name ?? "Non définie",
+          zone_name: order.shipping_address.city ?? "Non définie",
+          distance_km: order.delivery_distance_km ?? 0,
         };
       }),
     );
 
+    // Déterminer la zone principale du lot
+    const validOrders = orders.filter(Boolean);
+    const zoneName =
+      validOrders.length > 0
+        ? validOrders[0]?.shipping_address?.city
+        : undefined;
+
     return {
       ...batch,
-      zone_name: zone?.name,
-      orders: orders.filter(Boolean),
+      zone_name: zoneName,
+      orders: validOrders,
     };
   },
 });
@@ -235,7 +196,7 @@ export const getDeliveryStats = query({
 });
 
 /**
- * Compteurs de commandes par zone (pour regroupement).
+ * Compteurs de commandes par ville/zone (pour regroupement visuel).
  */
 export const getOrderCountByZone = query({
   args: {},
@@ -254,40 +215,24 @@ export const getOrderCountByZone = query({
         (o.payment_status === "paid" || o.payment_mode === "cod"),
     );
 
-    // Grouper par zone
-    const countByZone = new Map<string, number>();
-    let noZoneCount = 0;
+    // Grouper par ville (shipping_address.city)
+    const countByCity = new Map<string, number>();
 
     for (const order of readyOrders) {
-      if (order.delivery_zone_id) {
-        const current = countByZone.get(order.delivery_zone_id) ?? 0;
-        countByZone.set(order.delivery_zone_id, current + 1);
-      } else {
-        noZoneCount++;
-      }
+      const city = order.shipping_address.city || "Zone non définie";
+      const current = countByCity.get(city) ?? 0;
+      countByCity.set(city, current + 1);
     }
 
-    // Enrichir avec les noms de zones
-    const zones = await ctx.db
-      .query("delivery_zones")
-      .withIndex("by_active", (q) => q.eq("is_active", true))
-      .collect();
-
-    const result = zones
-      .map((zone) => ({
-        zoneId: zone._id,
-        zoneName: zone.name,
-        count: countByZone.get(zone._id) ?? 0,
+    // Convertir en array
+    const result = Array.from(countByCity.entries())
+      .map(([city, count]) => ({
+        zoneId: city, // Utiliser le nom de la ville comme ID
+        zoneName: city,
+        count,
       }))
-      .filter((z) => z.count > 0);
-
-    if (noZoneCount > 0) {
-      result.push({
-        zoneId: "unknown" as Id<"delivery_zones">,
-        zoneName: "Zone non définie",
-        count: noZoneCount,
-      });
-    }
+      .filter((z) => z.count > 0)
+      .sort((a, b) => b.count - a.count); // Trier par nombre décroissant
 
     return result;
   },
