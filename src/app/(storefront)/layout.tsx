@@ -1,6 +1,5 @@
 import { HeaderNav } from "@/components/layout";
 import { FooterFull } from "@/components/storefront/organisms";
-
 export default function StorefrontLayout({
   children,
 }: {

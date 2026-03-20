@@ -132,23 +132,21 @@ export function HeaderNav() {
                   <Search className="size-4" />
                 </Button>
               </form>
-
               <MobileCategoryAccordion
                 categories={categories}
                 onClose={() => setMobileMenuOpen(false)}
               />
-
-              <div className="pt-2 border-t">
+              <div className="pt-2 px-6 border-t">
                 <Link
                   href={ROUTES.STORES}
                   onClick={() => setMobileMenuOpen(false)}
                   className="block rounded-md px-3 pt-1 text-sm font-medium hover:bg-muted transition-colors"
                 >
-                  Toutes les boutiques
+                  Boutiques
                 </Link>
               </div>
               {!isAuthenticated && (
-                <div className="pt-2 border-t">
+                <div className="pt-3 border-t">
                   <Link
                     href={ROUTES.LOGIN}
                     onClick={() => setMobileMenuOpen(false)}
@@ -159,6 +157,16 @@ export function HeaderNav() {
                   </Link>
                 </div>
               )}
+              {/* Fixed bottom */}
+              <div className="mt-auto py-6 px-2 border-t">
+                <Link
+                  href="/contact"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Contactez-nous
+                </Link>
+              </div>
             </div>
           </SheetContent>
         </Sheet>
