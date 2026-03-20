@@ -15,11 +15,7 @@ export function CategoryBar() {
 
   return (
     <section className="border-b">
-      <div className="container flex items-center justify-between py-4 gap-2 overflow-x-hidden">
-        <h2 className="text-sm sm:text-base font-semibold shrink-0 mr-2 sm:mr-4">
-          Catégories Populaires
-        </h2>
-
+      <div className="container py-4 flex items-center justify-between gap-2 overflow-x-hidden">
         {/* Le ScrollArea occupe l'espace restant et gère le défilement interne */}
         <ScrollArea className="flex-1 min-w-0">
           <div className="flex gap-1">
@@ -29,13 +25,6 @@ export function CategoryBar() {
           </div>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
-
-        <Link
-          href="/products"
-          className="text-xs sm:text-sm text-primary font-medium shrink-0 ml-2 sm:ml-4 hover:underline whitespace-nowrap"
-        >
-          Voir tout
-        </Link>
       </div>
     </section>
   );
