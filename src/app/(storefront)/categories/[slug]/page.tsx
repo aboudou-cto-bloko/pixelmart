@@ -115,10 +115,20 @@ function CategoryContent() {
 
       {/* Content */}
       <div className="flex gap-8">
-        <FilterSidebar fixedCategoryId={category._id} />
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:block w-64 shrink-0">
+          <div className="sticky top-20">
+            <FilterSidebar fixedCategoryId={category._id} />
+          </div>
+        </aside>
         <div className="flex-1 min-w-0">
+          {/* Mobile filter button */}
+          <div className="lg:hidden mb-4">
+            <FilterSidebar fixedCategoryId={category._id} />
+          </div>
           <ProductGrid
             products={products}
+            showCategory
             emptyMessage={`Aucun produit dans « ${category.name} » pour le moment.`}
           />
         </div>
