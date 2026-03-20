@@ -197,60 +197,27 @@ export function HeaderNav() {
 
         {/* Desktop Navigation avec mega menu */}
         <NavigationMenu className="hidden lg:flex">
-          <NavigationMenuList>
-            {visibleCategories.map((cat) => (
-              <NavigationMenuItem key={cat._id}>
-                {cat.children && cat.children.length > 0 ? (
-                  <>
-                    <NavigationMenuTrigger>{cat.name}</NavigationMenuTrigger>
-                    <NavigationMenuContent>
-                      <div className="grid w-[260px] gap-1 p-2">
-                        {cat.children.map((child) => (
-                          <NavigationMenuLink key={child._id} asChild>
-                            <Link
-                              href={ROUTES.CATEGORY(child.slug)}
-                              className="block rounded-md p-2 text-sm hover:bg-accent"
-                            >
-                              {child.name}
-                            </Link>
-                          </NavigationMenuLink>
-                        ))}
-                      </div>
-                    </NavigationMenuContent>
-                  </>
-                ) : (
-                  <NavigationMenuLink asChild>
-                    <Link
-                      href={ROUTES.CATEGORY(cat.slug)}
-                      className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-                    >
-                      {cat.name}
-                    </Link>
-                  </NavigationMenuLink>
-                )}
-              </NavigationMenuItem>
-            ))}
-
-            {extraCategories.length > 0 && (
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>Plus</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <div className="grid w-[260px] gap-1 p-2">
-                    {extraCategories.map((cat) => (
-                      <NavigationMenuLink key={cat._id} asChild>
-                        <Link
-                          href={ROUTES.CATEGORY(cat.slug)}
-                          className="block rounded-md p-2 text-sm hover:bg-accent"
-                        >
-                          {cat.name}
-                        </Link>
-                      </NavigationMenuLink>
-                    ))}
-                  </div>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            )}
-
+          <NavigationMenuList className="gap-4">
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <Link
+                  href="/about"
+                  className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  À propos
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <NavigationMenuLink asChild>
+                <Link
+                  href="/contact"
+                  className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Contact
+                </Link>
+              </NavigationMenuLink>
+            </NavigationMenuItem>
             <NavigationMenuItem>
               <NavigationMenuLink asChild>
                 <Link
