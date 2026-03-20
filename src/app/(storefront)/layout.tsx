@@ -10,7 +10,7 @@ export default function StorefrontLayout({
       <HeaderNav />
       <main className="flex-1">
         {/* Conteneur centré */}
-        <div className="container mx-auto px-4 py-6">{children}</div>
+        <div className="container mx-auto px-4 py-2">{children}</div>
       </main>
       <FooterFull />
     </div>
