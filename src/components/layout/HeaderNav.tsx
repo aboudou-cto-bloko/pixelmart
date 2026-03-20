@@ -16,6 +16,7 @@ import {
   LogOut,
   Store,
   LayoutDashboard,
+  LogIn,
 } from "lucide-react";
 
 import { api } from "../../../convex/_generated/api";
@@ -51,6 +52,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { MobileCategoryAccordion } from "@/components/ui/mobile-category-accordion";
 
 // Type attendu pour l'arbre des catégories
 type CategoryNode = {
@@ -131,45 +133,32 @@ export function HeaderNav() {
                 </Button>
               </form>
 
-              {/* Catégories */}
-              <nav className="space-y-1">
-                <p className="text-sm font-semibold text-muted-foreground px-2">
-                  Catégories
-                </p>
-                {categories.map((cat) => (
-                  <div key={cat._id}>
-                    <Link
-                      href={ROUTES.CATEGORY(cat.slug)}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors"
-                    >
-                      {cat.name}
-                    </Link>
-                    {cat.children && cat.children.length > 0 && (
-                      <div className="ml-4 space-y-1 mt-1">
-                        {cat.children.map((child) => (
-                          <Link
-                            key={child._id}
-                            href={ROUTES.CATEGORY(child.slug)}
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="block rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
-                          >
-                            {child.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+              <MobileCategoryAccordion
+                categories={categories}
+                onClose={() => setMobileMenuOpen(false)}
+              />
 
+              <div className="pt-2 border-t">
                 <Link
                   href={ROUTES.STORES}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-md px-3 py-2 text-sm text-primary hover:underline"
+                  className="block rounded-md px-3 pt-1 text-sm font-medium hover:bg-muted transition-colors"
                 >
                   Toutes les boutiques
                 </Link>
-              </nav>
+              </div>
+              {!isAuthenticated && (
+                <div className="pt-2 border-t">
+                  <Link
+                    href={ROUTES.LOGIN}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 rounded-md px-3 text-sm font-medium hover:bg-muted transition-colors"
+                  >
+                    <LogIn className="size-4 " />
+                    Se connecter
+                  </Link>
+                </div>
+              )}
             </div>
           </SheetContent>
         </Sheet>
