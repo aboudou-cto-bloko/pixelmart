@@ -107,7 +107,7 @@ export function HeaderNav() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-0 px-4">
         {/* Mobile menu trigger */}
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild className="lg:hidden">
@@ -177,9 +177,8 @@ export function HeaderNav() {
         </Sheet>
 
         {/* Logo */}
-        <Link href={ROUTES.HOME} className="flex items-center gap-1 shrink-0">
-          <span className="text-xl font-bold text-primary">Pixel</span>
-          <span className="text-xl font-bold text-secondary">-Mart</span>
+        <Link href={ROUTES.HOME} className="shrink-0">
+          <img src="/Pixel-Mart.png" alt="Pixel-Mart" className="h-34 w-auto" />
         </Link>
 
         {/* Search Desktop */}
