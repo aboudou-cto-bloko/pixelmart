@@ -3,7 +3,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { useCart } from "@/hooks/useCart";
 import Link from "next/link";
@@ -205,6 +205,7 @@ function ProductDetailSkeleton() {
 // ─── Page ────────────────────────────────────────────────────
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
+  const router = useRouter();
   const product = useQuery(api.products.queries.getBySlug, {
     slug: params.slug,
   });
@@ -343,38 +344,67 @@ export default function ProductDetailPage() {
           )}
           {/* Quantity + Add to cart */}
           {!isOutOfStock && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <QuantitySelector
                 value={quantity}
                 max={maxQuantity}
                 onChange={setQuantity}
               />
-              <Button
-                size="lg"
-                className="w-full sm:w-auto"
-                onClick={() => {
-                  if (!product.store) return;
-                  addItem({
-                    productId: product._id,
-                    variantId: selectedVariant?._id,
-                    title: product.title,
-                    variantTitle: selectedVariant?.title,
-                    slug: product.slug,
-                    image: product.images[0] ?? "",
-                    price: activePrice,
-                    comparePrice: activeComparePrice,
-                    storeId: product.store._id,
-                    storeName: product.store.name,
-                    storeSlug: product.store.slug,
-                    quantity,
-                    maxQuantity,
-                    isDigital: product.is_digital,
-                  });
-                }}
-              >
-                <ShoppingCart className="size-4 mr-2" />
-                Ajouter au panier
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="lg"
+                  className="flex-1"
+                  onClick={() => {
+                    if (!product.store) return;
+                    addItem({
+                      productId: product._id,
+                      variantId: selectedVariant?._id,
+                      title: product.title,
+                      variantTitle: selectedVariant?.title,
+                      slug: product.slug,
+                      image: product.images[0] ?? "",
+                      price: activePrice,
+                      comparePrice: activeComparePrice,
+                      storeId: product.store._id,
+                      storeName: product.store.name,
+                      storeSlug: product.store.slug,
+                      quantity,
+                      maxQuantity,
+                      isDigital: product.is_digital,
+                    });
+                  }}
+                >
+                  <ShoppingCart className="size-4 mr-2" />
+                  Ajouter au panier
+                </Button>
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => {
+                    if (!product.store) return;
+                    addItem({
+                      productId: product._id,
+                      variantId: selectedVariant?._id,
+                      title: product.title,
+                      variantTitle: selectedVariant?.title,
+                      slug: product.slug,
+                      image: product.images[0] ?? "",
+                      price: activePrice,
+                      comparePrice: activeComparePrice,
+                      storeId: product.store._id,
+                      storeName: product.store.name,
+                      storeSlug: product.store.slug,
+                      quantity,
+                      maxQuantity,
+                      isDigital: product.is_digital,
+                    });
+                    router.push(ROUTES.CART);
+                  }}
+                >
+                  Commander
+                </Button>
+              </div>
             </div>
           )}
           {isOutOfStock && (
