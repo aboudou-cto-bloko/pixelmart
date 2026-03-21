@@ -348,6 +348,9 @@ export const listLatest = query({
     const productsWithImages = await Promise.all(
       activeProducts.map(async (product) => {
         const imageUrls = await resolveImageUrls(ctx, product.images);
+        const store = product.store_id
+          ? await ctx.db.get(product.store_id)
+          : null;
         return {
           _id: product._id,
           title: product.title,
@@ -357,6 +360,7 @@ export const listLatest = query({
           compare_price: product.compare_price,
           images: imageUrls,
           store_id: product.store_id,
+          store_name: store?.name ?? null,
           category_id: product.category_id,
           quantity: product.quantity,
           tags: product.tags,

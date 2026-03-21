@@ -91,7 +91,7 @@ export function SuggestToday() {
       {/* Grille de produits */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {filteredProducts.map((p) => (
-          <ProductCard key={p._id} product={p} variant="compact" />
+          <ProductCard key={p._id} product={p} />
         ))}
       </div>
     </section>

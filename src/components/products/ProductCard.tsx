@@ -73,6 +73,11 @@ export function ProductCard({
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {hasDiscount && (
+              <Badge className="text-xs bg-red-500 text-white font-medium rounded">
+                -{discountPercent}%
+              </Badge>
+            )}
             {is_digital && (
               <Badge variant="secondary" className="text-xs font-medium">
                 Digital
@@ -108,14 +113,9 @@ export function ProductCard({
               {formatPrice(price, currency)}
             </span>
             {hasDiscount && (
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xs text-muted-foreground line-through">
-                  {formatPrice(compare_price, currency)}
-                </span>
-                <span className="text-xs text-red-500 font-medium">
-                  -{discountPercent}%
-                </span>
-              </div>
+              <span className="block text-xs text-muted-foreground line-through">
+                {formatPrice(compare_price, currency)}
+              </span>
             )}
           </div>
         </div>
