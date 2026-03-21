@@ -115,7 +115,11 @@ export function HeaderNav() {
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80 p-0 pr-12">
+          <SheetContent
+            side="left"
+            className="w-80 p-0 pr-12"
+            preventFocusOnOpen
+          >
             <SheetHeader className="sr-only">
               <SheetTitle>Menu</SheetTitle>
             </SheetHeader>
@@ -127,6 +131,7 @@ export function HeaderNav() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Rechercher..."
                   className="rounded-r-none"
+                  autoComplete="off"
                 />
                 <Button type="submit" size="icon" className="rounded-l-none">
                   <Search className="size-4" />
