@@ -28,19 +28,19 @@ export function PriceTag({
   }[size];
 
   return (
-    <div className="flex items-baseline gap-2 flex-wrap">
+    <div className="inline-flex items-baseline gap-2 flex-wrap">
       <span className={cn("font-bold", textSize)}>
         {formatPrice(price, currency)}
       </span>
       {hasDiscount && (
-        <>
+        <div className="inline-flex items-baseline gap-1">
           <span className="text-xs text-muted-foreground line-through">
             {formatPrice(comparePrice, currency)}
           </span>
           <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
             -{discountPercent}%
           </span>
-        </>
+        </div>
       )}
     </div>
   );

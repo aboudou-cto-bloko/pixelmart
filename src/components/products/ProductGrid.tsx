@@ -10,6 +10,7 @@ interface ProductGridProps {
   /** Message quand la liste est vide */
   emptyMessage?: string;
   currency?: string;
+  showCategory?: boolean;
 }
 
 export function ProductGrid({
@@ -17,6 +18,7 @@ export function ProductGrid({
   skeletonCount = 8,
   emptyMessage = "Aucun produit trouvé.",
   currency = "XOF",
+  showCategory = false,
 }: ProductGridProps) {
   // Loading
   if (products === undefined) {
@@ -46,7 +48,12 @@ export function ProductGrid({
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {products.map((product) => (
-        <ProductCard key={product._id} product={product} currency={currency} />
+        <ProductCard
+          key={product._id}
+          product={product}
+          currency={currency}
+          showCategory={showCategory}
+        />
       ))}
     </div>
   );

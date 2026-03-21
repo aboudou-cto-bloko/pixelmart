@@ -57,7 +57,7 @@ export function BestSeller() {
       {/* Product grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {filteredProducts.slice(0, 12).map((p) => (
-          <ProductCard key={p._id} product={p} variant="compact" />
+          <ProductCard key={p._id} product={p} />
         ))}
       </div>
     </section>

@@ -58,9 +58,17 @@ function CatalogContent() {
 
       {/* Content */}
       <div className="flex gap-8">
-        {/* Desktop sidebar (hidden on mobile, FilterSidebar handles both) */}
-        <FilterSidebar />
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:block w-64 shrink-0">
+          <div className="sticky top-20">
+            <FilterSidebar />
+          </div>
+        </aside>
         <div className="flex-1 min-w-0">
+          {/* Mobile filter button */}
+          <div className="lg:hidden mb-4">
+            <FilterSidebar />
+          </div>
           <ProductGrid
             products={products}
             emptyMessage={

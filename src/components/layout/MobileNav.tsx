@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Menu, X, ChevronRight, LogIn, UserPlus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,7 @@ interface MobileNavProps {
 export function MobileNav({ categories }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const { user, isAuthenticated } = useCurrentUser();
+  const router = useRouter();
 
   function close() {
     setOpen(false);
@@ -38,7 +40,7 @@ export function MobileNav({ categories }: MobileNavProps) {
 
   async function handleSignOut() {
     await authClient.signOut();
-    close();
+    router.push("/");
   }
 
   return (

@@ -295,6 +295,12 @@ export const search = query({
     const productsWithImages = await Promise.all(
       products.map(async (product) => {
         const imageUrls = await resolveImageUrls(ctx, product.images);
+        const category = product.category_id
+          ? await ctx.db.get(product.category_id)
+          : null;
+        const store = product.store_id
+          ? await ctx.db.get(product.store_id)
+          : null;
         return {
           _id: product._id,
           title: product.title,
@@ -305,6 +311,8 @@ export const search = query({
           images: imageUrls,
           store_id: product.store_id,
           category_id: product.category_id,
+          category_name: category?.name ?? null,
+          store_name: store?.name ?? null,
           quantity: product.quantity,
           status: product.status,
           tags: product.tags,
@@ -340,6 +348,9 @@ export const listLatest = query({
     const productsWithImages = await Promise.all(
       activeProducts.map(async (product) => {
         const imageUrls = await resolveImageUrls(ctx, product.images);
+        const store = product.store_id
+          ? await ctx.db.get(product.store_id)
+          : null;
         return {
           _id: product._id,
           title: product.title,
@@ -349,6 +360,7 @@ export const listLatest = query({
           compare_price: product.compare_price,
           images: imageUrls,
           store_id: product.store_id,
+          store_name: store?.name ?? null,
           category_id: product.category_id,
           quantity: product.quantity,
           tags: product.tags,

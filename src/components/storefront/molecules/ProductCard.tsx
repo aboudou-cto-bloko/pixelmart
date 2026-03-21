@@ -20,7 +20,7 @@ interface ProductCardProps {
     compare_price?: number;
     avg_rating?: number;
     review_count?: number;
-    store_name?: string;
+    store_name?: string | null;
   };
   variant?: "default" | "compact" | "horizontal";
   sponsored?: boolean;
@@ -117,12 +117,13 @@ export function ProductCard({
             )}
           </div>
         )}
-
-        <PriceTag
-          price={product.price}
-          comparePrice={product.compare_price}
-          size={variant === "compact" ? "sm" : "md"}
-        />
+        <div className="flex flex-col pt-2 gap-1.5">
+          <PriceTag
+            price={product.price}
+            comparePrice={product.compare_price}
+            size={variant === "compact" ? "sm" : "md"}
+          />
+        </div>
       </div>
     </Link>
   );

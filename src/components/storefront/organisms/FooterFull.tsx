@@ -62,7 +62,7 @@ export function FooterFull() {
   return (
     <footer className="bg-foreground text-background">
       {/* Main footer */}
-      <div className="container py-12">
+      <div className="container px-4 py-12">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           {/* Brand column */}
           <div className="lg:col-span-1 space-y-4">
@@ -84,7 +84,7 @@ export function FooterFull() {
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="size-4 shrink-0" />
-                <span>contact@pixelmart.io</span>
+                <span>contact@pixel-mart-bj.com</span>
               </div>
             </div>
 

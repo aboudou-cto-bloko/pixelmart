@@ -219,7 +219,7 @@ export function FilterSidebar({ fixedCategoryId }: FilterSidebarProps) {
     <>
       {/* Desktop — sidebar fixe */}
       <aside className="hidden lg:block w-64 shrink-0">
-        <div className="sticky top-20 space-y-4">
+        <div className="sticky top-20 px-4 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">Filtres</p>
             {hasActiveFilters && (
@@ -249,7 +249,7 @@ export function FilterSidebar({ fixedCategoryId }: FilterSidebarProps) {
             )}
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-80">
+        <SheetContent side="left" className="w-80 px-4">
           <SheetHeader>
             <SheetTitle>Filtres</SheetTitle>
           </SheetHeader>
