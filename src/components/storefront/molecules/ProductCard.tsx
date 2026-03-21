@@ -117,7 +117,7 @@ export function ProductCard({
             )}
           </div>
         )}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col pt-2 gap-1.5">
           <PriceTag
             price={product.price}
             comparePrice={product.compare_price}
