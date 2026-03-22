@@ -17,6 +17,7 @@ import {
   Minus,
   Plus,
   Store,
+  Check,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
@@ -350,6 +351,14 @@ export default function ProductDetailPage() {
                 max={maxQuantity}
                 onChange={setQuantity}
               />
+              {/* Stock Urgency */}
+              {maxQuantity <= 10 && maxQuantity > 0 && (
+                <p className="text-sm text-orange-600 flex items-center gap-1.5">
+                  <span className="font-medium">
+                    ⚡ Plus que {maxQuantity} en stock
+                  </span>
+                </p>
+              )}
               <div className="flex gap-2">
                 <Button
                   size="lg"
@@ -414,6 +423,43 @@ export default function ProductDetailPage() {
               </p>
             </div>
           )}
+          {/* Bullet Points - Key Benefits */}
+          {product.tags.length > 0 && (
+            <div className="bg-muted/30 rounded-lg p-4">
+              <h3 className="text-sm font-semibold mb-3">Points clés</h3>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {product.tags.slice(0, 8).map((tag) => (
+                  <li key={tag} className="flex items-start gap-2 text-sm">
+                    <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground capitalize">
+                      {tag.toLowerCase()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {/* Trust Icons */}
+          <div className="flex flex-wrap items-center justify-center gap-4 py-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+              <span>Paiement sécurisé</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+              </svg>
+              <span>Protection acheteurs</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
+              </svg>
+              <span>Moov Money, Celtis, Mobile Money</span>
+            </div>
+          </div>
           <Separator />
           {/* Description */}
           {product.description && (
@@ -435,6 +481,13 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
+          {/* Technical Specs */}
+          {product.weight && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="font-medium">Poids:</span>
+              <span>{product.weight} g</span>
+            </div>
+          )}
           <Separator />
           {/* Delivery info */}
           <div className="flex items-start gap-3 text-sm">
@@ -444,6 +497,26 @@ export default function ProductDetailPage() {
               <p className="text-muted-foreground">
                 Délai et frais calculés au checkout selon votre localisation.
               </p>
+            </div>
+          </div>
+          {/* Returns Policy */}
+          <div className="flex items-start gap-2 text-sm">
+            <svg
+              className="size-5 text-blue-600 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            <div>
+              <p className="font-medium">Retours gratuits</p>
+              <p className="text-xs text-muted-foreground">Sous 7 jours</p>
             </div>
           </div>
 

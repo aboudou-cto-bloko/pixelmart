@@ -11,6 +11,7 @@ interface ProductGridProps {
   emptyMessage?: string;
   currency?: string;
   showCategory?: boolean;
+  showAddToCart?: boolean;
 }
 
 export function ProductGrid({
@@ -19,6 +20,7 @@ export function ProductGrid({
   emptyMessage = "Aucun produit trouvé.",
   currency = "XOF",
   showCategory = false,
+  showAddToCart = false,
 }: ProductGridProps) {
   // Loading
   if (products === undefined) {
@@ -53,6 +55,7 @@ export function ProductGrid({
           product={product}
           currency={currency}
           showCategory={showCategory}
+          showAddToCart={showAddToCart}
         />
       ))}
     </div>
