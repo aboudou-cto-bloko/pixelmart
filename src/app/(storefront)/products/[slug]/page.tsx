@@ -42,43 +42,6 @@ interface Variant {
   image_url: string | null;
 }
 
-function VariantSelector({
-  variants,
-  selectedId,
-  onSelect,
-}: {
-  variants: Variant[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-}) {
-  if (variants.length === 0) return null;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium">Variante</p>
-      <div className="flex flex-wrap gap-2">
-        {variants.map((v) => (
-          <button
-            key={v._id}
-            type="button"
-            onClick={() => onSelect(v._id)}
-            disabled={v.quantity <= 0}
-            className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
-              selectedId === v._id
-                ? "border-primary bg-primary/5 text-primary"
-                : v.quantity <= 0
-                  ? "border-muted text-muted-foreground opacity-50 cursor-not-allowed"
-                  : "border-input hover:border-primary/50"
-            }`}
-          >
-            {v.title}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Quantity selector ───────────────────────────────────────
 function QuantitySelector({
   value,
@@ -211,9 +174,6 @@ export default function ProductDetailPage() {
     slug: params.slug,
   });
 
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
-    null,
-  );
   const [quantity, setQuantity] = useState(1);
   const { addItem } = useCart();
 
@@ -240,17 +200,11 @@ export default function ProductDetailPage() {
     );
   }
 
-  const selectedVariant = product.variants.find(
-    (v) => v._id === selectedVariantId,
-  );
-  const activePrice = selectedVariant?.price ?? product.price;
-  const activeComparePrice =
-    selectedVariant?.compare_price ?? product.compare_price;
+  const activePrice = product.price;
+  const activeComparePrice = product.compare_price;
   const hasDiscount =
     activeComparePrice !== undefined && activeComparePrice > activePrice;
-  const maxQuantity = selectedVariant
-    ? selectedVariant.quantity
-    : product.quantity;
+  const maxQuantity = product.quantity;
   const isOutOfStock = maxQuantity <= 0;
 
   return (
@@ -332,17 +286,6 @@ export default function ProductDetailPage() {
             )}
           </div>
           <Separator />
-          {/* Variants */}
-          {product.variants.length > 0 && (
-            <VariantSelector
-              variants={product.variants}
-              selectedId={selectedVariantId}
-              onSelect={(id) => {
-                setSelectedVariantId(id);
-                setQuantity(1);
-              }}
-            />
-          )}
           {/* Quantity + Add to cart */}
           {!isOutOfStock && (
             <div className="space-y-3">
@@ -367,9 +310,7 @@ export default function ProductDetailPage() {
                     if (!product.store) return;
                     addItem({
                       productId: product._id,
-                      variantId: selectedVariant?._id,
                       title: product.title,
-                      variantTitle: selectedVariant?.title,
                       slug: product.slug,
                       image: product.images[0] ?? "",
                       price: activePrice,
@@ -394,9 +335,7 @@ export default function ProductDetailPage() {
                     if (!product.store) return;
                     addItem({
                       productId: product._id,
-                      variantId: selectedVariant?._id,
                       title: product.title,
-                      variantTitle: selectedVariant?.title,
                       slug: product.slug,
                       image: product.images[0] ?? "",
                       price: activePrice,
