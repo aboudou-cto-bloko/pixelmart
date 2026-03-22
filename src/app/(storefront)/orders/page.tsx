@@ -173,9 +173,9 @@ export default function CustomerOrdersPage() {
                     <div className="flex items-start gap-4">
                       {/* Thumbnail */}
                       <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-muted">
-                        {firstItem?.image_url ? (
+                        {firstItem?.resolved_image_url ? (
                           <Image
-                            src={firstItem.image_url}
+                            src={firstItem.resolved_image_url}
                             alt={firstItem.title}
                             fill
                             sizes="64px"
