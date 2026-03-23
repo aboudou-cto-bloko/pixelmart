@@ -109,7 +109,7 @@ export function ProductCard({
             {title}
           </h3>
           <div className="space-y-0.5 pt-2">
-            <span className="text-base font-bold text-foreground">
+            <span className="text-base font-bold text-primary">
               {formatPrice(price, currency)}
             </span>
             {hasDiscount && (

@@ -60,7 +60,7 @@ const PAYMENT_METHODS = [
 
 export function FooterFull() {
   return (
-    <footer className="bg-foreground text-background">
+    <footer className="force-dark-theme">
       {/* Main footer */}
       <div className="container px-4 py-12">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
@@ -94,7 +94,7 @@ export function FooterFull() {
                 <a
                   key={i}
                   href="#"
-                  className="flex size-9 items-center justify-center rounded-full bg-background/10 hover:bg-background/20 transition-colors"
+                  className="flex size-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
                 >
                   <Icon className="size-4" />
                 </a>
@@ -105,7 +105,7 @@ export function FooterFull() {
           {/* Link columns */}
           {Object.values(FOOTER_LINKS).map((section) => (
             <div key={section.title}>
-              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-background/80">
+              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-white/80">
                 {section.title}
               </h3>
               <ul className="space-y-2.5">
@@ -113,7 +113,7 @@ export function FooterFull() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-background/60 hover:text-background transition-colors"
+                      className="text-sm text-white/60 hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>
