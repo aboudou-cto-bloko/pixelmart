@@ -60,7 +60,10 @@ const PAYMENT_METHODS = [
 
 export function FooterFull() {
   return (
-    <footer className="force-dark-theme">
+    <footer
+      className="force-dark-theme"
+      style={{ backgroundColor: "#121212 !important" }}
+    >
       {/* Main footer */}
       <div className="container px-4 py-12">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
@@ -69,24 +72,26 @@ export function FooterFull() {
             <Link href="/" className="text-xl font-bold">
               <span className="text-primary">Pixel</span>-Mart
             </Link>
-            <p className="text-sm text-background/60 leading-relaxed">
+            <p className="text-sm text-white/60 leading-relaxed">
               La marketplace africaine pour les entrepreneurs. Vendez vos
               produits, acceptez Mobile Money.
             </p>
-            <div className="space-y-2 text-sm text-background/60">
+            <div className="space-y-2 text-sm text-white/60">
               <div className="flex items-center gap-2">
-                <MapPin className="size-4 shrink-0" />
-                <span>Cotonou, Bénin</span>
+                <MapPin className="size-4 shrink-0 text-white" />
+                <span className="text-white">Cotonou, Béni</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="size-4 shrink-0" />
-                <span>+229 XX XX XX XX</span>
+                <Phone className="size-4 shrink-0 text-white" />
+                <span className="text-white">+229 XX XX XX XX</span>
               </div>
               <div className="flex items-center gap-2">
-                <Mail className="size-4 shrink-0" />
-                <span>contact@pixel-mart-bj.com</span>
+                <Mail className="size-4 shrink-0 text-white" />
+                <span className="text-white">contact@pixel-mart-bj.com</span>
               </div>
             </div>
+
+            {/* Social */}
 
             {/* Social */}
             <div className="flex gap-3 pt-2">

@@ -148,10 +148,10 @@
    DESIGN TOKENS — DARK THEME
    ============================================= */
 .dark {
-  --background: oklch(0.04 0 0);
+  --background: #0a0a0a;
   --foreground: oklch(0.98 0 0);
 
-  --card: oklch(0.071 0 0);
+  --card: #121212;
   --card-foreground: oklch(0.98 0 0);
 
   --popover: oklch(0.071 0 0);
@@ -297,6 +297,17 @@
   .mono {
     font-family: var(--font-mono);
   }
+}
+
+/* ProductCard dark mode background */
+.dark .group.rounded-xl.border,
+.dark div[class*="bg-card"].rounded-xl {
+  background-color: #121212 !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .bg-card {
+  background-color: #121212 !important;
 }
 
 /* Force dark theme for specific elements (e.g., footer) */

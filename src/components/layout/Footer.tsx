@@ -23,7 +23,10 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t force-dark-theme">
+    <footer
+      className="border-t force-dark-theme"
+      style={{ backgroundColor: "#121212 !important" }}
+    >
       <div className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {/* Brand */}

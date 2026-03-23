@@ -38,8 +38,8 @@ export function PopularBrands() {
   if (brandItems.length === 0) return null;
 
   return (
-    <section className="container py-8">
-      <div className="rounded-xl border bg-card p-6">
+    <section className="py-8">
+      <div className="rounded-xl border bg-card p-6 dark:!bg-[#111111] dark:!border-[#1a1a1a]">
         <h2 className="text-base font-semibold mb-4">Boutiques Populaires</h2>
         <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-4">
           {brandItems.map((brand) => (

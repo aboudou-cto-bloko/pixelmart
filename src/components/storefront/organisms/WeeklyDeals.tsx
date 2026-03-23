@@ -34,8 +34,8 @@ export function WeeklyDeals() {
   }
 
   return (
-    <section className="container py-8">
-      <div className="rounded-xl border bg-card p-6">
+    <section className="py-8">
+      <div className="rounded-xl border bg-card p-6 dark:!bg-[#111111] dark:!border-[#1a1a1a]">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <h2 className="text-xl font-bold">Meilleures Offres</h2>
