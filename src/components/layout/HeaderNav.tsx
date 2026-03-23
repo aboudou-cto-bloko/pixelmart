@@ -53,6 +53,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { MobileCategoryAccordion } from "@/components/ui/mobile-category-accordion";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 // Type attendu pour l'arbre des catégories
 type CategoryNode = {
@@ -240,15 +241,8 @@ export function HeaderNav() {
 
         {/* Right section */}
         <div className="ml-auto flex items-center gap-2">
-          {/* Search mobile icon */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => router.push(`${ROUTES.PRODUCTS}?search=true`)}
-          >
-            <Search className="size-5" />
-          </Button>
+          {/* Theme toggle */}
+          <ThemeToggle />
 
           {/* Cart */}
           <Button variant="ghost" size="icon" className="relative" asChild>

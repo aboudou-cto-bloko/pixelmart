@@ -60,7 +60,10 @@ const PAYMENT_METHODS = [
 
 export function FooterFull() {
   return (
-    <footer className="bg-foreground text-background">
+    <footer
+      className="force-dark-theme"
+      style={{ backgroundColor: "#121212 !important" }}
+    >
       {/* Main footer */}
       <div className="container px-4 py-12">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
@@ -69,24 +72,26 @@ export function FooterFull() {
             <Link href="/" className="text-xl font-bold">
               <span className="text-primary">Pixel</span>-Mart
             </Link>
-            <p className="text-sm text-background/60 leading-relaxed">
+            <p className="text-sm text-white/60 leading-relaxed">
               La marketplace africaine pour les entrepreneurs. Vendez vos
               produits, acceptez Mobile Money.
             </p>
-            <div className="space-y-2 text-sm text-background/60">
+            <div className="space-y-2 text-sm text-white/60">
               <div className="flex items-center gap-2">
-                <MapPin className="size-4 shrink-0" />
-                <span>Cotonou, Bénin</span>
+                <MapPin className="size-4 shrink-0 text-white" />
+                <span className="text-white">Cotonou, Béni</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="size-4 shrink-0" />
-                <span>+229 XX XX XX XX</span>
+                <Phone className="size-4 shrink-0 text-white" />
+                <span className="text-white">+229 XX XX XX XX</span>
               </div>
               <div className="flex items-center gap-2">
-                <Mail className="size-4 shrink-0" />
-                <span>contact@pixel-mart-bj.com</span>
+                <Mail className="size-4 shrink-0 text-white" />
+                <span className="text-white">contact@pixel-mart-bj.com</span>
               </div>
             </div>
+
+            {/* Social */}
 
             {/* Social */}
             <div className="flex gap-3 pt-2">
@@ -94,7 +99,7 @@ export function FooterFull() {
                 <a
                   key={i}
                   href="#"
-                  className="flex size-9 items-center justify-center rounded-full bg-background/10 hover:bg-background/20 transition-colors"
+                  className="flex size-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
                 >
                   <Icon className="size-4" />
                 </a>
@@ -105,7 +110,7 @@ export function FooterFull() {
           {/* Link columns */}
           {Object.values(FOOTER_LINKS).map((section) => (
             <div key={section.title}>
-              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-background/80">
+              <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-white/80">
                 {section.title}
               </h3>
               <ul className="space-y-2.5">
@@ -113,7 +118,7 @@ export function FooterFull() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-background/60 hover:text-background transition-colors"
+                      className="text-sm text-white/60 hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>

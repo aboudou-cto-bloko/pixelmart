@@ -54,7 +54,7 @@ export function ProductCard({
 
   return (
     <Link href={ROUTES.PRODUCT(slug)} className="block">
-      <div className="group bg-background rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-primary transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98]">
+      <div className="group bg-card rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-primary transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98]">
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
           {images[0] ? (
@@ -109,7 +109,7 @@ export function ProductCard({
             {title}
           </h3>
           <div className="space-y-0.5 pt-2">
-            <span className="text-base font-bold text-foreground">
+            <span className="text-base font-bold text-primary">
               {formatPrice(price, currency)}
             </span>
             {hasDiscount && (

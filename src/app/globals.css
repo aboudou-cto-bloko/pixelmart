@@ -148,13 +148,13 @@
    DESIGN TOKENS — DARK THEME
    ============================================= */
 .dark {
-  --background: oklch(0.15 0 0);
+  --background: #0a0a0a;
   --foreground: oklch(0.98 0 0);
 
-  --card: oklch(0.22 0 0);
+  --card: #121212;
   --card-foreground: oklch(0.98 0 0);
 
-  --popover: oklch(0.22 0 0);
+  --popover: oklch(0.071 0 0);
   --popover-foreground: oklch(0.98 0 0);
 
   --primary: oklch(0.75 0.18 70);
@@ -297,4 +297,62 @@
   .mono {
     font-family: var(--font-mono);
   }
+}
+
+/* ProductCard dark mode background */
+.dark .group.rounded-xl.border,
+.dark div[class*="bg-card"].rounded-xl {
+  background-color: #121212 !important;
+  border-color: #1a1a1a !important;
+}
+
+.dark .bg-card {
+  background-color: #121212 !important;
+}
+
+/* Force dark theme for specific elements (e.g., footer) */
+.force-dark-theme {
+  background-color: #121212 !important;
+  color: #cccccc !important;
+}
+
+.force-dark-theme a:not(.text-primary) {
+  color: #ffffff !important;
+}
+
+.force-dark-theme a:not(.text-primary):hover {
+  color: #ea4c29 !important;
+}
+
+.force-dark-theme .text-primary {
+  color: var(--primary) !important;
+}
+
+.force-dark-theme p,
+.force-dark-theme span,
+.force-dark-theme li {
+  color: #cccccc !important;
+}
+
+.force-dark-theme h1,
+.force-dark-theme h2,
+.force-dark-theme h3,
+.force-dark-theme h4,
+.force-dark-theme h5,
+.force-dark-theme h6 {
+  color: #ffffff !important;
+}
+
+.force-dark-theme .text-muted-foreground {
+  color: #888888 !important;
+}
+
+.force-dark-theme [class*="text-primary"] {
+  color: var(--primary) !important;
+}
+
+.light .force-dark-theme,
+.dark .force-dark-theme {
+  background-color: #0a0a0a !important;
+  color: #cccccc !important;
 }

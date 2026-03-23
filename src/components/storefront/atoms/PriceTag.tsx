@@ -29,7 +29,7 @@ export function PriceTag({
 
   return (
     <div className="inline-flex items-baseline gap-2 flex-wrap">
-      <span className={cn("font-bold", textSize)}>
+      <span className={cn("font-bold text-primary", textSize)}>
         {formatPrice(price, currency)}
       </span>
       {hasDiscount && (

@@ -2,6 +2,7 @@
 
 import type { Metadata } from "next";
 import { Poppins, Montserrat } from "next/font/google";
+import { ThemeProvider } from "@/components/ui/theme-provider";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConvexClientProvider } from "./ConvexClientProvider";
@@ -39,12 +40,14 @@ export default function RootLayout({
         className={`${poppins.variable} ${montserrat.variable} antialiased`}
       >
         <ConvexClientProvider>
-          <CartProvider>
-            <TooltipProvider>
-              {children}
-              <Toaster richColors position="bottom-right" />
-            </TooltipProvider>
-          </CartProvider>
+          <ThemeProvider>
+            <CartProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster richColors position="bottom-right" />
+              </TooltipProvider>
+            </CartProvider>
+          </ThemeProvider>
         </ConvexClientProvider>
       </body>
     </html>
