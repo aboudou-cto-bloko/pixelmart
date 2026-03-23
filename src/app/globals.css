@@ -301,7 +301,7 @@
 
 /* Force dark theme for specific elements (e.g., footer) */
 .force-dark-theme {
-  background-color: #0d0d0d !important;
+  background-color: #121212 !important;
   color: #cccccc !important;
 }
 
