@@ -43,29 +43,27 @@ export const getBySlug = query({
       .collect();
 
     const variantsWithImages = await Promise.all(
-      variants
-        .filter((v) => v.is_available)
-        .map(async (variant) => {
-          const variantImage = variant.image_url
-            ? await ctx.storage
-                .getUrl(
-                  variant.image_url as unknown as import("../_generated/dataModel").Id<"_storage">,
-                )
-                .catch(() => null)
-            : null;
+      variants.map(async (variant) => {
+        const variantImage = variant.image_url
+          ? await ctx.storage
+              .getUrl(
+                variant.image_url as unknown as import("../_generated/dataModel").Id<"_storage">,
+              )
+              .catch(() => null)
+          : null;
 
-          return {
-            _id: variant._id,
-            title: variant.title,
-            options: variant.options,
-            price: variant.price,
-            compare_price: variant.compare_price,
-            sku: variant.sku,
-            quantity: variant.quantity,
-            image_url: variantImage,
-            weight: variant.weight,
-          };
-        }),
+        return {
+          _id: variant._id,
+          title: variant.title,
+          options: variant.options,
+          price: variant.price,
+          compare_price: variant.compare_price,
+          sku: variant.sku,
+          quantity: variant.quantity,
+          image_url: variantImage,
+          weight: variant.weight,
+        };
+      }),
     );
 
     // Fetch store info (minimal, for display)
@@ -313,6 +311,7 @@ export const search = query({
           category_id: product.category_id,
           category_name: category?.name ?? null,
           store_name: store?.name ?? null,
+          store_slug: store?.slug ?? null,
           quantity: product.quantity,
           status: product.status,
           tags: product.tags,

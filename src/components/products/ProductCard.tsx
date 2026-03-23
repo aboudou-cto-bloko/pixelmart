@@ -4,10 +4,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useCart } from "@/hooks/useCart";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ProductCategoryBadge } from "@/components/ui/product-category-badge";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 export interface ProductCardData {
   _id: string;
@@ -21,19 +25,25 @@ export interface ProductCardData {
   tags?: string[];
   category_name?: string | null;
   store_name?: string | null;
+  store_id?: string | null;
+  store_slug?: string | null;
 }
 
 interface ProductCardProps {
   product: ProductCardData;
   currency?: string;
   showCategory?: boolean;
+  showAddToCart?: boolean;
 }
 
 export function ProductCard({
   product,
   currency = "XOF",
   showCategory = false,
+  showAddToCart = false,
 }: ProductCardProps) {
+  const router = useRouter();
+  const { addItem } = useCart();
   const {
     title,
     slug,
@@ -44,6 +54,8 @@ export function ProductCard({
     quantity,
     category_name,
     store_name,
+    store_id,
+    store_slug,
   } = product;
   const hasDiscount = compare_price !== undefined && compare_price > price;
   const isOutOfStock = quantity !== undefined && quantity <= 0;
@@ -51,6 +63,28 @@ export function ProductCard({
   const discountPercent = hasDiscount
     ? Math.round(((compare_price - price) / compare_price) * 100)
     : 0;
+
+  const handleBuyNow = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!store_id || !store_name || !store_slug) return;
+    addItem({
+      productId: product._id as Id<"products">,
+      title: product.title,
+      variantTitle: undefined,
+      slug: product.slug,
+      image: images[0] ?? "",
+      price: product.price,
+      comparePrice: compare_price,
+      storeId: store_id as Id<"stores">,
+      storeName: store_name,
+      storeSlug: store_slug,
+      quantity: 1,
+      maxQuantity: quantity ?? 99,
+      isDigital: is_digital,
+    });
+    router.push(ROUTES.CART);
+  };
 
   return (
     <Link href={ROUTES.PRODUCT(slug)} className="block">
@@ -118,6 +152,11 @@ export function ProductCard({
               </span>
             )}
           </div>
+          {showAddToCart && !isOutOfStock && (
+            <Button size="sm" className="w-full mt-3" onClick={handleBuyNow}>
+              Commander
+            </Button>
+          )}
         </div>
       </div>
     </Link>

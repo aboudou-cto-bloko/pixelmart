@@ -199,6 +199,7 @@ export default function StoreVitrinePage() {
             <ProductGrid
               products={products}
               emptyMessage="Cette boutique n'a pas encore de produits."
+              showAddToCart={true}
             />
           </div>
         </div>
