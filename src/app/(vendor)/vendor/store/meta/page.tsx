@@ -79,6 +79,7 @@ export default function VendorMetaSettingsPage() {
   const [vendorShopEnabled, setVendorShopEnabled] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTogglingShop, setIsTogglingShop] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +91,22 @@ export default function VendorMetaSettingsPage() {
     setTestEventCode(store.meta_test_event_code ?? "");
     setVendorShopEnabled(store.vendor_shop_enabled ?? false);
   }, [store]);
+
+  async function handleToggleShop(enabled: boolean) {
+    if (isTogglingShop) return;
+    setVendorShopEnabled(enabled);
+    setIsTogglingShop(true);
+    try {
+      await updateMetaConfig({ vendorShopEnabled: enabled });
+    } catch (err) {
+      setVendorShopEnabled(!enabled); // rollback
+      setError(
+        err instanceof Error ? err.message : "Erreur lors de la sauvegarde",
+      );
+    } finally {
+      setIsTogglingShop(false);
+    }
+  }
 
   async function handleSave() {
     if (isSaving) return;
@@ -158,7 +175,8 @@ export default function VendorMetaSettingsPage() {
             </div>
             <Switch
               checked={vendorShopEnabled}
-              onCheckedChange={setVendorShopEnabled}
+              onCheckedChange={handleToggleShop}
+              disabled={isTogglingShop}
             />
           </div>
 
