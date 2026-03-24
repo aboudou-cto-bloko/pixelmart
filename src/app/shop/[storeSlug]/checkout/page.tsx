@@ -120,7 +120,7 @@ export default function ShopCheckoutPage() {
     if (!store || !user || isSubmitting) return;
 
     const errors = validateAddress(address);
-    if (Object.keys(errors).length > 0) {
+    if (errors && Object.keys(errors).length > 0) {
       setAddressErrors(errors);
       return;
     }
@@ -135,7 +135,7 @@ export default function ShopCheckoutPage() {
         quantity: item.quantity,
       }));
 
-      const orderId = await createOrder({
+      const { orderId } = await createOrder({
         storeId: store._id as Id<"stores">,
         items: orderItems,
         shippingAddress: address,
@@ -181,6 +181,8 @@ export default function ShopCheckoutPage() {
       </div>
     );
   }
+
+  if (!store) return null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -261,8 +263,8 @@ export default function ShopCheckoutPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Livraison</span>
                 <span>
-                  {deliveryConfig.deliveryFee > 0
-                    ? formatPrice(deliveryConfig.deliveryFee, "XOF")
+                  {(deliveryConfig.deliveryFee ?? 0) > 0
+                    ? formatPrice(deliveryConfig.deliveryFee ?? 0, "XOF")
                     : "À définir"}
                 </span>
               </div>
@@ -280,8 +282,7 @@ export default function ShopCheckoutPage() {
         {/* Delivery */}
         {store && (
           <DeliverySection
-            storeId={store._id}
-            config={deliveryConfig}
+            value={deliveryConfig}
             onChange={setDeliveryConfig}
           />
         )}
@@ -293,7 +294,7 @@ export default function ShopCheckoutPage() {
           </CardHeader>
           <CardContent>
             <AddressForm
-              value={address}
+              address={address}
               onChange={setAddress}
               errors={addressErrors ?? {}}
             />

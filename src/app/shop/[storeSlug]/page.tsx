@@ -19,7 +19,7 @@ export default function ShopHomePage() {
   const store = useQuery(api.stores.queries.getBySlug, { slug: storeSlug });
   const products = useQuery(
     api.products.queries.listActiveByStore,
-    store ? { storeId: store._id, limit: 8 } : "skip",
+    store ? { storeId: store._id } : "skip",
   );
 
   const isLoading = store === undefined;
