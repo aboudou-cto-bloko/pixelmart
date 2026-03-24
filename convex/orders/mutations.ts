@@ -70,6 +70,9 @@ export const createOrder = mutation({
     ),
     paymentMode: v.optional(v.union(v.literal("online"), v.literal("cod"))),
     estimatedWeightKg: v.optional(v.number()),
+    source: v.optional(
+      v.union(v.literal("marketplace"), v.literal("vendor_shop")),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
@@ -176,6 +179,7 @@ export const createOrder = mutation({
       payment_mode: paymentMode,
       delivery_fee: shippingAmount,
       estimated_weight_kg: args.estimatedWeightKg,
+      source: args.source ?? "marketplace",
       updated_at: Date.now(),
     });
 
