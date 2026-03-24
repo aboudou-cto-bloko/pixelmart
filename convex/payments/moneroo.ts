@@ -118,6 +118,88 @@ export const initializePayment = action({
 });
 
 /**
+ * Initialise un paiement Moneroo depuis une boutique vendeur.
+ * Identique à initializePayment mais avec un return_url pointant vers /shop/[storeSlug].
+ */
+export const initializeShopPayment = action({
+  args: {
+    orderId: v.id("orders"),
+    storeSlug: v.string(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ checkoutUrl: string; paymentId: string }> => {
+    const secretKey = process.env.MONEROO_SECRET_KEY;
+    if (!secretKey) throw new Error("MONEROO_SECRET_KEY non configurée");
+
+    const siteUrl = process.env.SITE_URL;
+    if (!siteUrl) throw new Error("SITE_URL non configurée");
+
+    const order = await ctx.runQuery(
+      internal.payments.queries.getOrderForPayment,
+      { orderId: args.orderId },
+    );
+    if (!order) throw new Error("Commande introuvable");
+    if (order.status !== "pending")
+      throw new Error(`Paiement impossible : commande "${order.status}"`);
+    if (order.payment_status === "paid")
+      throw new Error("Cette commande est déjà payée");
+
+    const monerooAmount = centimesToMonerooAmount(order.total_amount);
+
+    const payload = {
+      amount: monerooAmount,
+      currency: order.currency,
+      description: `Commande ${order.order_number} — ${args.storeSlug}`,
+      customer: {
+        email: order.customer_email,
+        first_name: order.customer_name.split(" ")[0] || "Client",
+        last_name:
+          order.customer_name.split(" ").slice(1).join(" ") || "Client",
+      },
+      return_url: `${siteUrl}/shop/${args.storeSlug}/checkout/payment-callback?orderId=${order._id}`,
+      metadata: {
+        order_id: order._id,
+        order_number: order.order_number,
+        store_id: order.store_id,
+      },
+    };
+
+    const response = await fetch(`${MONEROO_API_URL}/payments/initialize`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${secretKey}`,
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("Moneroo shop init error:", response.status, errorBody);
+      throw new Error(
+        `Erreur Moneroo (${response.status}) : impossible d'initialiser le paiement`,
+      );
+    }
+
+    const result: MonerooInitResponse = await response.json();
+
+    await ctx.runMutation(internal.payments.mutations.setPaymentReference, {
+      orderId: args.orderId,
+      paymentReference: result.data.id,
+      paymentMethod: order.payment_method ?? "moneroo",
+    });
+
+    return {
+      checkoutUrl: result.data.checkout_url,
+      paymentId: result.data.id,
+    };
+  },
+});
+
+/**
  * Vérifie le statut d'un paiement auprès de Moneroo.
  * Utilisé comme fallback si le webhook n'arrive pas.
  */
