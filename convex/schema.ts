@@ -98,6 +98,12 @@ export default defineSchema({
     // Location
     country: v.string(), // ISO 3166-1 alpha-2: BJ, SN, CI
 
+    // Meta Pixel & Vendor Shop
+    meta_pixel_id: v.optional(v.string()), // ID Pixel Meta (15-16 chiffres)
+    meta_access_token: v.optional(v.string()), // Token Conversions API (secret)
+    meta_test_event_code: v.optional(v.string()), // Code test event Meta
+    vendor_shop_enabled: v.optional(v.boolean()), // true = /shop/[slug] actif
+
     // Metadata
     updated_at: v.number(),
   })
@@ -332,6 +338,11 @@ export default defineSchema({
     ready_for_delivery: v.optional(v.boolean()),
     ready_at: v.optional(v.number()),
 
+    // Source tracking
+    source: v.optional(
+      v.union(v.literal("marketplace"), v.literal("vendor_shop")),
+    ), // Origine : marketplace Pixel-Mart ou boutique vendeur (/shop/slug)
+
     // Metadata
     updated_at: v.number(),
   })
@@ -341,7 +352,8 @@ export default defineSchema({
     .index("by_order_number", ["order_number"])
     .index("by_payment_status", ["payment_status"])
     .index("by_batch", ["batch_id"])
-    .index("by_ready_for_delivery", ["store_id", "ready_for_delivery"]),
+    .index("by_ready_for_delivery", ["store_id", "ready_for_delivery"])
+    .index("by_source", ["store_id", "source"]),
 
   // ============================================
   // ORDER EVENTS (IMMUTABLE TIMELINE)

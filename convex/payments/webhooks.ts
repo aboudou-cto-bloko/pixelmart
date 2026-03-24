@@ -143,6 +143,10 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
             currency: data.currency,
           });
           console.log(`Payment confirmed for order ${orderId}`);
+          // Track Purchase Meta CAPI (seulement si source = vendor_shop et pixel configuré)
+          await ctx.runMutation(internal.meta.mutations.trackPurchase, {
+            orderId,
+          });
           break;
         }
         case "failed":

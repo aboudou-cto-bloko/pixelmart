@@ -79,6 +79,7 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
       { title: "Paramètres", url: "/vendor/store/settings" },
       { title: "Avis", url: "/vendor/reviews" },
       { title: "Thème", url: "/vendor/store/theme" },
+      { title: "Meta Pixel & Boutique", url: "/vendor/store/meta" },
     ],
   },
   {
