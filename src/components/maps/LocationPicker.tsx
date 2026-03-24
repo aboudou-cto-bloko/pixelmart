@@ -47,8 +47,11 @@ export function LocationPicker({
   useEffect(() => {
     if (mapRef.current || !mapContainerRef.current) return;
 
+    let cancelled = false;
+
     // Leaflet is a CJS module — import dynamically to avoid SSR issues
     import("leaflet").then((L) => {
+      if (cancelled || !mapContainerRef.current || mapRef.current) return;
       // Fix default icon paths broken by webpack
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -124,6 +127,7 @@ export function LocationPicker({
     });
 
     return () => {
+      cancelled = true;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
