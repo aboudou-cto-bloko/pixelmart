@@ -1,0 +1,1 @@
+/home/aboudouzinsou/.local/share/pnpm/global/5/.pnpm/@waynesutton+convex-skills@1.0.9/node_modules/@waynesutton/convex-skills/skills/convex-agents/SKILL.md

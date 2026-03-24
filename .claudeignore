@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Convex generated files (always regenerated)
+convex/_generated/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# IDE & Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment files (sensitive)
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
+
+# Cache
+.cache/
+.turbo/
+.eslintcache
+.stylelintcache
+
+# Lock files (not needed for context)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Assets (binary files)
+public/images/
+public/fonts/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.ico
+*.svg
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# PDF files
+*.pdf
+
+# Misc
+*.min.js
+*.min.css
+*.map
