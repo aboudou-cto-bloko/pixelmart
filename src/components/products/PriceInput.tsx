@@ -15,10 +15,10 @@ interface PriceInputProps {
 
 /**
  * Input prix.
- * La valeur est toujours stockée dans la plus petite unité de la devise :
- * - Devises avec centimes (EUR, USD...) : stocké en centimes (1 € = 100)
- * - Devises sans centimes (XOF, XAF...) : stocké en unités (1 F = 1)
- * L'affichage et la saisie se font dans l'unité courante.
+ * La valeur est TOUJOURS stockée en centimes (plus petite unité), quelle que
+ * soit la devise. L'affichage se fait en unités principales (÷100).
+ * - XOF/XAF/GNF/CDF/XPF : affiché sans décimales (ex: 150000 centimes → "1500")
+ * - EUR/USD...            : affiché avec 2 décimales  (ex: 1050 centimes → "10.50")
  */
 export function PriceInput({
   id,
@@ -29,16 +29,13 @@ export function PriceInput({
   required = false,
   error,
 }: PriceInputProps) {
-  const noSubunitCurrencies = ["XOF", "XAF", "XPF"];
-  const hasSubunit = !noSubunitCurrencies.includes(currency);
+  // Devises sans décimales à l'affichage (mais stockées en centimes quand même)
+  const noDecimalCurrencies = ["XOF", "XAF", "GNF", "CDF", "XPF"];
+  const isNoDecimal = noDecimalCurrencies.includes(currency);
 
-  // Convertir la valeur stockée (centimes) en valeur affichée (unités)
+  // Toujours diviser par 100 pour afficher (centimes → unités principales)
   const displayValue =
-    value !== undefined
-      ? hasSubunit
-        ? (value / 100).toFixed(2) // ex: 1000 centimes -> 10.00 €
-        : value.toString() // ex: 1000 F -> 1000
-      : "";
+    value !== undefined ? (value / 100).toFixed(isNoDecimal ? 0 : 2) : "";
 
   function handleChange(raw: string) {
     if (raw === "") {
@@ -47,9 +44,8 @@ export function PriceInput({
     }
     const num = parseFloat(raw);
     if (isNaN(num)) return;
-    // Convertir la saisie (unités) en valeur stockée (centimes)
-    const newValue = hasSubunit ? Math.round(num * 100) : num;
-    onChange(newValue);
+    // Toujours multiplier par 100 pour stocker (unités → centimes)
+    onChange(Math.round(num * 100));
   }
 
   return (
@@ -63,7 +59,7 @@ export function PriceInput({
           id={id}
           type="number"
           min="0"
-          step={hasSubunit ? "0.01" : "1"}
+          step={isNoDecimal ? "1" : "0.01"}
           value={displayValue}
           onChange={(e) => handleChange(e.target.value)}
           placeholder="0"

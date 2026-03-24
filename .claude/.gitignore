@@ -1,0 +1,5 @@
+# Local settings (personal preferences)
+settings.local.json
+
+# Session data
+sessions/

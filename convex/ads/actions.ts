@@ -32,7 +32,11 @@ async function initializeMonerooPayment({
       Accept: "application/json",
     },
     body: JSON.stringify({
-      amount: booking.total_price,
+      // Moneroo attend des FCFA entiers — convertir les centimes
+      amount:
+        (booking.currency ?? "XOF") === "XOF"
+          ? Math.round(booking.total_price / 100)
+          : booking.total_price,
       currency: booking.currency ?? "XOF",
       description: `Publicité Pixel-Mart: ${booking.slot_id}`,
       customer: {

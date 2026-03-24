@@ -137,7 +137,9 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
           await ctx.runMutation(internal.payments.mutations.confirmPayment, {
             orderId,
             paymentReference: data.id,
-            amountPaid: data.amount,
+            // Moneroo envoie le montant en FCFA — convertir en centimes pour stockage
+            amountPaid:
+              data.currency === "XOF" ? data.amount * 100 : data.amount,
             currency: data.currency,
           });
           console.log(`Payment confirmed for order ${orderId}`);
