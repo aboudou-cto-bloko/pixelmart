@@ -287,5 +287,53 @@ export const getStatusCounts = query({
   },
 });
 
+/**
+ * Stats de ventes séparées par source (marketplace vs vendor_shop).
+ * Permet au vendor de comparer ses deux canaux de distribution.
+ */
+export const getStatsBySource = query({
+  args: {},
+  handler: async (ctx) => {
+    const { store } = await getVendorStore(ctx);
+
+    const allOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_store", (q) => q.eq("store_id", store._id))
+      .collect();
+
+    const paidOrders = allOrders.filter(
+      (o) =>
+        o.payment_status === "paid" &&
+        o.status !== "cancelled" &&
+        o.status !== "refunded",
+    );
+
+    function computeStats(orders: typeof paidOrders) {
+      return {
+        count: orders.length,
+        revenue: orders.reduce((sum, o) => sum + o.total_amount, 0),
+        avgOrder:
+          orders.length > 0
+            ? Math.round(
+                orders.reduce((sum, o) => sum + o.total_amount, 0) /
+                  orders.length,
+              )
+            : 0,
+      };
+    }
+
+    const marketplace = paidOrders.filter(
+      (o) => !o.source || o.source === "marketplace",
+    );
+    const vendorShop = paidOrders.filter((o) => o.source === "vendor_shop");
+
+    return {
+      marketplace: computeStats(marketplace),
+      vendor_shop: computeStats(vendorShop),
+      total: computeStats(paidOrders),
+    };
+  },
+});
+
 // Type import pour countByStatus
 import type { Doc } from "../_generated/dataModel";
