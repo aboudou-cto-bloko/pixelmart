@@ -48,4 +48,20 @@ export const ROUTES = {
   ADMIN_CATEGORIES: "/admin/categories",
   ADMIN_PAYOUTS: "/admin/payouts",
   ADMIN_REPORTS: "/admin/reports",
+
+  // ---- Vendor Meta Settings ----
+  VENDOR_STORE_META: "/vendor/store/meta",
+} as const;
+
+export const SHOP_ROUTES = {
+  HOME: (storeSlug: string) => `/shop/${storeSlug}`,
+  PRODUCTS: (storeSlug: string) => `/shop/${storeSlug}/products`,
+  PRODUCT: (storeSlug: string, productSlug: string) =>
+    `/shop/${storeSlug}/products/${productSlug}`,
+  CART: (storeSlug: string) => `/shop/${storeSlug}/cart`,
+  CHECKOUT: (storeSlug: string) => `/shop/${storeSlug}/checkout`,
+  CONFIRMATION: (storeSlug: string) =>
+    `/shop/${storeSlug}/checkout/confirmation`,
+  PAYMENT_CALLBACK: (storeSlug: string) =>
+    `/shop/${storeSlug}/checkout/payment-callback`,
 } as const;
