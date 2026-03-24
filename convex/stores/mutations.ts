@@ -5,6 +5,15 @@ import { v, ConvexError } from "convex/values";
 import { getVendorStore } from "../users/helpers";
 import { STORE_THEMES } from "./themes";
 
+/** Statuts considérés comme "commandes actives" bloquant le changement de livraison */
+const ACTIVE_ORDER_STATUSES = [
+  "pending",
+  "paid",
+  "processing",
+  "ready_for_delivery",
+  "shipped",
+] as const;
+
 /**
  * Met à jour les informations de la boutique.
  * Le vendor ne peut modifier que sa propre boutique.
@@ -62,6 +71,66 @@ export const updateStore = mutation({
     if (args.currency !== undefined) updates.currency = args.currency;
 
     await ctx.db.patch(store._id, updates);
+    return { success: true };
+  },
+});
+
+/**
+ * Met à jour les paramètres de livraison / point de retrait.
+ * Bloqué si le store a des commandes actives.
+ */
+export const updateDeliverySettings = mutation({
+  args: {
+    use_pixelmart_service: v.boolean(),
+    custom_pickup_lat: v.optional(v.number()),
+    custom_pickup_lon: v.optional(v.number()),
+    custom_pickup_label: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    // Si mode personnalisé, les coordonnées sont obligatoires
+    if (!args.use_pixelmart_service) {
+      if (
+        args.custom_pickup_lat === undefined ||
+        args.custom_pickup_lon === undefined ||
+        !args.custom_pickup_label?.trim()
+      ) {
+        throw new ConvexError(
+          "L'adresse de retrait personnalisée est obligatoire lorsque vous n'utilisez pas le service Pixel-Mart.",
+        );
+      }
+    }
+
+    // Vérifier qu'il n'y a pas de commandes actives
+    for (const status of ACTIVE_ORDER_STATUSES) {
+      const active = await ctx.db
+        .query("orders")
+        .withIndex("by_store", (q) => q.eq("store_id", store._id))
+        .filter((q) => q.eq(q.field("status"), status))
+        .first();
+
+      if (active) {
+        throw new ConvexError(
+          "Vous avez des commandes en cours. Vous pourrez modifier vos paramètres de livraison une fois toutes les commandes terminées.",
+        );
+      }
+    }
+
+    await ctx.db.patch(store._id, {
+      use_pixelmart_service: args.use_pixelmart_service,
+      custom_pickup_lat: args.use_pixelmart_service
+        ? undefined
+        : args.custom_pickup_lat,
+      custom_pickup_lon: args.use_pixelmart_service
+        ? undefined
+        : args.custom_pickup_lon,
+      custom_pickup_label: args.use_pixelmart_service
+        ? undefined
+        : args.custom_pickup_label?.trim(),
+      updated_at: Date.now(),
+    });
+
     return { success: true };
   },
 });

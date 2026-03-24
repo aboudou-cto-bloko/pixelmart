@@ -62,6 +62,8 @@ import type * as products_csvImport from "../products/csvImport.js";
 import type * as products_helpers from "../products/helpers.js";
 import type * as products_mutations from "../products/mutations.js";
 import type * as products_queries from "../products/queries.js";
+import type * as questions_mutations from "../questions/mutations.js";
+import type * as questions_queries from "../questions/queries.js";
 import type * as returns_actions from "../returns/actions.js";
 import type * as returns_helpers from "../returns/helpers.js";
 import type * as returns_mutations from "../returns/mutations.js";
@@ -139,6 +141,8 @@ declare const fullApi: ApiFromModules<{
   "products/helpers": typeof products_helpers;
   "products/mutations": typeof products_mutations;
   "products/queries": typeof products_queries;
+  "questions/mutations": typeof questions_mutations;
+  "questions/queries": typeof questions_queries;
   "returns/actions": typeof returns_actions;
   "returns/helpers": typeof returns_helpers;
   "returns/mutations": typeof returns_mutations;

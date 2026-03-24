@@ -18,10 +18,21 @@ import {
   Plus,
   Store,
   Check,
+  MapPin,
+  Weight,
+  Palette,
+  Layers,
+  Ruler,
+  Tag,
+  Package,
+  Hash,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductReviewList } from "@/components/reviews";
+import { ProductQASection } from "@/components/questions";
+import { LocationPicker } from "@/components/maps/LocationPicker";
+import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -238,7 +249,11 @@ export default function ProductDetailPage() {
       {/* Content */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Left — Gallery */}
-        <ProductGallery images={product.images} title={product.title} />
+        <ProductGallery
+          images={product.images}
+          title={product.title}
+          imageRoles={product.image_roles}
+        />
 
         {/* Right — Details */}
         <div className="space-y-6">
@@ -420,22 +435,150 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
-          {/* Technical Specs */}
-          {product.weight && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="font-medium">Poids:</span>
-              <span>{product.weight} g</span>
+          {/* Technical Specs — Amazon-style table */}
+          {(product.weight ||
+            product.color ||
+            product.material ||
+            product.dimensions ||
+            product.sku ||
+            product.category) && (
+            <div className="rounded-lg border overflow-hidden">
+              <div className="bg-muted/60 px-4 py-2.5 border-b flex items-center gap-2">
+                <Package className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Caractéristiques</h3>
+              </div>
+              <table className="w-full text-sm">
+                <tbody>
+                  {[
+                    product.category && {
+                      icon: <Tag className="size-3.5 text-muted-foreground" />,
+                      label: "Catégorie",
+                      value: product.category.name,
+                    },
+                    product.color && {
+                      icon: (
+                        <Palette className="size-3.5 text-muted-foreground" />
+                      ),
+                      label: "Couleur",
+                      value: product.color,
+                    },
+                    product.material && {
+                      icon: (
+                        <Layers className="size-3.5 text-muted-foreground" />
+                      ),
+                      label: "Matériau",
+                      value: product.material,
+                    },
+                    product.weight && {
+                      icon: (
+                        <Weight className="size-3.5 text-muted-foreground" />
+                      ),
+                      label: "Poids",
+                      value:
+                        product.weight >= 1000
+                          ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
+                          : `${product.weight} g`,
+                    },
+                    product.dimensions && {
+                      icon: (
+                        <Ruler className="size-3.5 text-muted-foreground" />
+                      ),
+                      label: "Dimensions",
+                      value: product.dimensions,
+                    },
+                    product.sku && {
+                      icon: <Hash className="size-3.5 text-muted-foreground" />,
+                      label: "Référence (SKU)",
+                      value: product.sku,
+                    },
+                  ]
+                    .filter(Boolean)
+                    .map((row, i) => {
+                      if (!row) return null;
+                      return (
+                        <tr
+                          key={row.label}
+                          className={
+                            i % 2 === 0 ? "bg-background" : "bg-muted/30"
+                          }
+                        >
+                          <td className="px-4 py-2.5 w-2/5">
+                            <div className="flex items-center gap-2 text-muted-foreground font-medium">
+                              {row.icon}
+                              {row.label}
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-foreground">
+                            {row.value}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
             </div>
           )}
           <Separator />
-          {/* Delivery info */}
-          <div className="flex items-start gap-3 text-sm">
-            <Truck className="size-5 text-muted-foreground shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium">Livraison</p>
-              <p className="text-muted-foreground">
-                Délai et frais calculés au checkout selon votre localisation.
-              </p>
+          {/* Delivery info — dynamic based on store settings */}
+          <div className="space-y-3">
+            <div className="flex items-start gap-3 text-sm">
+              <Truck className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium">Livraison & Retrait</p>
+                {product.store?.use_pixelmart_service !== false ? (
+                  // Pixel-Mart warehouse
+                  <div className="mt-1 space-y-1.5">
+                    <p className="text-muted-foreground text-xs">
+                      Stocké et expédié depuis l&apos;entrepôt Pixel-Mart.
+                    </p>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="size-3.5 shrink-0 text-primary" />
+                      <span>{PIXELMART_WAREHOUSE.label}</span>
+                    </div>
+                    <LocationPicker
+                      value={{
+                        lat: PIXELMART_WAREHOUSE.lat,
+                        lon: PIXELMART_WAREHOUSE.lon,
+                        label: PIXELMART_WAREHOUSE.label,
+                      }}
+                      onChange={() => {}}
+                      height={180}
+                      readOnly
+                    />
+                  </div>
+                ) : product.store?.custom_pickup_lat !== undefined &&
+                  product.store?.custom_pickup_lon !== undefined ? (
+                  // Custom vendor pickup
+                  <div className="mt-1 space-y-1.5">
+                    <p className="text-muted-foreground text-xs">
+                      Retrait chez le vendeur — point de collecte ci-dessous.
+                    </p>
+                    {product.store.custom_pickup_label && (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <MapPin className="size-3.5 shrink-0 text-primary" />
+                        <span>{product.store.custom_pickup_label}</span>
+                      </div>
+                    )}
+                    <LocationPicker
+                      value={{
+                        lat: product.store.custom_pickup_lat,
+                        lon: product.store.custom_pickup_lon,
+                        label:
+                          product.store.custom_pickup_label ??
+                          "Point de retrait",
+                      }}
+                      onChange={() => {}}
+                      height={180}
+                      readOnly
+                    />
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Délai et frais calculés au checkout selon votre
+                    localisation.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           {/* Returns Policy */}
@@ -461,6 +604,11 @@ export default function ProductDetailPage() {
 
           <Separator className="my-8" />
           <ProductReviewList productId={product._id} />
+          <Separator className="my-8" />
+          <ProductQASection
+            productId={product._id}
+            storeOwnerId={product.store?.owner_id}
+          />
           {/* Store card */}
           {product.store && <StoreInfoCard store={product.store} />}
         </div>
