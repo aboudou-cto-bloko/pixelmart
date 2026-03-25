@@ -61,7 +61,6 @@ export const trackPurchase = internalMutation({
     // Récupérer le store pour la config Meta
     const store = await ctx.db.get(order.store_id);
     if (!store?.meta_pixel_id || !store?.meta_access_token) {
-      console.log("[Meta] No pixel config for store, skipping Purchase");
       return;
     }
 
@@ -145,15 +144,7 @@ export const sendPurchaseEvent = internalAction({
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("[Meta CAPI] Purchase event error:", error);
       return;
     }
-
-    const result = await response.json();
-    console.log(
-      "[Meta CAPI] Purchase sent, events_received:",
-      result.events_received,
-    );
   },
 });

@@ -55,8 +55,6 @@ async function initializeMonerooPayment({
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    console.error("Moneroo ad payment error:", errorBody);
     throw new ConvexError("Erreur lors de l'initialisation du paiement");
   }
 

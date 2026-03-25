@@ -10,13 +10,11 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
 
   const webhookSecret = process.env.MONEROO_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error("MONEROO_WEBHOOK_SECRET non configurée");
     return new Response("Server configuration error", { status: 500 });
   }
 
   const signature = request.headers.get("x-moneroo-signature") ?? "";
   if (!signature) {
-    console.warn("Webhook Moneroo sans signature");
     return new Response("Missing signature", { status: 401 });
   }
 
@@ -26,7 +24,6 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
     webhookSecret,
   );
   if (!isValid) {
-    console.warn("Webhook Moneroo signature invalide");
     return new Response("Invalid signature", { status: 401 });
   }
 
@@ -52,13 +49,11 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
   try {
     payload = JSON.parse(rawBody);
   } catch {
-    console.error("Webhook Moneroo : JSON invalide");
     return new Response("Invalid JSON", { status: 400 });
   }
 
   const { data } = payload;
   if (!data?.id || !data?.status) {
-    console.error("Webhook Moneroo : payload incomplet", payload);
     return new Response("Invalid payload", { status: 400 });
   }
 
@@ -70,7 +65,6 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
 
   // Aucun identifiant reconnu → on accepte silencieusement (évite les retries Moneroo)
   if (!orderId && !payoutId && !isAdPayment) {
-    console.warn("Webhook Moneroo : metadata non identifiable", data.id);
     return new Response("OK", { status: 200 });
   }
 
@@ -83,7 +77,6 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
             bookingId: bookingId!,
             externalRef: data.id,
           });
-          console.log(`Ad payment confirmed: booking ${bookingId}`);
           break;
         }
         case "failed":
@@ -92,13 +85,10 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
             bookingId: bookingId!,
             reason: `Moneroo: ${data.status} (ref: ${data.id})`,
           });
-          console.log(`Ad payment ${data.status}: booking ${bookingId}`);
           break;
         }
         default: {
-          console.log(
-            `Ad payment ${data.status} for booking ${bookingId} — no action`,
-          );
+          break;
         }
       }
       return new Response("OK", { status: 200 });
@@ -112,7 +102,6 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
             payoutId,
             externalRef: data.id,
           });
-          console.log(`Payout confirmed: ${payoutId}`);
           break;
         }
         case "failed": {
@@ -120,11 +109,10 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
             payoutId,
             reason: `Moneroo: ${data.status}`,
           });
-          console.log(`Payout failed: ${payoutId}`);
           break;
         }
         default: {
-          console.log(`Payout ${data.status} for ${payoutId} — no action`);
+          break;
         }
       }
       return new Response("OK", { status: 200 });
@@ -142,7 +130,6 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
               data.currency === "XOF" ? data.amount * 100 : data.amount,
             currency: data.currency,
           });
-          console.log(`Payment confirmed for order ${orderId}`);
           // Track Purchase Meta CAPI (seulement si source = vendor_shop et pixel configuré)
           await ctx.runMutation(internal.meta.mutations.trackPurchase, {
             orderId,
@@ -155,23 +142,18 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
             orderId,
             reason: `Moneroo: ${data.status}`,
           });
-          console.log(`Payment ${data.status} for order ${orderId}`);
           break;
         }
         case "initiated":
         case "pending": {
-          console.log(
-            `Payment ${data.status} for order ${orderId} — no action`,
-          );
           break;
         }
         default: {
-          console.warn(`Moneroo status inconnu: ${data.status}`);
+          break;
         }
       }
     }
-  } catch (error) {
-    console.error("Webhook Moneroo processing error:", error);
+  } catch {
     return new Response("Processing error", { status: 500 });
   }
 
