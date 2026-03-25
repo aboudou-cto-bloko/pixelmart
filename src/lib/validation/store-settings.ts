@@ -108,9 +108,9 @@ function isValidImageSignature(bytes: Uint8Array): boolean {
 const storeNameRegex = /^[a-zA-ZÀ-ÿĀ-žА-я\u4e00-\u9fff0-9\s'-]+$/;
 
 /**
- * Hex color validation
+ * Hex color validation - accepts 3 or 6 digit hex colors
  */
-const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+const hexColorRegex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 
 /**
  * Store settings validation schema
@@ -132,7 +132,7 @@ export const storeSettingsSchema = z.object({
 
   primaryColor: z
     .string()
-    .regex(hexColorRegex, "Format de couleur invalide (ex: #6366f1)")
+    .regex(hexColorRegex, "Format de couleur invalide (ex: #6366f1 ou #fff)")
     .refine((color) => {
       // Additional validation for common invalid colors
       const invalidColors = ["#000000", "#ffffff", "#fff", "#000"];

@@ -65,14 +65,17 @@ function validateStoreData(data: {
     );
   }
 
-  // Color validation
+  // Color validation - accept 3 or 6 digit hex colors
   if (data.primary_color !== undefined) {
-    if (!/^#[0-9A-Fa-f]{6}$/.test(data.primary_color)) {
-      throw new ConvexError("Format de couleur invalide (ex: #6366f1)");
+    if (
+      !/^#[0-9A-Fa-f]{3}$/.test(data.primary_color) &&
+      !/^#[0-9A-Fa-f]{6}$/.test(data.primary_color)
+    ) {
+      throw new ConvexError("Format de couleur invalide (ex: #6366f1 ou #fff)");
     }
 
-    // Prevent too dark or too light colors
-    const invalidColors = ["#000000", "#ffffff"];
+    // Prevent too dark or too light colors (both 3 and 6 digit formats)
+    const invalidColors = ["#000000", "#ffffff", "#000", "#fff"];
     if (invalidColors.includes(data.primary_color.toLowerCase())) {
       throw new ConvexError("Veuillez choisir une couleur plus distinctive");
     }
