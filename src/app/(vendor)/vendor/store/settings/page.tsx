@@ -12,9 +12,6 @@ import {
   Palette,
   Globe,
   ImageIcon,
-  Truck,
-  MapPin,
-  AlertTriangle,
 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -39,21 +36,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SUPPORTED_COUNTRIES } from "@/constants/countries";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
-import { formatPrice } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
-import {
-  LocationPicker,
-  type PickedLocation,
-} from "@/components/maps/LocationPicker";
-import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
+import { formatPrice } from "@/lib/utils"; // IMPORT AJOUTÉ
 
 export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);
-  const hasPendingOrders = useQuery(api.stores.queries.hasPendingOrders);
   const updateStore = useMutation(api.stores.mutations.updateStore);
-  const updateDeliverySettings = useMutation(
-    api.stores.mutations.updateDeliverySettings,
-  );
   const generateUploadUrl = useMutation(api.stores.mutations.generateUploadUrl);
 
   const [name, setName] = useState("");
@@ -61,31 +48,13 @@ export default function StoreSettingsPage() {
   const [primaryColor, setPrimaryColor] = useState("#6366f1"); // renommé
   const [country, setCountry] = useState("BJ");
   const [currency, setCurrency] = useState("XOF");
-  const [logoStorageId, setLogoStorageId] = useState<string | undefined>();
-  const [bannerStorageId, setBannerStorageId] = useState<string | undefined>();
-
-  const logoUrl = useQuery(
-    api.files.queries.getUrl,
-    logoStorageId ? { storageId: logoStorageId } : "skip",
-  );
-  const bannerUrl = useQuery(
-    api.files.queries.getUrl,
-    bannerStorageId ? { storageId: bannerStorageId } : "skip",
-  );
+  const [logoUrl, setLogoUrl] = useState<string | undefined>();
+  const [bannerUrl, setBannerUrl] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Delivery settings
-  const [usePixelmartService, setUsePixelmartService] = useState(true);
-  const [customPickup, setCustomPickup] = useState<
-    PickedLocation | undefined
-  >();
-  const [isSavingDelivery, setIsSavingDelivery] = useState(false);
-  const [deliverySuccess, setDeliverySuccess] = useState(false);
-  const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -98,31 +67,15 @@ export default function StoreSettingsPage() {
       setPrimaryColor(store.primary_color ?? "#6366f1");
       setCountry(store.country);
       setCurrency(store.currency);
-      setLogoStorageId(store.logo_url);
-      setBannerStorageId(store.banner_url);
-
-      const usePM = store.use_pixelmart_service ?? true;
-      setUsePixelmartService(usePM);
-      if (
-        !usePM &&
-        store.custom_pickup_lat !== undefined &&
-        store.custom_pickup_lon !== undefined &&
-        store.custom_pickup_label
-      ) {
-        setCustomPickup({
-          lat: store.custom_pickup_lat,
-          lon: store.custom_pickup_lon,
-          label: store.custom_pickup_label,
-        });
-      }
+      setLogoUrl(store.logo_url);
+      setBannerUrl(store.banner_url);
     }
   }, [store]);
 
   async function handleUpload(file: File, type: "logo" | "banner") {
     const setUploading =
       type === "logo" ? setIsUploadingLogo : setIsUploadingBanner;
-    const setStorageId =
-      type === "logo" ? setLogoStorageId : setBannerStorageId;
+    const setUrl = type === "logo" ? setLogoUrl : setBannerUrl;
 
     setUploading(true);
     try {
@@ -135,7 +88,11 @@ export default function StoreSettingsPage() {
       });
 
       const { storageId } = await response.json();
-      setStorageId(storageId as string);
+
+      // TODO: Convertir storageId en URL réelle
+      // Pour l'instant on stocke le storageId, mais cela ne fonctionnera pas avec Image.
+      // Il faudrait appeler une query pour obtenir l'URL.
+      setUrl(storageId);
     } catch (err) {
       setError("Erreur lors de l'upload de l'image");
     } finally {
@@ -155,8 +112,8 @@ export default function StoreSettingsPage() {
         primary_color: primaryColor, // corrigé ici
         country,
         currency,
-        logo_url: logoStorageId,
-        banner_url: bannerStorageId,
+        logo_url: logoUrl,
+        banner_url: bannerUrl,
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -164,34 +121,6 @@ export default function StoreSettingsPage() {
       setError(err instanceof Error ? err.message : "Erreur de sauvegarde");
     } finally {
       setIsSaving(false);
-    }
-  }
-
-  async function handleSaveDelivery() {
-    if (!usePixelmartService && !customPickup) {
-      setDeliveryError(
-        "Vous devez définir votre adresse de retrait personnalisée.",
-      );
-      return;
-    }
-    setIsSavingDelivery(true);
-    setDeliveryError(null);
-    setDeliverySuccess(false);
-    try {
-      await updateDeliverySettings({
-        use_pixelmart_service: usePixelmartService,
-        custom_pickup_lat: customPickup?.lat,
-        custom_pickup_lon: customPickup?.lon,
-        custom_pickup_label: customPickup?.label,
-      });
-      setDeliverySuccess(true);
-      setTimeout(() => setDeliverySuccess(false), 3000);
-    } catch (err) {
-      setDeliveryError(
-        err instanceof Error ? err.message : "Erreur de sauvegarde",
-      );
-    } finally {
-      setIsSavingDelivery(false);
     }
   }
 
@@ -285,7 +214,7 @@ export default function StoreSettingsPage() {
               <div className="relative size-20 rounded-xl bg-muted overflow-hidden border flex items-center justify-center">
                 {logoUrl ? (
                   <Image
-                    src={logoUrl ?? ""}
+                    src={logoUrl}
                     alt="Logo"
                     fill
                     sizes="80px"
@@ -317,14 +246,14 @@ export default function StoreSettingsPage() {
                   ) : (
                     <Upload className="size-3.5 mr-2" />
                   )}
-                  {logoStorageId ? "Changer" : "Ajouter"}
+                  {logoUrl ? "Changer" : "Ajouter"}
                 </Button>
-                {logoStorageId && (
+                {logoUrl && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive"
-                    onClick={() => setLogoStorageId(undefined)}
+                    onClick={() => setLogoUrl(undefined)}
                   >
                     <X className="size-3.5 mr-1" />
                     Retirer
@@ -343,7 +272,7 @@ export default function StoreSettingsPage() {
               <div className="relative h-32 w-full rounded-xl bg-muted overflow-hidden border flex items-center justify-center">
                 {bannerUrl ? (
                   <Image
-                    src={bannerUrl ?? ""}
+                    src={bannerUrl}
                     alt="Bannière"
                     fill
                     sizes="600px"
@@ -375,14 +304,14 @@ export default function StoreSettingsPage() {
                   ) : (
                     <Upload className="size-3.5 mr-2" />
                   )}
-                  {bannerStorageId ? "Changer" : "Ajouter"}
+                  {bannerUrl ? "Changer" : "Ajouter"}
                 </Button>
-                {bannerStorageId && (
+                {bannerUrl && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive"
-                    onClick={() => setBannerStorageId(undefined)}
+                    onClick={() => setBannerUrl(undefined)}
                   >
                     <X className="size-3.5 mr-1" />
                     Retirer
@@ -390,117 +319,6 @@ export default function StoreSettingsPage() {
                 )}
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Delivery & Pickup */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Truck className="size-4" />
-            Livraison & Point de retrait
-          </CardTitle>
-          <CardDescription>
-            Définissez comment vos clients récupèrent leurs commandes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {hasPendingOrders && (
-            <div className="flex items-start gap-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3">
-              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-yellow-600" />
-              <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                Vous avez des commandes en cours. Ces paramètres seront
-                modifiables une fois toutes les commandes terminées ou annulées.
-              </p>
-            </div>
-          )}
-
-          <div
-            className={`flex items-start justify-between gap-4 ${hasPendingOrders ? "opacity-50 pointer-events-none select-none" : ""}`}
-          >
-            <div className="space-y-1">
-              <p className="text-sm font-medium">
-                Utiliser le service Pixel-Mart
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Activé : vos produits sont stockés et expédiés depuis notre
-                entrepôt ({PIXELMART_WAREHOUSE.label}).
-                <br />
-                Désactivé : vous gérez vous-même le stockage et définissez votre
-                propre point de retrait.
-              </p>
-            </div>
-            <Switch
-              checked={usePixelmartService}
-              onCheckedChange={(val) => {
-                setUsePixelmartService(val);
-                if (val) setCustomPickup(undefined);
-              }}
-              disabled={!!hasPendingOrders}
-            />
-          </div>
-
-          {!usePixelmartService && !hasPendingOrders && (
-            <div className="space-y-3 rounded-lg border p-4 bg-muted/20">
-              <div className="flex items-center gap-2">
-                <MapPin className="size-4 text-primary" />
-                <p className="text-sm font-medium">
-                  Votre point de retrait{" "}
-                  <span className="text-destructive">*</span>
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Cliquez sur la carte ou recherchez votre adresse pour définir
-                votre point de retrait.
-              </p>
-              <LocationPicker
-                value={customPickup}
-                onChange={setCustomPickup}
-                height={300}
-              />
-              {!customPickup && (
-                <p className="text-xs text-destructive font-medium">
-                  ⚠ Adresse obligatoire — vous ne pourrez pas sauvegarder sans
-                  définir votre point de retrait.
-                </p>
-              )}
-            </div>
-          )}
-
-          {usePixelmartService && (
-            <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
-              <MapPin className="size-4 shrink-0 mt-0.5 text-primary" />
-              <p className="text-xs text-muted-foreground">
-                {PIXELMART_WAREHOUSE.label}
-              </p>
-            </div>
-          )}
-
-          <div className="flex items-center gap-3 pt-1">
-            <Button
-              type="button"
-              onClick={handleSaveDelivery}
-              disabled={
-                isSavingDelivery ||
-                !!hasPendingOrders ||
-                (!usePixelmartService && !customPickup)
-              }
-              size="sm"
-            >
-              {isSavingDelivery ? (
-                <Loader2 className="size-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="size-4 mr-2" />
-              )}
-              Enregistrer la livraison
-            </Button>
-            {deliverySuccess && (
-              <p className="text-sm text-green-600">Livraison mise à jour ✓</p>
-            )}
-            {deliveryError && (
-              <p className="text-sm text-destructive">{deliveryError}</p>
-            )}
           </div>
         </CardContent>
       </Card>
