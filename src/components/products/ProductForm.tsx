@@ -433,6 +433,25 @@ function ProductFormInner({
                   </div>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label htmlFor="weight">Poids (grammes)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  min="0"
+                  value={form.weight ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    updateField(
+                      "weight",
+                      val === "" ? undefined : parseInt(val),
+                    );
+                  }}
+                  placeholder="250"
+                  className="max-w-xs"
+                />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
