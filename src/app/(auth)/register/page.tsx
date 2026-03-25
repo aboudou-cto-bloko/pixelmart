@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
@@ -16,13 +16,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import {
   getPasswordStrength,
   getStrengthLabel,
   getStrengthColor,
+  getStrengthWidth,
+  getPasswordRequirements,
 } from "@/lib/password-strength";
+import {
+  registerSchema,
+  getSafeErrorMessage,
+  type RegisterFormData,
+} from "@/lib/validation/auth";
+import { z } from "zod";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -30,54 +38,98 @@ export default function RegisterPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const lastSubmissionTime = useRef<number>(0);
 
   // Password visibility states
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Password value for strength indicator
-  const [password, setPassword] = useState("");
+  // Controlled form state
+  const [formData, setFormData] = useState<RegisterFormData>({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  // Update form field
+  function updateField<K extends keyof RegisterFormData>(
+    key: K,
+    value: RegisterFormData[K],
+  ) {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+
+    // Clear field error when user starts typing
+    if (fieldErrors[key]) {
+      setFieldErrors((prev) => ({ ...prev, [key]: "" }));
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
+    setFieldErrors({});
 
-    // Get values from uncontrolled inputs (name, email) and controlled password state
-    const name = (document.getElementById("name") as HTMLInputElement).value;
-    const email = (document.getElementById("email") as HTMLInputElement).value;
-    const confirmPassword = (
-      document.getElementById("confirmPassword") as HTMLInputElement
-    ).value;
-
-    if (password !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
-      setIsLoading(false);
+    // Rate limiting: prevent rapid submissions
+    const now = Date.now();
+    if (now - lastSubmissionTime.current < 3000) {
+      // 3 second cooldown for registration
+      setError("Veuillez attendre avant de soumettre à nouveau");
       return;
     }
+    lastSubmissionTime.current = now;
 
-    const { error: signUpError } = await authClient.signUp.email({
-      name,
-      email,
-      password,
-      callbackURL: "/dashboard",
-    });
+    setIsLoading(true);
 
-    setIsLoading(false);
-    if (signUpError) {
-      setError(signUpError.message || "Erreur lors de l'inscription");
-    } else {
-      setSuccess(true);
+    try {
+      // Client-side validation
+      const validatedData = registerSchema.parse(formData);
+
+      const { error: signUpError } = await authClient.signUp.email({
+        name: validatedData.name,
+        email: validatedData.email,
+        password: validatedData.password,
+        callbackURL: "/dashboard",
+      });
+
+      setIsLoading(false);
+      if (signUpError) {
+        setError(getSafeErrorMessage(signUpError));
+      } else {
+        setSuccess(true);
+      }
+    } catch (err) {
+      setIsLoading(false);
+      if (err instanceof z.ZodError) {
+        // Handle validation errors
+        const newFieldErrors: Record<string, string> = {};
+        err.issues.forEach((issue) => {
+          const field = issue.path[0] as string;
+          if (field && !newFieldErrors[field]) {
+            newFieldErrors[field] = issue.message;
+          }
+        });
+        setFieldErrors(newFieldErrors);
+        setError("Veuillez corriger les erreurs ci-dessous");
+      } else {
+        setError("Une erreur inattendue est survenue. Veuillez réessayer.");
+      }
     }
   }
 
   async function handleGoogleSignIn() {
     setIsGoogleLoading(true);
-    await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/dashboard",
-      newUserCallbackURL: "/dashboard",
-    });
+    try {
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard",
+        newUserCallbackURL: "/dashboard",
+      });
+    } catch (error) {
+      setIsGoogleLoading(false);
+      setError("Erreur lors de la connexion avec Google. Veuillez réessayer.");
+    }
   }
 
   if (success) {
@@ -98,6 +150,9 @@ export default function RegisterPage() {
       </Card>
     );
   }
+
+  const passwordRequirements = getPasswordRequirements(formData.password);
+  const passwordStrength = getPasswordStrength(formData.password);
 
   return (
     <Card>
@@ -137,8 +192,9 @@ export default function RegisterPage() {
               {error}
             </div>
           )}
+
           <div className="space-y-2">
-            <Label htmlFor="name">Nom complet</Label>
+            <Label htmlFor="name">Nom complet *</Label>
             <Input
               id="name"
               name="name"
@@ -146,10 +202,17 @@ export default function RegisterPage() {
               placeholder="Franck Zinsou"
               required
               autoComplete="name"
+              value={formData.name}
+              onChange={(e) => updateField("name", e.target.value)}
+              className={fieldErrors.name ? "border-destructive" : ""}
             />
+            {fieldErrors.name && (
+              <p className="text-sm text-destructive">{fieldErrors.name}</p>
+            )}
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email *</Label>
             <Input
               id="email"
               name="email"
@@ -157,22 +220,29 @@ export default function RegisterPage() {
               placeholder="mail@example.com"
               required
               autoComplete="email"
+              value={formData.email}
+              onChange={(e) => updateField("email", e.target.value)}
+              className={fieldErrors.email ? "border-destructive" : ""}
             />
+            {fieldErrors.email && (
+              <p className="text-sm text-destructive">{fieldErrors.email}</p>
+            )}
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="password">Mot de passe</Label>
+            <Label htmlFor="password">Mot de passe *</Label>
             <div className="relative">
               <Input
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Min. 8 caractères"
+                placeholder="Min. 12 caractères"
                 required
                 autoComplete="new-password"
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pr-10"
+                minLength={12}
+                value={formData.password}
+                onChange={(e) => updateField("password", e.target.value)}
+                className={`pr-10 ${fieldErrors.password ? "border-destructive" : ""}`}
               />
               <button
                 type="button"
@@ -186,38 +256,94 @@ export default function RegisterPage() {
                 )}
               </button>
             </div>
-            {/* Indicateur de force */}
-            {password && (
-              <div className="space-y-1 mt-1">
+            {fieldErrors.password && (
+              <p className="text-sm text-destructive">{fieldErrors.password}</p>
+            )}
+
+            {/* Password strength indicator */}
+            {formData.password && (
+              <div className="space-y-2 mt-2">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                     <div
-                      className={`h-full ${getStrengthColor(
-                        getPasswordStrength(password),
-                      )}`}
-                      style={{
-                        width:
-                          getPasswordStrength(password) === "weak"
-                            ? "33%"
-                            : getPasswordStrength(password) === "medium"
-                              ? "66%"
-                              : "100%",
-                      }}
+                      className={`h-full transition-all ${getStrengthColor(passwordStrength)}`}
+                      style={{ width: getStrengthWidth(passwordStrength) }}
                     />
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {getStrengthLabel(getPasswordStrength(password))}
+                  <span className="text-xs text-muted-foreground min-w-fit">
+                    {getStrengthLabel(passwordStrength)}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Minimum 8 caractères, avec majuscule, minuscule, chiffre et
-                  caractère spécial.
-                </p>
+
+                {/* Password requirements checklist */}
+                <div className="grid grid-cols-1 gap-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    {passwordRequirements.minLength ? (
+                      <Check className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <X className="h-3 w-3 text-red-500" />
+                    )}
+                    <span
+                      className={
+                        passwordRequirements.minLength
+                          ? "text-green-600"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      Au moins 12 caractères
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {passwordRequirements.hasLowercase &&
+                    passwordRequirements.hasUppercase ? (
+                      <Check className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <X className="h-3 w-3 text-red-500" />
+                    )}
+                    <span
+                      className={
+                        passwordRequirements.hasLowercase &&
+                        passwordRequirements.hasUppercase
+                          ? "text-green-600"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      Majuscules et minuscules
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {passwordRequirements.hasNumber &&
+                    passwordRequirements.hasSpecialChar ? (
+                      <Check className="h-3 w-3 text-green-500" />
+                    ) : (
+                      <X className="h-3 w-3 text-red-500" />
+                    )}
+                    <span
+                      className={
+                        passwordRequirements.hasNumber &&
+                        passwordRequirements.hasSpecialChar
+                          ? "text-green-600"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      Chiffre et caractère spécial
+                    </span>
+                  </div>
+                  {!passwordRequirements.notCommon && (
+                    <div className="flex items-center gap-2">
+                      <X className="h-3 w-3 text-red-500" />
+                      <span className="text-red-500">
+                        Mot de passe trop courant
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+            <Label htmlFor="confirmPassword">Confirmer le mot de passe *</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
@@ -226,8 +352,10 @@ export default function RegisterPage() {
                 placeholder="Répéter le mot de passe"
                 required
                 autoComplete="new-password"
-                minLength={8}
-                className="pr-10"
+                minLength={12}
+                value={formData.confirmPassword}
+                onChange={(e) => updateField("confirmPassword", e.target.value)}
+                className={`pr-10 ${fieldErrors.confirmPassword ? "border-destructive" : ""}`}
               />
               <button
                 type="button"
@@ -241,7 +369,13 @@ export default function RegisterPage() {
                 )}
               </button>
             </div>
+            {fieldErrors.confirmPassword && (
+              <p className="text-sm text-destructive">
+                {fieldErrors.confirmPassword}
+              </p>
+            )}
           </div>
+
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Créer mon compte

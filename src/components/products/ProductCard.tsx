@@ -5,6 +5,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useCart } from "@/hooks/useCart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export function ProductCard({
 }: ProductCardProps) {
   const router = useRouter();
   const { addItem } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
   const {
     title,
     slug,
@@ -64,26 +66,35 @@ export function ProductCard({
     ? Math.round(((compare_price - price) / compare_price) * 100)
     : 0;
 
-  const handleBuyNow = (e: React.MouseEvent) => {
+  const handleBuyNow = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!store_id || !store_name || !store_slug) return;
-    addItem({
-      productId: product._id as Id<"products">,
-      title: product.title,
-      variantTitle: undefined,
-      slug: product.slug,
-      image: images[0] ?? "",
-      price: product.price,
-      comparePrice: compare_price,
-      storeId: store_id as Id<"stores">,
-      storeName: store_name,
-      storeSlug: store_slug,
-      quantity: 1,
-      maxQuantity: quantity ?? 99,
-      isDigital: is_digital,
-    });
-    router.push(ROUTES.CART);
+
+    if (!store_id || !store_name || !store_slug || isAdding) return;
+
+    setIsAdding(true);
+    try {
+      await addItem({
+        productId: product._id as Id<"products">,
+        title: product.title,
+        variantTitle: undefined,
+        slug: product.slug,
+        image: images[0] ?? "",
+        price: product.price,
+        comparePrice: compare_price,
+        storeId: store_id as Id<"stores">,
+        storeName: store_name,
+        storeSlug: store_slug,
+        quantity: 1,
+        maxQuantity: quantity ?? 99,
+        isDigital: is_digital,
+      });
+      router.push(ROUTES.CART);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      // TODO: Show user-friendly error message
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -153,8 +164,13 @@ export function ProductCard({
             )}
           </div>
           {showAddToCart && !isOutOfStock && (
-            <Button size="sm" className="w-full mt-3" onClick={handleBuyNow}>
-              Commander
+            <Button
+              size="sm"
+              className="w-full mt-3"
+              onClick={handleBuyNow}
+              disabled={isAdding}
+            >
+              {isAdding ? "Ajout..." : "Commander"}
             </Button>
           )}
         </div>

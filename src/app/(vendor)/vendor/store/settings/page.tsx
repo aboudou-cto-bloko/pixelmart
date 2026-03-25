@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import Image from "next/image";
+import { z } from "zod";
 import {
   Loader2,
   Save,
@@ -47,6 +48,13 @@ import {
   type PickedLocation,
 } from "@/components/maps/LocationPicker";
 import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
+import {
+  storeSettingsSchema,
+  deliverySettingsSchema,
+  validateImageFile,
+  getSafeSettingsErrorMessage,
+  RateLimiter,
+} from "@/lib/validation/store-settings";
 
 export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);

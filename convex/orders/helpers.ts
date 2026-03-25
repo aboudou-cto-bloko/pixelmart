@@ -1,5 +1,6 @@
 // filepath: convex/orders/helpers.ts
 
+import { ConvexError } from "convex/values";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
@@ -8,6 +9,189 @@ import {
   ORDER_NUMBER_PREFIX,
   type SubscriptionTier,
 } from "../lib/constants";
+
+/**
+ * Address validation for server-side security
+ */
+export function validateAddress(address: {
+  full_name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postal_code?: string;
+  country: string;
+  phone?: string;
+}) {
+  // Name validation
+  if (address.full_name.length < 2 || address.full_name.length > 100) {
+    throw new ConvexError("Le nom doit contenir entre 2 et 100 caractères");
+  }
+
+  if (!/^[a-zA-ZÀ-ÿĀ-žА-я\u4e00-\u9fff\s'-]+$/.test(address.full_name)) {
+    throw new ConvexError("Le nom contient des caractères non autorisés");
+  }
+
+  // Address validation
+  if (address.line1.length < 5 || address.line1.length > 200) {
+    throw new ConvexError("L'adresse doit contenir entre 5 et 200 caractères");
+  }
+
+  if (!/^[a-zA-ZÀ-ÿĀ-žА-я\u4e00-\u9fff0-9\s'",.\-#]+$/.test(address.line1)) {
+    throw new ConvexError("L'adresse contient des caractères non autorisés");
+  }
+
+  // City validation
+  if (address.city.length < 2 || address.city.length > 100) {
+    throw new ConvexError("La ville doit contenir entre 2 et 100 caractères");
+  }
+
+  if (!/^[a-zA-ZÀ-ÿĀ-žА-я\u4e00-\u9fff\s'-]+$/.test(address.city)) {
+    throw new ConvexError("La ville contient des caractères non autorisés");
+  }
+
+  // Country validation
+  if (!/^[A-Z]{2}$/.test(address.country)) {
+    throw new ConvexError("Code pays invalide");
+  }
+
+  // Phone validation
+  if (address.phone && !/^\+?[\d\s\-()]{10,20}$/.test(address.phone)) {
+    throw new ConvexError("Format de téléphone invalide");
+  }
+
+  // Optional fields validation
+  if (address.line2 && address.line2.length > 200) {
+    throw new ConvexError(
+      "Le complément d'adresse ne peut pas dépasser 200 caractères",
+    );
+  }
+
+  if (address.state && address.state.length > 100) {
+    throw new ConvexError("L'état/région ne peut pas dépasser 100 caractères");
+  }
+
+  if (
+    address.postal_code &&
+    (address.postal_code.length < 2 || address.postal_code.length > 20)
+  ) {
+    throw new ConvexError(
+      "Le code postal doit contenir entre 2 et 20 caractères",
+    );
+  }
+
+  return {
+    full_name: address.full_name.trim(),
+    line1: address.line1.trim(),
+    line2: address.line2?.trim(),
+    city: address.city.trim(),
+    state: address.state?.trim(),
+    postal_code: address.postal_code?.trim(),
+    country: address.country,
+    phone: address.phone?.replace(/\s/g, ""),
+  };
+}
+
+/**
+ * Rate limiting for order creation
+ */
+export async function checkOrderRateLimit(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+): Promise<void> {
+  const now = Date.now();
+  const oneMinuteAgo = now - 60 * 1000;
+  const tenSecondsAgo = now - 10 * 1000;
+
+  // Check for orders in the last minute (max 5)
+  const recentOrders = await ctx.db
+    .query("orders")
+    .withIndex("by_customer", (q) => q.eq("customer_id", userId))
+    .filter((q) => q.gt(q.field("_creationTime"), oneMinuteAgo))
+    .collect();
+
+  if (recentOrders.length >= 5) {
+    throw new ConvexError(
+      "Trop de commandes récentes. Veuillez patienter quelques minutes.",
+    );
+  }
+
+  // Check for orders in the last 10 seconds (cooldown)
+  const veryRecentOrders = await ctx.db
+    .query("orders")
+    .withIndex("by_customer", (q) => q.eq("customer_id", userId))
+    .filter((q) => q.gt(q.field("_creationTime"), tenSecondsAgo))
+    .collect();
+
+  if (veryRecentOrders.length > 0) {
+    throw new ConvexError(
+      "Veuillez attendre quelques secondes avant de passer une nouvelle commande.",
+    );
+  }
+}
+
+/**
+ * Sanitize order notes
+ */
+export function sanitizeOrderNotes(notes?: string): string | undefined {
+  if (!notes) return undefined;
+
+  // Remove dangerous characters
+  let sanitized = notes.replace(/[<>"'&]/g, "");
+
+  // Limit length
+  if (sanitized.length > 500) {
+    sanitized = sanitized.substring(0, 500);
+  }
+
+  return sanitized.trim() || undefined;
+}
+
+/**
+ * Validate delivery coordinates
+ */
+export function validateDeliveryCoordinates(lat?: number, lon?: number): void {
+  if (lat !== undefined || lon !== undefined) {
+    if (lat === undefined || lon === undefined) {
+      throw new ConvexError(
+        "Les coordonnées de livraison doivent être complètes",
+      );
+    }
+
+    if (lat < -90 || lat > 90) {
+      throw new ConvexError("Latitude invalide");
+    }
+
+    if (lon < -180 || lon > 180) {
+      throw new ConvexError("Longitude invalide");
+    }
+
+    // Additional validation for reasonable delivery locations (adjust based on your region)
+    // This example assumes West Africa region
+    if (lat < -5 || lat > 20 || lon < -20 || lon > 15) {
+      throw new ConvexError("Zone de livraison non supportée");
+    }
+  }
+}
+
+/**
+ * Validate and sanitize coupon code
+ */
+export function validateCouponCode(couponCode?: string): string | undefined {
+  if (!couponCode) return undefined;
+
+  const sanitized = couponCode.trim().toUpperCase();
+
+  if (sanitized.length < 3 || sanitized.length > 50) {
+    throw new ConvexError("Code coupon invalide");
+  }
+
+  if (!/^[A-Z0-9\-_]+$/.test(sanitized)) {
+    throw new ConvexError("Format de code coupon invalide");
+  }
+
+  return sanitized;
+}
 
 // ─── Order Number ────────────────────────────────────────────
 

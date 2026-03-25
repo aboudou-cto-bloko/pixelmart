@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import Image from "next/image";
+import { z } from "zod";
 import {
   Loader2,
   Save,
@@ -46,6 +47,15 @@ import {
   type PickedLocation,
 } from "@/components/maps/LocationPicker";
 import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
+import {
+  storeSettingsSchema,
+  deliverySettingsSchema,
+  validateImageFile,
+  getSafeSettingsErrorMessage,
+  RateLimiter,
+  type StoreSettingsData,
+  type DeliverySettingsData,
+} from "@/lib/validation/store-settings";
 
 export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);
@@ -68,6 +78,7 @@ export default function StoreSettingsPage() {
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Delivery settings
   const [usePixelmartService, setUsePixelmartService] = useState(true);
@@ -80,6 +91,13 @@ export default function StoreSettingsPage() {
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper function to clear field errors
+  function clearFieldError(fieldName: string) {
+    if (fieldErrors[fieldName]) {
+      setFieldErrors((prev) => ({ ...prev, [fieldName]: "" }));
+    }
+  }
 
   // Obtenir les URLs à partir des storageIds
   const logoImageUrl = useQuery(
@@ -126,8 +144,26 @@ export default function StoreSettingsPage() {
     const setStorageId =
       type === "logo" ? setLogoStorageId : setBannerStorageId;
 
+    // Rate limiting check
+    const rateLimit = RateLimiter.checkRateLimit(`upload-${type}`, 5000); // 5 second cooldown
+    if (!rateLimit.allowed) {
+      setError(
+        `Veuillez attendre ${RateLimiter.formatRemainingTime(rateLimit.remainingTime!)} avant d'uploader à nouveau`,
+      );
+      return;
+    }
+
+    setError(null);
     setUploading(true);
+
     try {
+      // Validate file before upload
+      const validation = await validateImageFile(file);
+      if (!validation.isValid) {
+        setError(validation.error!);
+        return;
+      }
+
       const uploadUrl = await generateUploadUrl();
 
       const response = await fetch(uploadUrl, {
@@ -136,62 +172,123 @@ export default function StoreSettingsPage() {
         body: file,
       });
 
-      const { storageId } = await response.json();
-      setStorageId(storageId); // Stocker le storageId, l'URL sera résolue automatiquement par la query
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result.storageId) {
+        throw new Error("Invalid upload response");
+      }
+
+      setStorageId(result.storageId);
     } catch (err) {
-      setError("Erreur lors de l'upload de l'image");
+      setError(getSafeSettingsErrorMessage(err));
     } finally {
       setUploading(false);
     }
   }
 
   async function handleSaveDelivery() {
-    if (!usePixelmartService && !customPickup) {
+    // Rate limiting check
+    const rateLimit = RateLimiter.checkRateLimit("save-delivery", 3000); // 3 second cooldown
+    if (!rateLimit.allowed) {
       setDeliveryError(
-        "Vous devez définir votre adresse de retrait personnalisée.",
+        `Veuillez attendre ${RateLimiter.formatRemainingTime(rateLimit.remainingTime!)} avant de sauvegarder à nouveau`,
       );
       return;
     }
+
     setIsSavingDelivery(true);
     setDeliveryError(null);
     setDeliverySuccess(false);
+
     try {
+      // Validate delivery settings
+      const deliveryData: DeliverySettingsData = {
+        usePixelmartService,
+        customPickupLat: customPickup?.lat,
+        customPickupLon: customPickup?.lon,
+        customPickupLabel: customPickup?.label,
+      };
+
+      const validatedData = deliverySettingsSchema.parse(deliveryData);
+
       await updateDeliverySettings({
-        use_pixelmart_service: usePixelmartService,
-        custom_pickup_lat: customPickup?.lat,
-        custom_pickup_lon: customPickup?.lon,
-        custom_pickup_label: customPickup?.label,
+        use_pixelmart_service: validatedData.usePixelmartService,
+        custom_pickup_lat: validatedData.customPickupLat,
+        custom_pickup_lon: validatedData.customPickupLon,
+        custom_pickup_label: validatedData.customPickupLabel,
       });
+
       setDeliverySuccess(true);
       setTimeout(() => setDeliverySuccess(false), 3000);
     } catch (err) {
-      setDeliveryError(
-        err instanceof Error ? err.message : "Erreur de sauvegarde",
-      );
+      if (err instanceof z.ZodError) {
+        const firstError = err.issues[0];
+        setDeliveryError(
+          firstError?.message || "Données de livraison invalides",
+        );
+      } else {
+        setDeliveryError(getSafeSettingsErrorMessage(err));
+      }
     } finally {
       setIsSavingDelivery(false);
     }
   }
 
   async function handleSave() {
+    // Rate limiting check
+    const rateLimit = RateLimiter.checkRateLimit("save-settings", 3000); // 3 second cooldown
+    if (!rateLimit.allowed) {
+      setError(
+        `Veuillez attendre ${RateLimiter.formatRemainingTime(rateLimit.remainingTime!)} avant de sauvegarder à nouveau`,
+      );
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     setSuccess(false);
+    setFieldErrors({});
 
     try {
-      await updateStore({
-        name: name.trim(),
-        description: description.trim(),
-        primary_color: primaryColor,
+      // Client-side validation
+      const validatedData = storeSettingsSchema.parse({
+        name,
+        description,
+        primaryColor,
         country,
         currency,
-        logo_url: logoStorageId, // Envoyer le storageId
+      });
+
+      await updateStore({
+        name: validatedData.name,
+        description: validatedData.description || undefined,
+        primary_color: validatedData.primaryColor,
+        country: validatedData.country,
+        currency: validatedData.currency,
+        logo_url: logoStorageId,
         banner_url: bannerStorageId,
       });
+
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de sauvegarde");
+      if (err instanceof z.ZodError) {
+        // Handle validation errors
+        const newFieldErrors: Record<string, string> = {};
+        err.issues.forEach((issue) => {
+          const field = issue.path[0] as string;
+          if (field && !newFieldErrors[field]) {
+            newFieldErrors[field] = issue.message;
+          }
+        });
+        setFieldErrors(newFieldErrors);
+        setError("Veuillez corriger les erreurs ci-dessous");
+      } else {
+        setError(getSafeSettingsErrorMessage(err));
+      }
     } finally {
       setIsSaving(false);
     }
@@ -237,16 +334,25 @@ export default function StoreSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="store-name">Nom de la boutique</Label>
+            <Label htmlFor="store-name">Nom de la boutique *</Label>
             <Input
               id="store-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearFieldError("name");
+              }}
               placeholder="Ma super boutique"
-              className="mt-1"
+              className={`mt-1 ${fieldErrors.name ? "border-destructive" : ""}`}
+              maxLength={100}
             />
+            {fieldErrors.name && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.name}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
-              URL : /stores/{store.slug}
+              URL : /stores/{store.slug} • {name.length}/100
             </p>
           </div>
 
@@ -255,12 +361,20 @@ export default function StoreSettingsPage() {
             <Textarea
               id="store-desc"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                clearFieldError("description");
+              }}
               placeholder="Décrivez votre boutique en quelques lignes…"
               rows={4}
               maxLength={2000}
-              className="mt-1"
+              className={`mt-1 ${fieldErrors.description ? "border-destructive" : ""}`}
             />
+            {fieldErrors.description && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.description}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1 text-right">
               {description.length}/2000
             </p>
@@ -406,26 +520,42 @@ export default function StoreSettingsPage() {
         </CardHeader>
         <CardContent>
           <div>
-            <Label htmlFor="theme-color">Couleur principale</Label>
+            <Label htmlFor="theme-color">Couleur principale *</Label>
             <div className="flex items-center gap-3 mt-1">
               <input
                 id="theme-color"
                 type="color"
                 value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
+                onChange={(e) => {
+                  setPrimaryColor(e.target.value);
+                  clearFieldError("primaryColor");
+                }}
                 className="size-10 rounded-lg border cursor-pointer"
               />
               <Input
                 value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
+                onChange={(e) => {
+                  setPrimaryColor(e.target.value);
+                  clearFieldError("primaryColor");
+                }}
                 placeholder="#6366f1"
-                className="w-32 font-mono text-sm"
+                className={`w-32 font-mono text-sm ${fieldErrors.primaryColor ? "border-destructive" : ""}`}
+                pattern="^#[0-9A-Fa-f]{6}$"
+                maxLength={7}
               />
               <div
                 className="size-10 rounded-lg border"
                 style={{ backgroundColor: primaryColor }}
               />
             </div>
+            {fieldErrors.primaryColor && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.primaryColor}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Format hexadécimal (ex: #6366f1)
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -556,9 +686,17 @@ export default function StoreSettingsPage() {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Pays</Label>
-            <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger className="mt-1">
+            <Label>Pays *</Label>
+            <Select
+              value={country}
+              onValueChange={(value) => {
+                setCountry(value);
+                clearFieldError("country");
+              }}
+            >
+              <SelectTrigger
+                className={`mt-1 ${fieldErrors.country ? "border-destructive" : ""}`}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -569,11 +707,24 @@ export default function StoreSettingsPage() {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.country && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.country}
+              </p>
+            )}
           </div>
           <div>
-            <Label>Devise</Label>
-            <Select value={currency} onValueChange={setCurrency}>
-              <SelectTrigger className="mt-1">
+            <Label>Devise *</Label>
+            <Select
+              value={currency}
+              onValueChange={(value) => {
+                setCurrency(value);
+                clearFieldError("currency");
+              }}
+            >
+              <SelectTrigger
+                className={`mt-1 ${fieldErrors.currency ? "border-destructive" : ""}`}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -582,6 +733,11 @@ export default function StoreSettingsPage() {
                 <SelectItem value="USD">USD (Dollar US)</SelectItem>
               </SelectContent>
             </Select>
+            {fieldErrors.currency && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.currency}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -2,11 +2,19 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import {
+  productFormSchema,
+  validateConvexId,
+  sanitizeTags,
+  formatValidationError,
+  type ProductFormData,
+} from "@/lib/validation/product";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,6 +121,8 @@ function ProductFormInner({
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const lastSubmissionTime = useRef<number>(0);
 
   // ---- Updater typé ----
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -123,39 +133,74 @@ function ProductFormInner({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setFieldErrors({});
+
+    // Rate limiting: prevent rapid submissions
+    const now = Date.now();
+    if (now - lastSubmissionTime.current < 2000) {
+      // 2 second cooldown
+      setError("Veuillez attendre avant de soumettre à nouveau");
+      return;
+    }
+    lastSubmissionTime.current = now;
+
     setIsSubmitting(true);
 
-    const parsedTags = form.tags
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-
     try {
+      // Client-side validation with sanitization
+      const validatedData = productFormSchema.parse({
+        title: form.title,
+        description: form.description,
+        shortDescription: form.shortDescription,
+        categoryId: form.categoryId,
+        tags: form.tags,
+        price: form.price ?? 0,
+        comparePrice: form.comparePrice,
+        costPrice: form.costPrice,
+        sku: form.sku,
+        barcode: form.barcode,
+        quantity: form.quantity,
+        lowStockThreshold: form.lowStockThreshold,
+        weight: form.weight,
+        color: form.color,
+        material: form.material,
+        dimensions: form.dimensions,
+        seoTitle: form.seoTitle,
+        seoDescription: form.seoDescription,
+        seoKeywords: form.seoKeywords,
+        images: form.images,
+      });
+
+      // Validate category ID safely
+      const categoryId = validateConvexId(
+        validatedData.categoryId,
+        "categories",
+      ) as Id<"categories">;
       if (mode === "create") {
         const result = await createProduct({
-          title: form.title,
-          description: form.description,
-          short_description: form.shortDescription || undefined,
-          category_id: form.categoryId as Id<"categories">,
-          tags: parsedTags,
-          images: form.images,
+          title: validatedData.title,
+          description: validatedData.description,
+          short_description: validatedData.shortDescription,
+          category_id: categoryId,
+          tags: validatedData.tags,
+          images: validatedData.images,
           image_roles: form.imageRoles.length > 0 ? form.imageRoles : undefined,
-          price: form.price ?? 0,
-          compare_price: form.comparePrice,
-          cost_price: form.costPrice,
-          sku: form.sku || undefined,
-          barcode: form.barcode || undefined,
+          price: validatedData.price,
+          compare_price: validatedData.comparePrice,
+          cost_price: validatedData.costPrice,
+          sku: validatedData.sku,
+          barcode: validatedData.barcode,
           track_inventory: form.trackInventory,
-          quantity: form.quantity,
-          low_stock_threshold: form.lowStockThreshold,
-          weight: form.weight,
-          color: form.color || undefined,
-          material: form.material || undefined,
-          dimensions: form.dimensions || undefined,
+          quantity: validatedData.quantity,
+          low_stock_threshold: validatedData.lowStockThreshold,
+          weight: validatedData.weight,
+          color: validatedData.color,
+          material: validatedData.material,
+          dimensions: validatedData.dimensions,
           is_digital: form.isDigital,
-          seo_title: form.seoTitle || undefined,
-          seo_description: form.seoDescription || undefined,
-          seo_keywords: form.seoKeywords || undefined,
+          seo_title: validatedData.seoTitle,
+          seo_description: validatedData.seoDescription,
+          seo_keywords: validatedData.seoKeywords,
         });
 
         // Save variants after product creation
@@ -190,29 +235,29 @@ function ProductFormInner({
       } else if (productId) {
         await updateProduct({
           id: productId,
-          title: form.title,
-          description: form.description,
-          short_description: form.shortDescription || undefined,
-          category_id: form.categoryId as Id<"categories">,
-          tags: parsedTags,
-          images: form.images,
+          title: validatedData.title,
+          description: validatedData.description,
+          short_description: validatedData.shortDescription,
+          category_id: categoryId,
+          tags: validatedData.tags,
+          images: validatedData.images,
           image_roles: form.imageRoles.length > 0 ? form.imageRoles : undefined,
-          price: form.price,
-          compare_price: form.comparePrice,
-          cost_price: form.costPrice,
-          sku: form.sku || undefined,
-          barcode: form.barcode || undefined,
+          price: validatedData.price,
+          compare_price: validatedData.comparePrice,
+          cost_price: validatedData.costPrice,
+          sku: validatedData.sku,
+          barcode: validatedData.barcode,
           track_inventory: form.trackInventory,
-          quantity: form.quantity,
-          low_stock_threshold: form.lowStockThreshold,
-          weight: form.weight,
-          color: form.color || undefined,
-          material: form.material || undefined,
-          dimensions: form.dimensions || undefined,
+          quantity: validatedData.quantity,
+          low_stock_threshold: validatedData.lowStockThreshold,
+          weight: validatedData.weight,
+          color: validatedData.color,
+          material: validatedData.material,
+          dimensions: validatedData.dimensions,
           is_digital: form.isDigital,
-          seo_title: form.seoTitle || undefined,
-          seo_description: form.seoDescription || undefined,
-          seo_keywords: form.seoKeywords || undefined,
+          seo_title: validatedData.seoTitle,
+          seo_description: validatedData.seoDescription,
+          seo_keywords: validatedData.seoKeywords,
         });
 
         // Save specs after product update
@@ -229,9 +274,34 @@ function ProductFormInner({
         router.push("/vendor/products");
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Erreur lors de la sauvegarde",
-      );
+      if (err instanceof z.ZodError) {
+        // Handle validation errors
+        const newFieldErrors: Record<string, string> = {};
+        err.issues.forEach((issue) => {
+          const field = issue.path[0] as string;
+          if (field && !newFieldErrors[field]) {
+            newFieldErrors[field] = issue.message;
+          }
+        });
+        setFieldErrors(newFieldErrors);
+        setError(formatValidationError(err));
+      } else if (err instanceof Error) {
+        // Generic error for security - don't expose sensitive details
+        const message = err.message;
+        if (
+          message.includes("prix") ||
+          message.includes("image") ||
+          message.includes("catégorie")
+        ) {
+          setError(message); // Safe business logic errors
+        } else {
+          setError(
+            "Une erreur est survenue lors de la sauvegarde. Veuillez réessayer.",
+          );
+        }
+      } else {
+        setError("Une erreur inattendue est survenue. Veuillez réessayer.");
+      }
       setIsSubmitting(false);
     }
   }
@@ -265,10 +335,21 @@ function ProductFormInner({
                 <Input
                   id="title"
                   value={form.title}
-                  onChange={(e) => updateField("title", e.target.value)}
+                  onChange={(e) => {
+                    updateField("title", e.target.value);
+                    if (fieldErrors.title) {
+                      setFieldErrors((prev) => ({ ...prev, title: "" }));
+                    }
+                  }}
                   placeholder="Robe wax Ankara"
                   required
+                  className={fieldErrors.title ? "border-destructive" : ""}
                 />
+                {fieldErrors.title && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.title}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -277,9 +358,19 @@ function ProductFormInner({
                 </Label>
                 <RichTextEditor
                   value={form.description}
-                  onChange={(value) => updateField("description", value)}
+                  onChange={(value) => {
+                    updateField("description", value);
+                    if (fieldErrors.description) {
+                      setFieldErrors((prev) => ({ ...prev, description: "" }));
+                    }
+                  }}
                   placeholder="Décrivez votre produit..."
                 />
+                {fieldErrors.description && (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.description}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -364,19 +455,43 @@ function ProductFormInner({
               <CardTitle>Prix</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-3">
-              <PriceInput
-                id="price"
-                label="Prix de vente"
-                value={form.price}
-                onChange={(val) => updateField("price", val)}
-                required
-              />
-              <PriceInput
-                id="compare_price"
-                label="Prix barré"
-                value={form.comparePrice}
-                onChange={(val) => updateField("comparePrice", val)}
-              />
+              <div>
+                <PriceInput
+                  id="price"
+                  label="Prix de vente"
+                  value={form.price}
+                  onChange={(val) => {
+                    updateField("price", val);
+                    if (fieldErrors.price) {
+                      setFieldErrors((prev) => ({ ...prev, price: "" }));
+                    }
+                  }}
+                  required
+                />
+                {fieldErrors.price && (
+                  <p className="text-sm text-destructive mt-1">
+                    {fieldErrors.price}
+                  </p>
+                )}
+              </div>
+              <div>
+                <PriceInput
+                  id="compare_price"
+                  label="Prix barré"
+                  value={form.comparePrice}
+                  onChange={(val) => {
+                    updateField("comparePrice", val);
+                    if (fieldErrors.comparePrice) {
+                      setFieldErrors((prev) => ({ ...prev, comparePrice: "" }));
+                    }
+                  }}
+                />
+                {fieldErrors.comparePrice && (
+                  <p className="text-sm text-destructive mt-1">
+                    {fieldErrors.comparePrice}
+                  </p>
+                )}
+              </div>
               <PriceInput
                 id="cost_price"
                 label="Prix d'achat"

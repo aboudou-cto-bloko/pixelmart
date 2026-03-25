@@ -2,7 +2,7 @@
 
 import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
@@ -19,6 +19,11 @@ import {
   assertValidTransition,
   canCustomerCancel,
   canVendorCancel,
+  validateAddress,
+  checkOrderRateLimit,
+  sanitizeOrderNotes,
+  validateDeliveryCoordinates,
+  validateCouponCode,
   type OrderItemInput,
 } from "./helpers";
 import { calculateDeliveryFee } from "../delivery/constants";
@@ -77,15 +82,63 @@ export const createOrder = mutation({
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
 
-    // 1. Vérifier que la boutique existe et est active
-    const store = await ctx.db.get(args.storeId);
-    if (!store || store.status !== "active") {
-      throw new Error("Boutique introuvable ou inactive");
+    // 1. Rate limiting check
+    await checkOrderRateLimit(ctx, user._id);
+
+    // 2. Validate input data
+    if (args.items.length === 0) {
+      throw new ConvexError("La commande doit contenir au moins un article");
     }
 
-    // 2. Un vendor ne peut pas acheter dans sa propre boutique
+    if (args.items.length > 50) {
+      throw new ConvexError("Maximum 50 articles par commande");
+    }
+
+    // 3. Validate addresses
+    const validatedShippingAddress = validateAddress(args.shippingAddress);
+    const validatedBillingAddress = args.billingAddress
+      ? validateAddress(args.billingAddress)
+      : undefined;
+
+    // 4. Validate delivery coordinates
+    validateDeliveryCoordinates(args.deliveryLat, args.deliveryLon);
+
+    // 5. Sanitize and validate optional fields
+    const sanitizedNotes = sanitizeOrderNotes(args.notes);
+    const validatedCouponCode = validateCouponCode(args.couponCode);
+
+    // 6. Validate delivery fee if provided
+    if (args.deliveryFee !== undefined) {
+      if (args.deliveryFee < 0 || args.deliveryFee > 100000) {
+        throw new ConvexError("Frais de livraison invalides");
+      }
+    }
+
+    // 7. Validate estimated weight
+    if (args.estimatedWeightKg !== undefined) {
+      if (args.estimatedWeightKg < 0 || args.estimatedWeightKg > 1000) {
+        throw new ConvexError("Poids estimé invalide");
+      }
+    }
+
+    // 8. Validate delivery distance
+    if (args.deliveryDistanceKm !== undefined) {
+      if (args.deliveryDistanceKm < 0 || args.deliveryDistanceKm > 500) {
+        throw new ConvexError("Distance de livraison invalide");
+      }
+    }
+
+    // 9. Vérifier que la boutique existe et est active
+    const store = await ctx.db.get(args.storeId);
+    if (!store || store.status !== "active") {
+      throw new ConvexError("Boutique introuvable ou inactive");
+    }
+
+    // 10. Un vendor ne peut pas acheter dans sa propre boutique
     if (store.owner_id === user._id) {
-      throw new Error("Vous ne pouvez pas acheter dans votre propre boutique");
+      throw new ConvexError(
+        "Vous ne pouvez pas acheter dans votre propre boutique",
+      );
     }
 
     // 3. Valider les items + vérifier le stock
@@ -109,10 +162,10 @@ export const createOrder = mutation({
 
     // 5. Appliquer le coupon si présent
     let discountAmount = 0;
-    if (args.couponCode) {
+    if (validatedCouponCode) {
       discountAmount = await applyCoupon(
         ctx,
-        args.couponCode,
+        validatedCouponCode,
         args.storeId,
         subtotal,
       );
@@ -166,10 +219,10 @@ export const createOrder = mutation({
       status: initialStatus,
       payment_status: initialPaymentStatus,
       payment_method: args.paymentMethod,
-      shipping_address: args.shippingAddress,
-      billing_address: args.billingAddress,
-      notes: args.notes,
-      coupon_code: args.couponCode,
+      shipping_address: validatedShippingAddress,
+      billing_address: validatedBillingAddress,
+      notes: sanitizedNotes,
+      coupon_code: validatedCouponCode,
       commission_amount: commissionAmount,
       // ── CHAMPS DELIVERY ──
       delivery_lat: args.deliveryLat,
@@ -187,8 +240,8 @@ export const createOrder = mutation({
     await decrementInventory(ctx, validatedItems);
 
     // 14. Incrémenter used_count du coupon
-    if (args.couponCode) {
-      await incrementCouponUsage(ctx, args.couponCode, args.storeId);
+    if (validatedCouponCode) {
+      await incrementCouponUsage(ctx, validatedCouponCode, args.storeId);
     }
 
     // 15. Log event

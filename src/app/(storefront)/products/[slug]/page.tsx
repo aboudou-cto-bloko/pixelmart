@@ -191,7 +191,62 @@ export default function ProductDetailPage() {
   );
 
   const [quantity, setQuantity] = useState(1);
+  const [isAdding, setIsAdding] = useState(false);
   const { addItem } = useCart();
+
+  const handleAddToCart = async () => {
+    if (!product || !product.store || isAdding) return;
+
+    setIsAdding(true);
+    try {
+      await addItem({
+        productId: product._id,
+        title: product.title,
+        slug: product.slug,
+        image: product.images[0] ?? "",
+        price: activePrice,
+        comparePrice: activeComparePrice,
+        storeId: product.store._id,
+        storeName: product.store.name,
+        storeSlug: product.store.slug,
+        quantity,
+        maxQuantity,
+        isDigital: product.is_digital,
+      });
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      // TODO: Show user-friendly error message
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (!product || !product.store || isAdding) return;
+
+    setIsAdding(true);
+    try {
+      await addItem({
+        productId: product._id,
+        title: product.title,
+        slug: product.slug,
+        image: product.images[0] ?? "",
+        price: activePrice,
+        comparePrice: activeComparePrice,
+        storeId: product.store._id,
+        storeName: product.store.name,
+        storeSlug: product.store.slug,
+        quantity,
+        maxQuantity,
+        isDigital: product.is_digital,
+      });
+      router.push(ROUTES.CART);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      // TODO: Show user-friendly error message
+      setIsAdding(false);
+    }
+  };
 
   // Loading
   if (product === undefined) {
@@ -326,51 +381,26 @@ export default function ProductDetailPage() {
                 <Button
                   size="lg"
                   className="flex-1"
-                  onClick={() => {
-                    if (!product.store) return;
-                    addItem({
-                      productId: product._id,
-                      title: product.title,
-                      slug: product.slug,
-                      image: product.images[0] ?? "",
-                      price: activePrice,
-                      comparePrice: activeComparePrice,
-                      storeId: product.store._id,
-                      storeName: product.store.name,
-                      storeSlug: product.store.slug,
-                      quantity,
-                      maxQuantity,
-                      isDigital: product.is_digital,
-                    });
-                  }}
+                  onClick={handleAddToCart}
+                  disabled={isAdding}
                 >
-                  <ShoppingCart className="size-4 mr-2" />
-                  Ajouter au panier
+                  {isAdding ? (
+                    "Ajout..."
+                  ) : (
+                    <>
+                      <ShoppingCart className="size-4 mr-2" />
+                      Ajouter au panier
+                    </>
+                  )}
                 </Button>
                 <Button
                   size="lg"
                   variant="secondary"
                   className="flex-1"
-                  onClick={() => {
-                    if (!product.store) return;
-                    addItem({
-                      productId: product._id,
-                      title: product.title,
-                      slug: product.slug,
-                      image: product.images[0] ?? "",
-                      price: activePrice,
-                      comparePrice: activeComparePrice,
-                      storeId: product.store._id,
-                      storeName: product.store.name,
-                      storeSlug: product.store.slug,
-                      quantity,
-                      maxQuantity,
-                      isDigital: product.is_digital,
-                    });
-                    router.push(ROUTES.CART);
-                  }}
+                  onClick={handleBuyNow}
+                  disabled={isAdding}
                 >
-                  Commander
+                  {isAdding ? "Ajout..." : "Commander"}
                 </Button>
               </div>
             </div>

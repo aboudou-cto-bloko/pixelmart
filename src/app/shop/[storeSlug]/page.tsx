@@ -139,6 +139,8 @@ export default function ShopHomePage() {
                 key={product._id}
                 product={product}
                 storeSlug={storeSlug}
+                storeId={store!._id}
+                storeName={store!.name}
                 currency={store?.currency ?? "XOF"}
                 showAddToCart
               />
