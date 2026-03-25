@@ -21,13 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Save } from "lucide-react";
 import { ProductImageUpload } from "./ProductImageUpload";
 import { VendorQAManager } from "@/components/questions";
@@ -334,15 +328,179 @@ function ProductFormInner({
           </Card>
         </TabsContent>
 
+        {/* TAB: Media */}
+        <TabsContent value="media">
+          <Card>
+            <CardHeader>
+              <CardTitle>Photos du produit</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProductImageUpload
+                images={form.images}
+                imageUrls={form.imageUrls}
+                imageRoles={form.imageRoles}
+                onChange={(imgs, roles) => {
+                  setForm((prev) => ({
+                    ...prev,
+                    images: imgs,
+                    imageRoles: roles,
+                  }));
+                }}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB: Pricing & Stock */}
+        <TabsContent value="pricing" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Prix</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-3">
+              <PriceInput
+                id="price"
+                label="Prix de vente"
+                value={form.price}
+                onChange={(val) => updateField("price", val)}
+                required
+              />
+              <PriceInput
+                id="compare_price"
+                label="Prix barré"
+                value={form.comparePrice}
+                onChange={(val) => updateField("comparePrice", val)}
+              />
+              <PriceInput
+                id="cost_price"
+                label="Prix d'achat"
+                value={form.costPrice}
+                onChange={(val) => updateField("costPrice", val)}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Inventaire</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={form.trackInventory}
+                  onCheckedChange={(val) => updateField("trackInventory", val)}
+                />
+                <Label>Suivre le stock</Label>
+              </div>
+
+              {form.trackInventory && (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Quantité en stock</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="0"
+                      value={form.quantity}
+                      onChange={(e) =>
+                        updateField("quantity", parseInt(e.target.value) || 0)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="low_stock">Seuil d&apos;alerte</Label>
+                    <Input
+                      id="low_stock"
+                      type="number"
+                      min="0"
+                      value={form.lowStockThreshold}
+                      onChange={(e) =>
+                        updateField(
+                          "lowStockThreshold",
+                          parseInt(e.target.value) || 5,
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sku">SKU</Label>
+                    <Input
+                      id="sku"
+                      value={form.sku}
+                      onChange={(e) => updateField("sku", e.target.value)}
+                      placeholder="SKU-001"
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* TAB: Specs */}
         <TabsContent value="specs">
           <Card>
             <CardHeader>
               <CardTitle>Caractéristiques personnalisées</CardTitle>
-              <CardDescription>
-                Ajoutez des caractéristiques supplémentaires (ex: Matériau:
-                Coton, Garantie: 2 ans)
-              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {form.specs.map((spec, index) => (
+                <div key={index} className="flex gap-2 items-start">
+                  <Input
+                    placeholder="Caractéristique (ex: Matériau)"
+                    value={spec.spec_key}
+                    onChange={(e) => {
+                      const newSpecs = [...form.specs];
+                      newSpecs[index].spec_key = e.target.value;
+                      updateField("specs", newSpecs);
+                    }}
+                    className="flex-1"
+                  />
+                  <Input
+                    placeholder="Valeur (ex: Coton)"
+                    value={spec.spec_value}
+                    onChange={(e) => {
+                      const newSpecs = [...form.specs];
+                      newSpecs[index].spec_value = e.target.value;
+                      updateField("specs", newSpecs);
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      const newSpecs = form.specs.filter((_, i) => i !== index);
+                      updateField("specs", newSpecs);
+                    }}
+                  >
+                    ×
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  updateField("specs", [
+                    ...form.specs,
+                    { spec_key: "", spec_value: "" },
+                  ]);
+                }}
+              >
+                + Ajouter une caractéristique
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB: Specs */}
+        <TabsContent value="specs">
+          <Card>
+            <CardHeader>
+              <CardTitle>Caractéristiques personnalisées</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {form.specs.map((spec, index) => (
@@ -535,13 +693,6 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
     );
   }
 
-  // Build specs array from existing specs query
-  const specsArray =
-    existingSpecs?.map((s) => ({
-      spec_key: s.spec_key,
-      spec_value: s.spec_value,
-    })) ?? [];
-
   // Construire l'état initial UNE SEULE FOIS avant le premier rendu du form
   const initialState: FormState =
     mode === "edit" && existingProduct
@@ -571,7 +722,11 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
           seoDescription: existingProduct.seo_description ?? "",
           seoKeywords: existingProduct.seo_keywords ?? "",
           variants: [],
-          specs: specsArray,
+          specs:
+            existingSpecs?.map((s) => ({
+              spec_key: s.spec_key,
+              spec_value: s.spec_value,
+            })) ?? [],
         }
       : EMPTY_FORM;
 
