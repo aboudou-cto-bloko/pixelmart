@@ -156,7 +156,10 @@ export const productFormSchema = z
     color: z
       .string()
       .max(50, "La couleur ne peut pas dépasser 50 caractères")
-      .regex(/^[a-zA-Z0-9\s\-_#]*$/, "Couleur invalide")
+      .regex(
+        /^[a-zA-Z0-9\s\-_#(),.À-ÿĀ-ž]*$/,
+        "Format de couleur invalide - utilisez des lettres, chiffres, espaces et caractères de base",
+      )
       .optional(),
 
     material: z
