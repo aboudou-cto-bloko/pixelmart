@@ -82,12 +82,17 @@ export const getBySlug = query({
       store: store
         ? {
             _id: store._id,
+            owner_id: store.owner_id,
             name: store.name,
             slug: store.slug,
             logo_url: storeLogoUrl,
             is_verified: store.is_verified,
             avg_rating: store.avg_rating,
             country: store.country,
+            use_pixelmart_service: store.use_pixelmart_service ?? true,
+            custom_pickup_lat: store.custom_pickup_lat,
+            custom_pickup_lon: store.custom_pickup_lon,
+            custom_pickup_label: store.custom_pickup_label,
           }
         : null,
       category: category

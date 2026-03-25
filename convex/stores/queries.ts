@@ -6,6 +6,36 @@ import { resolveImageUrl } from "../products/helpers";
 import { getVendorStore } from "../users/helpers";
 
 /**
+ * Vérifie si la boutique a des commandes actives (non terminées, non annulées).
+ * Utilisé pour bloquer la modification des paramètres de livraison.
+ */
+export const hasPendingOrders = query({
+  args: {},
+  handler: async (ctx) => {
+    const { store } = await getVendorStore(ctx);
+
+    const ACTIVE_STATUSES = [
+      "pending",
+      "paid",
+      "processing",
+      "ready_for_delivery",
+      "shipped",
+    ] as const;
+
+    for (const status of ACTIVE_STATUSES) {
+      const order = await ctx.db
+        .query("orders")
+        .withIndex("by_store", (q) => q.eq("store_id", store._id))
+        .filter((q) => q.eq(q.field("status"), status))
+        .first();
+      if (order) return true;
+    }
+
+    return false;
+  },
+});
+
+/**
  * Détail boutique par slug — vitrine publique.
  * PUBLIC — pas d'auth requise.
  * Inclut les produits actifs de la boutique.
