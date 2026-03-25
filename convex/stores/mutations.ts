@@ -89,20 +89,39 @@ export const updateDeliverySettings = mutation({
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
 
-    // Si mode personnalisé, les coordonnées sont obligatoires
-    if (!args.use_pixelmart_service) {
+    // ---- Validate per mode ----
+    // Mode B: use_pixelmart_service=true + custom pickup → coordinates required
+    if (
+      args.use_pixelmart_service &&
+      (args.custom_pickup_lat !== undefined ||
+        args.custom_pickup_lon !== undefined ||
+        args.custom_pickup_label)
+    ) {
       if (
         args.custom_pickup_lat === undefined ||
         args.custom_pickup_lon === undefined ||
         !args.custom_pickup_label?.trim()
       ) {
         throw new ConvexError(
-          "L'adresse de retrait personnalisée est obligatoire lorsque vous n'utilisez pas le service Pixel-Mart.",
+          "Les coordonnées et l'adresse sont toutes obligatoires pour le point de retrait personnalisé.",
         );
       }
     }
 
-    // Vérifier qu'il n'y a pas de commandes actives
+    // Mode C: use_pixelmart_service=false → no pickup address allowed
+    if (!args.use_pixelmart_service) {
+      if (
+        args.custom_pickup_lat !== undefined ||
+        args.custom_pickup_lon !== undefined ||
+        args.custom_pickup_label
+      ) {
+        throw new ConvexError(
+          "Aucun point de retrait n'est autorisé en mode livraison autonome.",
+        );
+      }
+    }
+
+    // ---- Block if active orders ----
     for (const status of ACTIVE_ORDER_STATUSES) {
       const active = await ctx.db
         .query("orders")
@@ -117,17 +136,26 @@ export const updateDeliverySettings = mutation({
       }
     }
 
+    // ---- Derive has_storage_plan ----
+    // Mode A: use_pixelmart_service=true  + no custom pickup → true
+    // Mode B: use_pixelmart_service=true  + custom pickup    → false
+    // Mode C: use_pixelmart_service=false                    → false
+    const hasCustomPickup = args.custom_pickup_lat !== undefined;
+    const hasStoragePlan = args.use_pixelmart_service && !hasCustomPickup;
+
     await ctx.db.patch(store._id, {
       use_pixelmart_service: args.use_pixelmart_service,
+      // Mode C clears pickup; Mode A/B keeps or sets it
       custom_pickup_lat: args.use_pixelmart_service
-        ? undefined
-        : args.custom_pickup_lat,
+        ? args.custom_pickup_lat
+        : undefined,
       custom_pickup_lon: args.use_pixelmart_service
-        ? undefined
-        : args.custom_pickup_lon,
+        ? args.custom_pickup_lon
+        : undefined,
       custom_pickup_label: args.use_pixelmart_service
-        ? undefined
-        : args.custom_pickup_label?.trim(),
+        ? args.custom_pickup_label?.trim()
+        : undefined,
+      has_storage_plan: hasStoragePlan,
       updated_at: Date.now(),
     });
 

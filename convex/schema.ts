@@ -109,6 +109,7 @@ export default defineSchema({
     custom_pickup_lat: v.optional(v.number()),
     custom_pickup_lon: v.optional(v.number()),
     custom_pickup_label: v.optional(v.string()), // human-readable address
+    has_storage_plan: v.optional(v.boolean()), // true = mode A (Pixel-Mart stores goods at default warehouse)
 
     // Metadata
     updated_at: v.number(),

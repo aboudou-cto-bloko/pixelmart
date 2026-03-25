@@ -27,6 +27,11 @@ export const becomeVendor = mutation({
     country: v.optional(v.string()),
     currency: v.optional(v.string()),
     description: v.optional(v.string()),
+    // Delivery settings — optional at creation, default = mode A (full Pixel-Mart)
+    use_pixelmart_service: v.optional(v.boolean()),
+    custom_pickup_lat: v.optional(v.number()),
+    custom_pickup_lon: v.optional(v.number()),
+    custom_pickup_label: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
@@ -55,6 +60,21 @@ export const becomeVendor = mutation({
       slug = `${baseSlug}-${counter}`;
     }
 
+    // ---- Derive delivery mode ----
+    // Mode A: use_pixelmart_service=true  + no custom pickup → has_storage_plan=true
+    // Mode B: use_pixelmart_service=true  + custom pickup set → has_storage_plan=false
+    // Mode C: use_pixelmart_service=false + no pickup         → has_storage_plan=false
+    const usePixelmartService = args.use_pixelmart_service ?? true;
+    const hasCustomPickup = args.custom_pickup_lat !== undefined;
+    const hasStoragePlan = usePixelmartService && !hasCustomPickup;
+
+    // Mode C enforces no pickup address
+    const pickupLat = usePixelmartService ? args.custom_pickup_lat : undefined;
+    const pickupLon = usePixelmartService ? args.custom_pickup_lon : undefined;
+    const pickupLabel = usePixelmartService
+      ? args.custom_pickup_label
+      : undefined;
+
     // ---- Insert store ----
     const storeId = await ctx.db.insert("stores", {
       owner_id: user._id,
@@ -77,6 +97,11 @@ export const becomeVendor = mutation({
       avg_rating: 0,
       is_verified: false,
       country: args.country ?? "BJ",
+      use_pixelmart_service: usePixelmartService,
+      custom_pickup_lat: pickupLat,
+      custom_pickup_lon: pickupLon,
+      custom_pickup_label: pickupLabel,
+      has_storage_plan: hasStoragePlan,
       updated_at: Date.now(),
     });
 

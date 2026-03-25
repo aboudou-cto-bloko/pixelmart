@@ -35,10 +35,18 @@ import {
   Store,
   MapPin,
   FileText,
+  Truck,
   ArrowRight,
   ArrowLeft,
   Check,
+  Info,
 } from "lucide-react";
+import {
+  LocationPicker,
+  type PickedLocation,
+} from "@/components/maps/LocationPicker";
+import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
+import { Switch } from "@/components/ui/switch";
 
 // ---- Types extraits pour éviter le conflit JSX/generics ----
 type FieldErrors = Partial<Record<keyof VendorOnboardingValues, string>>;
@@ -46,7 +54,8 @@ type FieldErrors = Partial<Record<keyof VendorOnboardingValues, string>>;
 const STEPS = [
   { id: 1, title: "Votre boutique", icon: Store },
   { id: 2, title: "Localisation", icon: MapPin },
-  { id: 3, title: "Finalisation", icon: FileText },
+  { id: 3, title: "Livraison", icon: Truck },
+  { id: 4, title: "Finalisation", icon: FileText },
 ] as const;
 
 export default function VendorOnboardingPage() {
@@ -64,6 +73,12 @@ export default function VendorOnboardingPage() {
     description: "",
     country: "BJ",
   });
+
+  // Delivery step state
+  const [usePixelmartService, setUsePixelmartService] = useState(true);
+  const [customPickup, setCustomPickup] = useState<
+    PickedLocation | undefined
+  >();
 
   // ---- Guards ----
   if (isUserLoading) {
@@ -122,8 +137,8 @@ export default function VendorOnboardingPage() {
   }
 
   function handleNext() {
-    if (!validateCurrentStep()) return;
-    setStep((s) => Math.min(s + 1, 3));
+    if (step !== 3 && !validateCurrentStep()) return;
+    setStep((s) => Math.min(s + 1, 4));
   }
 
   function handleBack() {
@@ -159,6 +174,12 @@ export default function VendorOnboardingPage() {
         country: result.data.country,
         currency: country?.currency ?? "XOF",
         description: result.data.description ?? undefined,
+        use_pixelmart_service: usePixelmartService,
+        custom_pickup_lat: usePixelmartService ? customPickup?.lat : undefined,
+        custom_pickup_lon: usePixelmartService ? customPickup?.lon : undefined,
+        custom_pickup_label: usePixelmartService
+          ? customPickup?.label
+          : undefined,
       });
 
       router.push("/vendor/dashboard");
@@ -190,13 +211,13 @@ export default function VendorOnboardingPage() {
               <div key={s.id} className="flex items-center gap-2">
                 {index > 0 && (
                   <div
-                    className={`h-px w-8 transition-colors ${
+                    className={`h-px w-6 transition-colors ${
                       isCompleted ? "bg-primary" : "bg-border"
                     }`}
                   />
                 )}
                 <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${
+                  className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors ${
                     isActive
                       ? "border-primary bg-primary text-primary-foreground"
                       : isCompleted
@@ -221,7 +242,8 @@ export default function VendorOnboardingPage() {
             <CardTitle className="text-2xl">
               {step === 1 && "Nommez votre boutique"}
               {step === 2 && "Où êtes-vous basé ?"}
-              {step === 3 && "Prêt à lancer ?"}
+              {step === 3 && "Service de livraison"}
+              {step === 4 && "Prêt à lancer ?"}
             </CardTitle>
             <CardDescription>
               {step === 1 &&
@@ -229,6 +251,8 @@ export default function VendorOnboardingPage() {
               {step === 2 &&
                 "Votre pays détermine la devise et les modes de paiement disponibles."}
               {step === 3 &&
+                "Activez ou non le service de livraison Pixel-Mart. Vous pourrez modifier ce choix dans Boutique → Paramètres."}
+              {step === 4 &&
                 "Vérifiez les informations et lancez votre boutique."}
             </CardDescription>
           </CardHeader>
@@ -308,8 +332,95 @@ export default function VendorOnboardingPage() {
               </div>
             )}
 
-            {/* Step 3 — Review + optional description */}
+            {/* Step 3 — Delivery service */}
             {step === 3 && (
+              <div className="space-y-5">
+                {/* Toggle */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold">
+                      Utiliser le service de livraison Pixel-Mart
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {usePixelmartService
+                        ? "Pixel-Mart gère la livraison de vos commandes."
+                        : "Vous gérez vous-même la livraison. Pixel-Mart ne calcule aucun frais de livraison pour vos commandes."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={usePixelmartService}
+                    onCheckedChange={(val) => {
+                      setUsePixelmartService(val);
+                      if (!val) setCustomPickup(undefined);
+                    }}
+                  />
+                </div>
+
+                {/* Service ON — pickup section */}
+                {usePixelmartService && (
+                  <div className="space-y-4">
+                    {/* Info banner */}
+                    <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                      <Info className="size-4 shrink-0 mt-0.5 text-muted-foreground" />
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        {customPickup ? (
+                          <p>
+                            Pixel-Mart collectera depuis votre point de retrait.{" "}
+                            <span className="font-medium text-foreground">
+                              Seule la livraison sera facturée
+                            </span>{" "}
+                            (pas de stockage).
+                          </p>
+                        ) : (
+                          <p>
+                            Par défaut, notre entrepôt{" "}
+                            <span className="font-medium text-foreground">
+                              {PIXELMART_WAREHOUSE.label}
+                            </span>{" "}
+                            sera utilisé.{" "}
+                            <span className="font-medium text-foreground">
+                              Le stockage et la livraison seront facturés.
+                            </span>{" "}
+                            Définissez un point de collecte ci-dessous pour
+                            n&apos;être facturé que pour la livraison.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Optional pickup map */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="size-4 text-primary" />
+                        <p className="text-sm font-medium">
+                          Point de collecte{" "}
+                          <span className="text-muted-foreground font-normal">
+                            (optionnel)
+                          </span>
+                        </p>
+                        {customPickup && (
+                          <button
+                            type="button"
+                            onClick={() => setCustomPickup(undefined)}
+                            className="ml-auto text-xs text-destructive hover:underline"
+                          >
+                            Retirer
+                          </button>
+                        )}
+                      </div>
+                      <LocationPicker
+                        value={customPickup}
+                        onChange={setCustomPickup}
+                        height={240}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 4 — Review + optional description */}
+            {step === 4 && (
               <div className="space-y-4">
                 <div className="rounded-lg border p-4 space-y-3">
                   <div className="flex justify-between">
@@ -340,6 +451,18 @@ export default function VendorOnboardingPage() {
                     </span>
                     <span className="text-sm font-medium">
                       5% (plan gratuit)
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Livraison
+                    </span>
+                    <span className="text-sm font-medium">
+                      {usePixelmartService
+                        ? customPickup
+                          ? "Pixel-Mart livre (point perso)"
+                          : "Pixel-Mart stocke & livre"
+                        : "Gestion autonome"}
                     </span>
                   </div>
                 </div>
@@ -385,7 +508,7 @@ export default function VendorOnboardingPage() {
                 </Button>
               )}
 
-              {step < 3 ? (
+              {step < 4 ? (
                 <Button onClick={handleNext} className="flex-1">
                   Suivant
                   <ArrowRight className="ml-2 h-4 w-4" />
