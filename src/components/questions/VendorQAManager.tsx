@@ -40,8 +40,7 @@ function AddQAForm({ productId }: { productId: Id<"products"> }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const addVendorQA = useMutation(api.questions.mutations.addVendorQA);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     if (!body.trim() || !answer.trim()) return;
     setIsSubmitting(true);
     try {
@@ -79,10 +78,7 @@ function AddQAForm({ productId }: { productId: Id<"products"> }) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-lg border bg-muted/20 p-4 space-y-4"
-    >
+    <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
       <p className="text-sm font-semibold">Nouvelle question / réponse</p>
 
       <div className="space-y-1.5">
@@ -132,14 +128,15 @@ function AddQAForm({ productId }: { productId: Id<"products"> }) {
           Annuler
         </Button>
         <Button
-          type="submit"
+          type="button"
           size="sm"
           disabled={!body.trim() || !answer.trim() || isSubmitting}
+          onClick={handleSubmit}
         >
           {isSubmitting ? "Ajout…" : "Ajouter"}
         </Button>
       </div>
-    </form>
+    </div>
   );
 }
 
@@ -162,8 +159,7 @@ function AnswerForm({
       : api.questions.mutations.answer,
   );
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     if (!value.trim()) return;
     setIsSubmitting(true);
     try {
@@ -183,7 +179,7 @@ function AnswerForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-2">
+    <div className="space-y-2">
       <Textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -203,16 +199,17 @@ function AnswerForm({
             Annuler
           </Button>
           <Button
-            type="submit"
+            type="button"
             size="sm"
             disabled={!value.trim() || isSubmitting}
+            onClick={handleSubmit}
           >
             <Check className="size-3.5 mr-1" />
             {isSubmitting ? "…" : existing ? "Mettre à jour" : "Répondre"}
           </Button>
         </div>
       </div>
-    </form>
+    </div>
   );
 }
 

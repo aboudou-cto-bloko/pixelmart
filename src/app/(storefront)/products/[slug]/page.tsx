@@ -518,69 +518,6 @@ export default function ProductDetailPage() {
               </table>
             </div>
           )}
-          <Separator />
-          {/* Delivery info — dynamic based on store settings */}
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 text-sm">
-              <Truck className="size-5 text-muted-foreground shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium">Livraison & Retrait</p>
-                {product.store?.use_pixelmart_service !== false ? (
-                  // Pixel-Mart warehouse
-                  <div className="mt-1 space-y-1.5">
-                    <p className="text-muted-foreground text-xs">
-                      Stocké et expédié depuis l&apos;entrepôt Pixel-Mart.
-                    </p>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="size-3.5 shrink-0 text-primary" />
-                      <span>{PIXELMART_WAREHOUSE.label}</span>
-                    </div>
-                    <LocationPicker
-                      value={{
-                        lat: PIXELMART_WAREHOUSE.lat,
-                        lon: PIXELMART_WAREHOUSE.lon,
-                        label: PIXELMART_WAREHOUSE.label,
-                      }}
-                      onChange={() => {}}
-                      height={180}
-                      readOnly
-                    />
-                  </div>
-                ) : product.store?.custom_pickup_lat !== undefined &&
-                  product.store?.custom_pickup_lon !== undefined ? (
-                  // Custom vendor pickup
-                  <div className="mt-1 space-y-1.5">
-                    <p className="text-muted-foreground text-xs">
-                      Retrait chez le vendeur — point de collecte ci-dessous.
-                    </p>
-                    {product.store.custom_pickup_label && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <MapPin className="size-3.5 shrink-0 text-primary" />
-                        <span>{product.store.custom_pickup_label}</span>
-                      </div>
-                    )}
-                    <LocationPicker
-                      value={{
-                        lat: product.store.custom_pickup_lat,
-                        lon: product.store.custom_pickup_lon,
-                        label:
-                          product.store.custom_pickup_label ??
-                          "Point de retrait",
-                      }}
-                      onChange={() => {}}
-                      height={180}
-                      readOnly
-                    />
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-xs mt-1">
-                    Délai et frais calculés au checkout selon votre
-                    localisation.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
           {/* Returns Policy */}
           <div className="flex items-start gap-2 text-sm">
             <svg
@@ -598,7 +535,7 @@ export default function ProductDetailPage() {
             </svg>
             <div>
               <p className="font-medium">Retours gratuits</p>
-              <p className="text-xs text-muted-foreground">Sous 7 jours</p>
+              <p className="text-xs text-muted-foreground">Sous 3 jours</p>
             </div>
           </div>
 

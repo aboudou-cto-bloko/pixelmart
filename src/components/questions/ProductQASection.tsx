@@ -7,12 +7,11 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import {
   MessageCircleQuestion,
   Store,
@@ -54,28 +53,9 @@ function QuestionCard({ item }: { item: QAItem }) {
     <div className="space-y-3 py-4 border-b last:border-0">
       {/* Question */}
       <div className="flex items-start gap-3">
-        <Avatar className="size-8 shrink-0 mt-0.5">
-          <AvatarImage src={item.author_avatar} />
-          <AvatarFallback>
-            {item.author_name.charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium">{item.author_name}</span>
-            {item.source === "vendor" ? (
-              <Badge variant="secondary" className="text-xs gap-1 py-0">
-                <Store className="size-3" />
-                Vendeur
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-xs py-0">
-                Client
-              </Badge>
-            )}
-            <span className="text-xs text-muted-foreground">{timeAgo}</span>
-          </div>
           <p className="text-sm mt-1 leading-relaxed">{item.body}</p>
+          <span className="text-xs text-muted-foreground">{timeAgo}</span>
         </div>
       </div>
 
