@@ -61,7 +61,7 @@ interface FormState {
   seoDescription: string;
   seoKeywords: string;
   variants: VariantFormData[];
-  specs: { spec_key: string; spec_value: string }[];
+  specs: { id: string; spec_key: string; spec_value: string }[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -90,7 +90,7 @@ const EMPTY_FORM: FormState = {
   seoDescription: "",
   seoKeywords: "",
   variants: [],
-  specs: [],
+  specs: [{ id: crypto.randomUUID(), spec_key: "", spec_value: "" }],
 };
 
 // ---- Inner form (rendu seulement quand les données sont prêtes) ----
@@ -179,7 +179,10 @@ function ProductFormInner({
         if (result && form.specs.length > 0) {
           await createSpecs({
             product_id: result.productId as Id<"products">,
-            specs: form.specs,
+            specs: form.specs.map((s) => ({
+              spec_key: s.spec_key,
+              spec_value: s.spec_value,
+            })),
           });
         }
 
@@ -216,7 +219,10 @@ function ProductFormInner({
         if (form.specs.length > 0) {
           await createSpecs({
             product_id: productId,
-            specs: form.specs,
+            specs: form.specs.map((s) => ({
+              spec_key: s.spec_key,
+              spec_value: s.spec_value,
+            })),
           });
         }
 
@@ -463,14 +469,17 @@ function ProductFormInner({
               <CardTitle>Caractéristiques personnalisées</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {form.specs.map((spec, index) => (
-                <div key={index} className="flex gap-2 items-start">
+              {form.specs.map((spec) => (
+                <div key={spec.id} className="flex gap-2 items-start">
                   <Input
                     placeholder="Caractéristique (ex: Matériau)"
                     value={spec.spec_key}
                     onChange={(e) => {
-                      const newSpecs = [...form.specs];
-                      newSpecs[index].spec_key = e.target.value;
+                      const newSpecs = form.specs.map((s) =>
+                        s.id === spec.id
+                          ? { ...s, spec_key: e.target.value }
+                          : s,
+                      );
                       updateField("specs", newSpecs);
                     }}
                     className="flex-1"
@@ -479,8 +488,11 @@ function ProductFormInner({
                     placeholder="Valeur (ex: Coton)"
                     value={spec.spec_value}
                     onChange={(e) => {
-                      const newSpecs = [...form.specs];
-                      newSpecs[index].spec_value = e.target.value;
+                      const newSpecs = form.specs.map((s) =>
+                        s.id === spec.id
+                          ? { ...s, spec_value: e.target.value }
+                          : s,
+                      );
                       updateField("specs", newSpecs);
                     }}
                     className="flex-1"
@@ -490,7 +502,9 @@ function ProductFormInner({
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      const newSpecs = form.specs.filter((_, i) => i !== index);
+                      const newSpecs = form.specs.filter(
+                        (s) => s.id !== spec.id,
+                      );
                       updateField("specs", newSpecs);
                     }}
                   >
@@ -505,66 +519,7 @@ function ProductFormInner({
                 onClick={() => {
                   updateField("specs", [
                     ...form.specs,
-                    { spec_key: "", spec_value: "" },
-                  ]);
-                }}
-              >
-                + Ajouter une caractéristique
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* TAB: Specs */}
-        <TabsContent value="specs">
-          <Card>
-            <CardHeader>
-              <CardTitle>Caractéristiques personnalisées</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {form.specs.map((spec, index) => (
-                <div key={index} className="flex gap-2 items-start">
-                  <Input
-                    placeholder="Caractéristique (ex: Matériau)"
-                    value={spec.spec_key}
-                    onChange={(e) => {
-                      const newSpecs = [...form.specs];
-                      newSpecs[index].spec_key = e.target.value;
-                      updateField("specs", newSpecs);
-                    }}
-                    className="flex-1"
-                  />
-                  <Input
-                    placeholder="Valeur (ex: Coton)"
-                    value={spec.spec_value}
-                    onChange={(e) => {
-                      const newSpecs = [...form.specs];
-                      newSpecs[index].spec_value = e.target.value;
-                      updateField("specs", newSpecs);
-                    }}
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      const newSpecs = form.specs.filter((_, i) => i !== index);
-                      updateField("specs", newSpecs);
-                    }}
-                  >
-                    ×
-                  </Button>
-                </div>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  updateField("specs", [
-                    ...form.specs,
-                    { spec_key: "", spec_value: "" },
+                    { id: crypto.randomUUID(), spec_key: "", spec_value: "" },
                   ]);
                 }}
               >
@@ -743,6 +698,7 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
           variants: [],
           specs:
             existingSpecs?.map((s) => ({
+              id: s._id,
               spec_key: s.spec_key,
               spec_value: s.spec_value,
             })) ?? [],
