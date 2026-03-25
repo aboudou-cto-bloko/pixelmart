@@ -456,28 +456,18 @@ export default function ProductDetailPage() {
                 <tbody>
                   {[
                     product.category && {
-                      icon: <Tag className="size-3.5 text-muted-foreground" />,
                       label: "Catégorie",
                       value: product.category.name,
                     },
                     product.color && {
-                      icon: (
-                        <Palette className="size-3.5 text-muted-foreground" />
-                      ),
                       label: "Couleur",
                       value: product.color,
                     },
                     product.material && {
-                      icon: (
-                        <Layers className="size-3.5 text-muted-foreground" />
-                      ),
                       label: "Matériau",
                       value: product.material,
                     },
                     product.weight && {
-                      icon: (
-                        <Weight className="size-3.5 text-muted-foreground" />
-                      ),
                       label: "Poids",
                       value:
                         product.weight >= 1000
@@ -485,21 +475,14 @@ export default function ProductDetailPage() {
                           : `${product.weight} g`,
                     },
                     product.dimensions && {
-                      icon: (
-                        <Ruler className="size-3.5 text-muted-foreground" />
-                      ),
                       label: "Dimensions",
                       value: product.dimensions,
                     },
                     product.sku && {
-                      icon: <Hash className="size-3.5 text-muted-foreground" />,
                       label: "Référence (SKU)",
                       value: product.sku,
                     },
                     ...(specs ?? []).map((spec) => ({
-                      icon: (
-                        <Package className="size-3.5 text-muted-foreground" />
-                      ),
                       label: spec.spec_key,
                       value: spec.spec_value,
                     })),
@@ -515,8 +498,7 @@ export default function ProductDetailPage() {
                           }
                         >
                           <td className="px-4 py-2.5 w-2/5">
-                            <div className="flex items-center gap-2 text-muted-foreground font-medium">
-                              {row.icon}
+                            <div className="text-muted-foreground font-medium">
                               {row.label}
                             </div>
                           </td>
