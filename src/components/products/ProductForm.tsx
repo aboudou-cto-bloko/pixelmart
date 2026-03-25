@@ -21,7 +21,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Loader2, Save } from "lucide-react";
 import { ProductImageUpload } from "./ProductImageUpload";
 import { VendorQAManager } from "@/components/questions";
@@ -61,6 +67,7 @@ interface FormState {
   seoDescription: string;
   seoKeywords: string;
   variants: VariantFormData[];
+  specs: { spec_key: string; spec_value: string }[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -89,6 +96,7 @@ const EMPTY_FORM: FormState = {
   seoDescription: "",
   seoKeywords: "",
   variants: [],
+  specs: [],
 };
 
 // ---- Inner form (rendu seulement quand les données sont prêtes) ----
@@ -106,6 +114,7 @@ function ProductFormInner({
   const createProduct = useMutation(api.products.mutations.create);
   const updateProduct = useMutation(api.products.mutations.update);
   const createVariant = useMutation(api.variants.mutations.create);
+  const createSpecs = useMutation(api.product_specs.mutations.createMany);
 
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -172,6 +181,14 @@ function ProductFormInner({
           }
         }
 
+        // Save specs after product creation
+        if (result && form.specs.length > 0) {
+          await createSpecs({
+            product_id: result.productId as Id<"products">,
+            specs: form.specs,
+          });
+        }
+
         router.push("/vendor/products");
       } else if (productId) {
         await updateProduct({
@@ -201,9 +218,14 @@ function ProductFormInner({
           seo_keywords: form.seoKeywords || undefined,
         });
 
-        // For updates, we'd need to handle variant updates
-        // For updates, we'd need to handle variant updates (create/update/delete)
-        // This is more complex - for now redirect
+        // Save specs after product update
+        if (form.specs.length > 0) {
+          await createSpecs({
+            product_id: productId,
+            specs: form.specs,
+          });
+        }
+
         router.push("/vendor/products");
       }
     } catch (err) {
@@ -221,6 +243,7 @@ function ProductFormInner({
           <TabsTrigger value="general">Général</TabsTrigger>
           <TabsTrigger value="media">Médias</TabsTrigger>
           <TabsTrigger value="pricing">Prix & Stock</TabsTrigger>
+          <TabsTrigger value="specs">Caractéristiques</TabsTrigger>
           <TabsTrigger value="variants">Variantes</TabsTrigger>
           <TabsTrigger value="seo">SEO</TabsTrigger>
           {mode === "edit" && productId && (
@@ -311,163 +334,65 @@ function ProductFormInner({
           </Card>
         </TabsContent>
 
-        {/* TAB: Media */}
-        <TabsContent value="media">
+        {/* TAB: Specs */}
+        <TabsContent value="specs">
           <Card>
             <CardHeader>
-              <CardTitle>Photos du produit</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ProductImageUpload
-                images={form.images}
-                imageUrls={form.imageUrls}
-                imageRoles={form.imageRoles}
-                onChange={(imgs, roles) => {
-                  setForm((prev) => ({
-                    ...prev,
-                    images: imgs,
-                    imageRoles: roles,
-                  }));
-                }}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* TAB: Pricing & Stock */}
-        <TabsContent value="pricing" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Prix</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-3">
-              <PriceInput
-                id="price"
-                label="Prix de vente"
-                value={form.price}
-                onChange={(val) => updateField("price", val)}
-                required
-              />
-              <PriceInput
-                id="compare_price"
-                label="Prix barré"
-                value={form.comparePrice}
-                onChange={(val) => updateField("comparePrice", val)}
-              />
-              <PriceInput
-                id="cost_price"
-                label="Prix d'achat"
-                value={form.costPrice}
-                onChange={(val) => updateField("costPrice", val)}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Inventaire</CardTitle>
+              <CardTitle>Caractéristiques personnalisées</CardTitle>
+              <CardDescription>
+                Ajoutez des caractéristiques supplémentaires (ex: Matériau:
+                Coton, Garantie: 2 ans)
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Switch
-                  checked={form.trackInventory}
-                  onCheckedChange={(val) => updateField("trackInventory", val)}
-                />
-                <Label>Suivre le stock</Label>
-              </div>
-
-              {form.trackInventory && (
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantité en stock</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="0"
-                      value={form.quantity}
-                      onChange={(e) =>
-                        updateField("quantity", parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="low_stock">Seuil d&apos;alerte</Label>
-                    <Input
-                      id="low_stock"
-                      type="number"
-                      min="0"
-                      value={form.lowStockThreshold}
-                      onChange={(e) =>
-                        updateField(
-                          "lowStockThreshold",
-                          parseInt(e.target.value) || 5,
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sku">SKU</Label>
-                    <Input
-                      id="sku"
-                      value={form.sku}
-                      onChange={(e) => updateField("sku", e.target.value)}
-                      placeholder="SKU-001"
-                    />
-                  </div>
+              {form.specs.map((spec, index) => (
+                <div key={index} className="flex gap-2 items-start">
+                  <Input
+                    placeholder="Caractéristique (ex: Matériau)"
+                    value={spec.spec_key}
+                    onChange={(e) => {
+                      const newSpecs = [...form.specs];
+                      newSpecs[index].spec_key = e.target.value;
+                      updateField("specs", newSpecs);
+                    }}
+                    className="flex-1"
+                  />
+                  <Input
+                    placeholder="Valeur (ex: Coton)"
+                    value={spec.spec_value}
+                    onChange={(e) => {
+                      const newSpecs = [...form.specs];
+                      newSpecs[index].spec_value = e.target.value;
+                      updateField("specs", newSpecs);
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      const newSpecs = form.specs.filter((_, i) => i !== index);
+                      updateField("specs", newSpecs);
+                    }}
+                  >
+                    ×
+                  </Button>
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="weight">Poids (grammes)</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  min="0"
-                  value={form.weight ?? ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    updateField(
-                      "weight",
-                      val === "" ? undefined : parseInt(val),
-                    );
-                  }}
-                  placeholder="250"
-                  className="max-w-xs"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="color">Couleur</Label>
-                <Input
-                  id="color"
-                  value={form.color}
-                  onChange={(e) => updateField("color", e.target.value)}
-                  placeholder="Rouge, Noir, Bleu..."
-                  className="max-w-xs"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="material">Matériau</Label>
-                <Input
-                  id="material"
-                  value={form.material}
-                  onChange={(e) => updateField("material", e.target.value)}
-                  placeholder="Cuir, Coton, Polyester..."
-                  className="max-w-xs"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="dimensions">Dimensions (L x l x H)</Label>
-                <Input
-                  id="dimensions"
-                  value={form.dimensions}
-                  onChange={(e) => updateField("dimensions", e.target.value)}
-                  placeholder="20 x 10 x 5 cm"
-                  className="max-w-xs"
-                />
-              </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  updateField("specs", [
+                    ...form.specs,
+                    { spec_key: "", spec_value: "" },
+                  ]);
+                }}
+              >
+                + Ajouter une caractéristique
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -596,6 +521,11 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
     mode === "edit" && productId ? { id: productId } : "skip",
   );
 
+  const existingSpecs = useQuery(
+    api.product_specs.queries.listByProduct,
+    mode === "edit" && productId ? { product_id: productId } : "skip",
+  );
+
   // En mode edit, attendre le chargement du produit
   if (mode === "edit" && !existingProduct) {
     return (
@@ -604,6 +534,13 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
       </div>
     );
   }
+
+  // Build specs array from existing specs query
+  const specsArray =
+    existingSpecs?.map((s) => ({
+      spec_key: s.spec_key,
+      spec_value: s.spec_value,
+    })) ?? [];
 
   // Construire l'état initial UNE SEULE FOIS avant le premier rendu du form
   const initialState: FormState =
@@ -634,6 +571,7 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
           seoDescription: existingProduct.seo_description ?? "",
           seoKeywords: existingProduct.seo_keywords ?? "",
           variants: [],
+          specs: specsArray,
         }
       : EMPTY_FORM;
 

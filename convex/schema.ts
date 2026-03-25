@@ -248,6 +248,23 @@ export default defineSchema({
     .index("by_store", ["store_id"]),
 
   // ============================================
+  // PRODUCT SPECS (custom key-value pairs)
+  // ============================================
+  product_specs: defineTable({
+    product_id: v.id("products"),
+    store_id: v.id("stores"), // denormalized for fast queries
+
+    // Spec info
+    spec_key: v.string(), // e.g. "Matériau", "Garantie"
+    spec_value: v.string(), // e.g. "Coton", "2 ans"
+
+    // Order
+    display_order: v.number(), // for sorting
+  })
+    .index("by_product", ["product_id"])
+    .index("by_store", ["store_id"]),
+
+  // ============================================
   // ORDERS
   // ============================================
   orders: defineTable({

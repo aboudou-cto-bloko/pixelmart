@@ -185,6 +185,11 @@ export default function ProductDetailPage() {
     slug: params.slug,
   });
 
+  const specs = useQuery(
+    api.product_specs.queries.listByProduct,
+    product ? { product_id: product._id } : "skip",
+  );
+
   const [quantity, setQuantity] = useState(1);
   const { addItem } = useCart();
 
@@ -491,6 +496,13 @@ export default function ProductDetailPage() {
                       label: "Référence (SKU)",
                       value: product.sku,
                     },
+                    ...(specs ?? []).map((spec) => ({
+                      icon: (
+                        <Package className="size-3.5 text-muted-foreground" />
+                      ),
+                      label: spec.spec_key,
+                      value: spec.spec_value,
+                    })),
                   ]
                     .filter(Boolean)
                     .map((row, i) => {

@@ -58,6 +58,8 @@ import type * as payouts_actions from "../payouts/actions.js";
 import type * as payouts_helpers from "../payouts/helpers.js";
 import type * as payouts_mutations from "../payouts/mutations.js";
 import type * as payouts_queries from "../payouts/queries.js";
+import type * as product_specs_mutations from "../product_specs/mutations.js";
+import type * as product_specs_queries from "../product_specs/queries.js";
 import type * as products_csvImport from "../products/csvImport.js";
 import type * as products_helpers from "../products/helpers.js";
 import type * as products_mutations from "../products/mutations.js";
@@ -137,6 +139,8 @@ declare const fullApi: ApiFromModules<{
   "payouts/helpers": typeof payouts_helpers;
   "payouts/mutations": typeof payouts_mutations;
   "payouts/queries": typeof payouts_queries;
+  "product_specs/mutations": typeof product_specs_mutations;
+  "product_specs/queries": typeof product_specs_queries;
   "products/csvImport": typeof products_csvImport;
   "products/helpers": typeof products_helpers;
   "products/mutations": typeof products_mutations;
