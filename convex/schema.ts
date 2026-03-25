@@ -153,7 +153,6 @@ export default defineSchema({
 
     // Media
     images: v.array(v.string()), // Convex storage URLs, min 1
-    image_roles: v.optional(v.array(v.string())), // parallel array: "main"|"usage"|"zoom"|"detail"|"lifestyle"
 
     // Pricing (all in centimes)
     price: v.number(),
@@ -175,9 +174,6 @@ export default defineSchema({
 
     // Physical
     weight: v.optional(v.number()), // grams
-    color: v.optional(v.string()),
-    material: v.optional(v.string()),
-    dimensions: v.optional(v.string()), // L x W x H in cm
 
     // Status
     status: v.union(
@@ -194,7 +190,6 @@ export default defineSchema({
     // SEO
     seo_title: v.optional(v.string()),
     seo_description: v.optional(v.string()),
-    seo_keywords: v.optional(v.string()), // comma-separated, backend only
 
     // Timestamps
     published_at: v.optional(v.number()),
@@ -244,23 +239,6 @@ export default defineSchema({
 
     // Status
     is_available: v.boolean(),
-  })
-    .index("by_product", ["product_id"])
-    .index("by_store", ["store_id"]),
-
-  // ============================================
-  // PRODUCT SPECS (custom key-value pairs)
-  // ============================================
-  product_specs: defineTable({
-    product_id: v.id("products"),
-    store_id: v.id("stores"), // denormalized for fast queries
-
-    // Spec info
-    spec_key: v.string(), // e.g. "Matériau", "Garantie"
-    spec_value: v.string(), // e.g. "Coton", "2 ans"
-
-    // Order
-    display_order: v.number(), // for sorting
   })
     .index("by_product", ["product_id"])
     .index("by_store", ["store_id"]),
@@ -491,31 +469,6 @@ export default defineSchema({
     .index("by_product", ["product_id"])
     .index("by_store", ["store_id"])
     .index("by_customer", ["customer_id"]),
-
-  // ============================================
-  // PRODUCT Q&A
-  // ============================================
-  product_questions: defineTable({
-    product_id: v.id("products"),
-    store_id: v.id("stores"), // denormalized
-
-    // Author (customer or vendor)
-    author_id: v.id("users"),
-    source: v.union(v.literal("customer"), v.literal("vendor")),
-
-    // Question
-    body: v.string(), // max 500 chars
-
-    // Status
-    is_published: v.boolean(), // default true
-
-    // Vendor answer
-    vendor_answer: v.optional(v.string()), // max 1000 chars
-    answered_at: v.optional(v.number()),
-  })
-    .index("by_product", ["product_id"])
-    .index("by_store", ["store_id"])
-    .index("by_author", ["author_id"]),
 
   // ============================================
   // COUPONS

@@ -18,7 +18,6 @@ export const create = mutation({
     category_id: v.id("categories"),
     tags: v.array(v.string()),
     images: v.array(v.string()), // storageIds from Convex Storage
-    image_roles: v.optional(v.array(v.string())),
     price: v.number(),
     compare_price: v.optional(v.number()),
     cost_price: v.optional(v.number()),
@@ -28,14 +27,10 @@ export const create = mutation({
     quantity: v.number(),
     low_stock_threshold: v.optional(v.number()),
     weight: v.optional(v.number()),
-    color: v.optional(v.string()),
-    material: v.optional(v.string()),
-    dimensions: v.optional(v.string()),
     is_digital: v.boolean(),
     digital_file_url: v.optional(v.string()),
     seo_title: v.optional(v.string()),
     seo_description: v.optional(v.string()),
-    seo_keywords: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
@@ -72,7 +67,6 @@ export const create = mutation({
       category_id: args.category_id,
       tags: args.tags,
       images: args.images,
-      image_roles: args.image_roles,
       price: args.price,
       compare_price: args.compare_price,
       cost_price: args.cost_price,
@@ -82,15 +76,11 @@ export const create = mutation({
       quantity: args.quantity,
       low_stock_threshold: args.low_stock_threshold ?? 5,
       weight: args.weight,
-      color: args.color,
-      material: args.material,
-      dimensions: args.dimensions,
       status: "draft",
       is_digital: args.is_digital,
       digital_file_url: args.digital_file_url,
       seo_title: args.seo_title,
       seo_description: args.seo_description,
-      seo_keywords: args.seo_keywords,
       published_at: undefined,
       updated_at: Date.now(),
     });
@@ -112,7 +102,6 @@ export const update = mutation({
     category_id: v.optional(v.id("categories")),
     tags: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
-    image_roles: v.optional(v.array(v.string())),
     price: v.optional(v.number()),
     compare_price: v.optional(v.number()),
     cost_price: v.optional(v.number()),
@@ -122,14 +111,10 @@ export const update = mutation({
     quantity: v.optional(v.number()),
     low_stock_threshold: v.optional(v.number()),
     weight: v.optional(v.number()),
-    color: v.optional(v.string()),
-    material: v.optional(v.string()),
-    dimensions: v.optional(v.string()),
     is_digital: v.optional(v.boolean()),
     digital_file_url: v.optional(v.string()),
     seo_title: v.optional(v.string()),
     seo_description: v.optional(v.string()),
-    seo_keywords: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
@@ -176,7 +161,6 @@ export const update = mutation({
     if (args.category_id !== undefined) updates.category_id = args.category_id;
     if (args.tags !== undefined) updates.tags = args.tags;
     if (args.images !== undefined) updates.images = args.images;
-    if (args.image_roles !== undefined) updates.image_roles = args.image_roles;
     if (args.price !== undefined) updates.price = args.price;
     if (args.compare_price !== undefined)
       updates.compare_price = args.compare_price;
@@ -189,17 +173,12 @@ export const update = mutation({
     if (args.low_stock_threshold !== undefined)
       updates.low_stock_threshold = args.low_stock_threshold;
     if (args.weight !== undefined) updates.weight = args.weight;
-    if (args.color !== undefined) updates.color = args.color;
-    if (args.material !== undefined) updates.material = args.material;
-    if (args.dimensions !== undefined) updates.dimensions = args.dimensions;
     if (args.is_digital !== undefined) updates.is_digital = args.is_digital;
     if (args.digital_file_url !== undefined)
       updates.digital_file_url = args.digital_file_url;
     if (args.seo_title !== undefined) updates.seo_title = args.seo_title;
     if (args.seo_description !== undefined)
       updates.seo_description = args.seo_description;
-    if (args.seo_keywords !== undefined)
-      updates.seo_keywords = args.seo_keywords;
 
     await ctx.db.patch(args.id, updates);
     return args.id;
@@ -382,7 +361,6 @@ export const duplicate = mutation({
       category_id: source.category_id,
       tags: [...source.tags],
       images: [...source.images], // storageIds partagés
-      image_roles: source.image_roles ? [...source.image_roles] : undefined,
       price: source.price,
       compare_price: source.compare_price,
       cost_price: source.cost_price,
@@ -392,9 +370,6 @@ export const duplicate = mutation({
       quantity: source.quantity,
       low_stock_threshold: source.low_stock_threshold,
       weight: source.weight,
-      color: source.color,
-      material: source.material,
-      dimensions: source.dimensions,
       status: "draft",
       is_digital: source.is_digital,
       digital_file_url: source.digital_file_url,

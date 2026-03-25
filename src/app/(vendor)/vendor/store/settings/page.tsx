@@ -40,21 +40,11 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SUPPORTED_COUNTRIES } from "@/constants/countries";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
-import { formatPrice } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
-import {
-  LocationPicker,
-  type PickedLocation,
-} from "@/components/maps/LocationPicker";
-import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
+import { formatPrice } from "@/lib/utils"; // IMPORT AJOUTÉ
 
 export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);
-  const hasPendingOrders = useQuery(api.stores.queries.hasPendingOrders);
   const updateStore = useMutation(api.stores.mutations.updateStore);
-  const updateDeliverySettings = useMutation(
-    api.stores.mutations.updateDeliverySettings,
-  );
   const generateUploadUrl = useMutation(api.stores.mutations.generateUploadUrl);
 
   const [name, setName] = useState("");
@@ -62,31 +52,13 @@ export default function StoreSettingsPage() {
   const [primaryColor, setPrimaryColor] = useState("#6366f1"); // renommé
   const [country, setCountry] = useState("BJ");
   const [currency, setCurrency] = useState("XOF");
-  const [logoStorageId, setLogoStorageId] = useState<string | undefined>();
-  const [bannerStorageId, setBannerStorageId] = useState<string | undefined>();
-
-  const logoUrl = useQuery(
-    api.files.queries.getUrl,
-    logoStorageId ? { storageId: logoStorageId } : "skip",
-  );
-  const bannerUrl = useQuery(
-    api.files.queries.getUrl,
-    bannerStorageId ? { storageId: bannerStorageId } : "skip",
-  );
+  const [logoUrl, setLogoUrl] = useState<string | undefined>();
+  const [bannerUrl, setBannerUrl] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Delivery settings
-  const [usePixelmartService, setUsePixelmartService] = useState(true);
-  const [customPickup, setCustomPickup] = useState<
-    PickedLocation | undefined
-  >();
-  const [isSavingDelivery, setIsSavingDelivery] = useState(false);
-  const [deliverySuccess, setDeliverySuccess] = useState(false);
-  const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -120,8 +92,7 @@ export default function StoreSettingsPage() {
   async function handleUpload(file: File, type: "logo" | "banner") {
     const setUploading =
       type === "logo" ? setIsUploadingLogo : setIsUploadingBanner;
-    const setStorageId =
-      type === "logo" ? setLogoStorageId : setBannerStorageId;
+    const setUrl = type === "logo" ? setLogoUrl : setBannerUrl;
 
     setUploading(true);
     try {
@@ -134,7 +105,11 @@ export default function StoreSettingsPage() {
       });
 
       const { storageId } = await response.json();
-      setStorageId(storageId as string);
+
+      // TODO: Convertir storageId en URL réelle
+      // Pour l'instant on stocke le storageId, mais cela ne fonctionnera pas avec Image.
+      // Il faudrait appeler une query pour obtenir l'URL.
+      setUrl(storageId);
     } catch (err) {
       setError("Erreur lors de l'upload de l'image");
     } finally {
@@ -154,8 +129,8 @@ export default function StoreSettingsPage() {
         primary_color: primaryColor, // corrigé ici
         country,
         currency,
-        logo_url: logoStorageId,
-        banner_url: bannerStorageId,
+        logo_url: logoUrl,
+        banner_url: bannerUrl,
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -280,7 +255,7 @@ export default function StoreSettingsPage() {
               <div className="relative size-20 rounded-xl bg-muted overflow-hidden border flex items-center justify-center">
                 {logoUrl ? (
                   <Image
-                    src={logoUrl ?? ""}
+                    src={logoUrl}
                     alt="Logo"
                     fill
                     sizes="80px"
@@ -312,14 +287,14 @@ export default function StoreSettingsPage() {
                   ) : (
                     <Upload className="size-3.5 mr-2" />
                   )}
-                  {logoStorageId ? "Changer" : "Ajouter"}
+                  {logoUrl ? "Changer" : "Ajouter"}
                 </Button>
-                {logoStorageId && (
+                {logoUrl && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive"
-                    onClick={() => setLogoStorageId(undefined)}
+                    onClick={() => setLogoUrl(undefined)}
                   >
                     <X className="size-3.5 mr-1" />
                     Retirer
@@ -338,7 +313,7 @@ export default function StoreSettingsPage() {
               <div className="relative h-32 w-full rounded-xl bg-muted overflow-hidden border flex items-center justify-center">
                 {bannerUrl ? (
                   <Image
-                    src={bannerUrl ?? ""}
+                    src={bannerUrl}
                     alt="Bannière"
                     fill
                     sizes="600px"
@@ -370,14 +345,14 @@ export default function StoreSettingsPage() {
                   ) : (
                     <Upload className="size-3.5 mr-2" />
                   )}
-                  {bannerStorageId ? "Changer" : "Ajouter"}
+                  {bannerUrl ? "Changer" : "Ajouter"}
                 </Button>
-                {bannerStorageId && (
+                {bannerUrl && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive"
-                    onClick={() => setBannerStorageId(undefined)}
+                    onClick={() => setBannerUrl(undefined)}
                   >
                     <X className="size-3.5 mr-1" />
                     Retirer

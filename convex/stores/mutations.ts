@@ -5,15 +5,6 @@ import { v, ConvexError } from "convex/values";
 import { getVendorStore } from "../users/helpers";
 import { STORE_THEMES } from "./themes";
 
-/** Statuts considérés comme "commandes actives" bloquant le changement de livraison */
-const ACTIVE_ORDER_STATUSES = [
-  "pending",
-  "paid",
-  "processing",
-  "ready_for_delivery",
-  "shipped",
-] as const;
-
 /**
  * Met à jour les informations de la boutique.
  * Le vendor ne peut modifier que sa propre boutique.

@@ -18,21 +18,10 @@ import {
   Plus,
   Store,
   Check,
-  MapPin,
-  Weight,
-  Palette,
-  Layers,
-  Ruler,
-  Tag,
-  Package,
-  Hash,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductReviewList } from "@/components/reviews";
-import { ProductQASection } from "@/components/questions";
-import { LocationPicker } from "@/components/maps/LocationPicker";
-import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -185,11 +174,6 @@ export default function ProductDetailPage() {
     slug: params.slug,
   });
 
-  const specs = useQuery(
-    api.product_specs.queries.listByProduct,
-    product ? { product_id: product._id } : "skip",
-  );
-
   const [quantity, setQuantity] = useState(1);
   const { addItem } = useCart();
 
@@ -254,11 +238,7 @@ export default function ProductDetailPage() {
       {/* Content */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Left — Gallery */}
-        <ProductGallery
-          images={product.images}
-          title={product.title}
-          imageRoles={product.image_roles}
-        />
+        <ProductGallery images={product.images} title={product.title} />
 
         {/* Right — Details */}
         <div className="space-y-6">
@@ -440,78 +420,24 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
-          {/* Technical Specs — Amazon-style table */}
-          {(product.weight ||
-            product.color ||
-            product.material ||
-            product.dimensions ||
-            product.sku ||
-            product.category) && (
-            <div className="rounded-lg border overflow-hidden">
-              <div className="bg-muted/60 px-4 py-2.5 border-b flex items-center gap-2">
-                <Package className="size-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold">Caractéristiques</h3>
-              </div>
-              <table className="w-full text-sm">
-                <tbody>
-                  {[
-                    product.category && {
-                      label: "Catégorie",
-                      value: product.category.name,
-                    },
-                    product.color && {
-                      label: "Couleur",
-                      value: product.color,
-                    },
-                    product.material && {
-                      label: "Matériau",
-                      value: product.material,
-                    },
-                    product.weight && {
-                      label: "Poids",
-                      value:
-                        product.weight >= 1000
-                          ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
-                          : `${product.weight} g`,
-                    },
-                    product.dimensions && {
-                      label: "Dimensions",
-                      value: product.dimensions,
-                    },
-                    product.sku && {
-                      label: "Référence (SKU)",
-                      value: product.sku,
-                    },
-                    ...(specs ?? []).map((spec) => ({
-                      label: spec.spec_key,
-                      value: spec.spec_value,
-                    })),
-                  ]
-                    .filter(Boolean)
-                    .map((row, i) => {
-                      if (!row) return null;
-                      return (
-                        <tr
-                          key={row.label}
-                          className={
-                            i % 2 === 0 ? "bg-background" : "bg-muted/30"
-                          }
-                        >
-                          <td className="px-4 py-2.5 w-2/5">
-                            <div className="text-muted-foreground font-medium">
-                              {row.label}
-                            </div>
-                          </td>
-                          <td className="px-4 py-2.5 text-foreground">
-                            {row.value}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
+          {/* Technical Specs */}
+          {product.weight && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="font-medium">Poids:</span>
+              <span>{product.weight} g</span>
             </div>
           )}
+          <Separator />
+          {/* Delivery info */}
+          <div className="flex items-start gap-3 text-sm">
+            <Truck className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">Livraison</p>
+              <p className="text-muted-foreground">
+                Délai et frais calculés au checkout selon votre localisation.
+              </p>
+            </div>
+          </div>
           {/* Returns Policy */}
           <div className="flex items-start gap-2 text-sm">
             <svg
@@ -529,17 +455,12 @@ export default function ProductDetailPage() {
             </svg>
             <div>
               <p className="font-medium">Retours gratuits</p>
-              <p className="text-xs text-muted-foreground">Sous 3 jours</p>
+              <p className="text-xs text-muted-foreground">Sous 7 jours</p>
             </div>
           </div>
 
           <Separator className="my-8" />
           <ProductReviewList productId={product._id} />
-          <Separator className="my-8" />
-          <ProductQASection
-            productId={product._id}
-            storeOwnerId={product.store?.owner_id}
-          />
           {/* Store card */}
           {product.store && <StoreInfoCard store={product.store} />}
         </div>
