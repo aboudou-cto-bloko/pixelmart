@@ -8,8 +8,10 @@ import { TopProductsTable } from "../organisms/TopProductsTable";
 import { RevenueByCategoryChart } from "../organisms/RevenueByCategoryChart";
 import { CustomerInsightsPanel } from "../organisms/CustomerInsightsPanel";
 import { PeriodSelector } from "../molecules/PeriodSelector";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Period = "7d" | "30d" | "90d" | "12m";
+type Source = "all" | "marketplace" | "vendor_shop";
 
 interface SalesOverviewData {
   revenue: { value: number; previous: number; change: number };
@@ -59,6 +61,8 @@ interface CustomerInsightsData {
 interface AnalyticsTemplateProps {
   period: Period;
   onPeriodChange: (period: Period) => void;
+  source: Source;
+  onSourceChange: (source: Source) => void;
   currency: string;
   salesOverview: SalesOverviewData | null | undefined;
   salesChart: ChartDataPoint[] | null | undefined;
@@ -71,6 +75,8 @@ interface AnalyticsTemplateProps {
 export function AnalyticsTemplate({
   period,
   onPeriodChange,
+  source,
+  onSourceChange,
   currency,
   salesOverview,
   salesChart,
@@ -93,6 +99,15 @@ export function AnalyticsTemplate({
         </div>
         <PeriodSelector value={period} onChange={onPeriodChange} />
       </div>
+
+      {/* Source tabs */}
+      <Tabs value={source} onValueChange={(v) => onSourceChange(v as Source)}>
+        <TabsList>
+          <TabsTrigger value="all">Toutes les ventes</TabsTrigger>
+          <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
+          <TabsTrigger value="vendor_shop">Boutique ads</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* KPI Cards */}
       <SalesOverviewCards
