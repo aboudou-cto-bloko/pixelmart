@@ -2,7 +2,7 @@
 
 /**
  * Grille tarifaire Pixel-Mart Livraison
- * Tous les montants en centimes XOF (1 XOF = 100 centimes)
+ * Tous les montants en XOF (convention du projet : valeur stockée = valeur affichée)
  *
  * Source: Modèle de tarification affiché aux clients
  */
@@ -18,18 +18,18 @@ export const URGENT_FRAGILE_RATES = {
   // Palier 1: 1-5 km → 700 FCFA fixe
   tier1: {
     maxKm: 5,
-    fixedPrice: 70000, // 700 FCFA en centimes
+    fixedPrice: 700,
   },
   // Palier 2: 6-10 km → 200 FCFA/km
   tier2: {
     minKm: 6,
     maxKm: 10,
-    pricePerKm: 20000, // 200 FCFA/km en centimes
+    pricePerKm: 200,
   },
   // Palier 3: 11+ km → 150 FCFA/km
   tier3: {
     minKm: 11,
-    pricePerKm: 15000, // 150 FCFA/km en centimes
+    pricePerKm: 150,
   },
 } as const;
 
@@ -39,12 +39,12 @@ export const STANDARD_RATES = {
   // Palier 1: 1-5 km → 600 FCFA fixe
   tier1: {
     maxKm: 5,
-    fixedPrice: 60000, // 600 FCFA en centimes
+    fixedPrice: 600,
   },
   // Palier 2: 6+ km → 170 FCFA/km
   tier2: {
     minKm: 6,
-    pricePerKm: 17000, // 170 FCFA/km en centimes
+    pricePerKm: 170,
   },
 } as const;
 
@@ -53,14 +53,14 @@ export const STANDARD_RATES = {
 export const NIGHT_RATES = {
   startHour: 21, // 21:00
   endHour: 6, // 06:00
-  pricePerKm: 25000, // 250 FCFA/km en centimes (tous les km)
+  pricePerKm: 250, // 250 FCFA/km (tous les km)
 } as const;
 
 // ─── Supplément Poids ────────────────────────────────────────
 
 export const WEIGHT_SURCHARGE = {
   thresholdKg: 20, // seuil en kg
-  pricePerKg: 5000, // 50 FCFA/kg au-dessus du seuil, en centimes
+  pricePerKg: 50, // 50 FCFA/kg au-dessus du seuil
 } as const;
 
 // ─── Helpers de calcul ───────────────────────────────────────
@@ -132,12 +132,11 @@ export function calculateDeliveryFee(
 /**
  * Formate les frais de livraison pour affichage.
  *
- * @param centimes - Montant en centimes
+ * @param amount - Montant en XOF
  * @returns String formaté (ex: "700 FCFA")
  */
-export function formatDeliveryFee(centimes: number): string {
-  const amount = Math.round(centimes / 100);
-  return `${amount.toLocaleString("fr-FR")} FCFA`;
+export function formatDeliveryFee(amount: number): string {
+  return `${Math.round(amount).toLocaleString("fr-FR")} FCFA`;
 }
 
 // ─── Batch Number Generation ─────────────────────────────────

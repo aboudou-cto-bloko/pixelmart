@@ -3,6 +3,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
+import dynamic from "next/dynamic";
 import type { GeocodingResult } from "@/lib/geocoding";
 import type { DeliveryType, PaymentMode } from "@/constants/deliveryTypes";
 import { FEATURES } from "@/constants/features";
@@ -13,6 +14,11 @@ import { DeliveryDistanceCalculator } from "./DeliveryDistanceCalculator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Truck } from "lucide-react";
+
+const MapPicker = dynamic(
+  () => import("./MapPicker").then((mod) => mod.MapPicker),
+  { ssr: false },
+);
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -137,8 +143,8 @@ export function DeliverySection({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* 1. Adresse de livraison (Autocomplete OSM) */}
-        <div className="space-y-2">
+        {/* 1. Adresse de livraison (Autocomplete OSM + carte) */}
+        <div className="space-y-3">
           <AddressAutocomplete
             label="Adresse de livraison"
             placeholder="Tapez votre adresse à Cotonou…"
@@ -149,8 +155,17 @@ export function DeliverySection({
             required
           />
           <p className="text-xs text-muted-foreground">
-            Commencez à taper et sélectionnez votre adresse dans la liste.
+            Recherchez votre adresse ou placez le marqueur directement sur la
+            carte.
           </p>
+          <MapPicker
+            value={
+              value.deliveryLat !== undefined && value.deliveryLon !== undefined
+                ? { lat: value.deliveryLat, lon: value.deliveryLon }
+                : undefined
+            }
+            onLocationSelect={handleAddressSelect}
+          />
         </div>
 
         <Separator />

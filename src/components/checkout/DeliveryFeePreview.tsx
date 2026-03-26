@@ -11,25 +11,25 @@ import { formatPrice } from "@/lib/format";
 // ─── Copie locale du calcul (pour preview instantané côté client) ───
 
 const URGENT_FRAGILE_RATES = {
-  tier1: { maxKm: 5, fixedPrice: 70000 },
-  tier2: { minKm: 6, maxKm: 10, pricePerKm: 20000 },
-  tier3: { minKm: 11, pricePerKm: 15000 },
+  tier1: { maxKm: 5, fixedPrice: 700 },
+  tier2: { minKm: 6, maxKm: 10, pricePerKm: 200 },
+  tier3: { minKm: 11, pricePerKm: 150 },
 } as const;
 
 const STANDARD_RATES = {
-  tier1: { maxKm: 5, fixedPrice: 60000 },
-  tier2: { minKm: 6, pricePerKm: 17000 },
+  tier1: { maxKm: 5, fixedPrice: 600 },
+  tier2: { minKm: 6, pricePerKm: 170 },
 } as const;
 
 const NIGHT_RATES = {
   startHour: 21,
   endHour: 6,
-  pricePerKm: 25000,
+  pricePerKm: 250,
 } as const;
 
 const WEIGHT_SURCHARGE = {
   thresholdKg: 20,
-  pricePerKg: 5000,
+  pricePerKg: 50,
 } as const;
 
 function isNightTime(): boolean {
