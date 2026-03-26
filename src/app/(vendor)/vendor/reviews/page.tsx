@@ -13,7 +13,7 @@ export default function VendorReviewsPage() {
           <Star className="size-6" />
           Avis clients
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground mt-1">
           Consultez et répondez aux avis laissés sur vos produits
         </p>
       </div>

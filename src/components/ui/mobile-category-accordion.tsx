@@ -51,14 +51,14 @@ export function MobileCategoryAccordion({
               <Link
                 href={ROUTES.CATEGORY(cat.slug)}
                 onClick={onClose}
-                className="flex-1 rounded-md px-3 py-2 text-sm hover:bg-muted transition-colors"
+                className="flex-1 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
               >
                 {cat.name}
               </Link>
               {hasChildren && (
                 <button
                   onClick={() => toggleCategory(cat._id)}
-                  className="p-2 hover:bg-muted rounded-md transition-colors"
+                  className="p-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors"
                   aria-label={isExpanded ? "Fermer" : "Ouvrir"}
                 >
                   <ChevronRight
@@ -70,13 +70,13 @@ export function MobileCategoryAccordion({
               )}
             </div>
             {hasChildren && isExpanded && (
-              <div className="ml-4 space-y-1 mt-1 border-l-2 border-muted pl-2">
+              <div className="ml-4 space-y-1 mt-1 border-l-2 border-sidebar-border pl-2">
                 {cat.children!.map((child) => (
                   <Link
                     key={child._id}
                     href={ROUTES.CATEGORY(child.slug)}
                     onClick={onClose}
-                    className="block rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted transition-colors"
+                    className="block rounded-md px-3 py-1.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                   >
                     {child.name}
                   </Link>

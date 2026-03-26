@@ -199,7 +199,7 @@ export default function VendorAdsPage() {
           <Megaphone className="size-6" />
           Espaces Publicitaires
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground mt-1">
           Boostez la visibilité de vos produits sur la page d'accueil
         </p>
       </div>

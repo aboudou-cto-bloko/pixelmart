@@ -37,6 +37,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSidebar } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +68,12 @@ function useMediaQuery(query: string) {
   return matches;
 }
 
+// ---- Auto-close sidebar on mobile navigation ----
+function useAutoCloseMobileSidebar() {
+  const { setOpenMobile } = useSidebar();
+  return setOpenMobile;
+}
+
 // ---- Store Header ----
 function StoreHeader() {
   const { user } = useCurrentUser();
@@ -95,6 +102,7 @@ function StoreHeader() {
 // ---- Nav Section ----
 function NavSection({ label, items }: { label: string; items: NavItem[] }) {
   const pathname = usePathname();
+  const closeMobileSidebar = useAutoCloseMobileSidebar();
 
   return (
     <SidebarGroup>
@@ -129,7 +137,10 @@ function NavSection({ label, items }: { label: string; items: NavItem[] }) {
                             asChild
                             isActive={pathname === subItem.url}
                           >
-                            <Link href={subItem.url}>
+                            <Link
+                              href={subItem.url}
+                              onClick={() => closeMobileSidebar(false)}
+                            >
                               <span>{subItem.title}</span>
                             </Link>
                           </SidebarMenuSubButton>
@@ -149,7 +160,7 @@ function NavSection({ label, items }: { label: string; items: NavItem[] }) {
                 tooltip={item.title}
                 isActive={pathname === item.url}
               >
-                <Link href={item.url}>
+                <Link href={item.url} onClick={() => closeMobileSidebar(false)}>
                   <item.icon />
                   <span>{item.title}</span>
                 </Link>

@@ -19,7 +19,7 @@ export default function VendorDeliveryPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Livraisons</h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground mt-1">
           Gérez vos lots de livraison et suivez leur progression
         </p>
       </div>

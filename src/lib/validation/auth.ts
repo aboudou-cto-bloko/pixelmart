@@ -3,36 +3,6 @@
 import { z } from "zod";
 
 /**
- * Common passwords to reject
- */
-const COMMON_PASSWORDS = [
-  "password",
-  "123456",
-  "password123",
-  "admin",
-  "qwerty",
-  "letmein",
-  "welcome",
-  "monkey",
-  "1234567890",
-  "password1",
-  "123456789",
-  "12345678",
-  "Password1",
-  "password!",
-  "Password!",
-  "azerty",
-  "motdepasse",
-];
-
-/**
- * Check if password is in common passwords list
- */
-function isCommonPassword(password: string): boolean {
-  return COMMON_PASSWORDS.includes(password.toLowerCase());
-}
-
-/**
  * Validate name format - only letters, spaces, apostrophes, hyphens
  * Supports French and international characters
  */
@@ -45,7 +15,6 @@ const nameRegex = /^[a-zA-ZÀ-ÿĀ-žА-я\u4e00-\u9fff\s'-]+$/;
  * - At least one lowercase letter
  * - At least one number
  * - At least one special character
- * - Not a common password
  */
 const strongPasswordRegex =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>[\]\\`~;+=_-])/;
@@ -106,18 +75,6 @@ export const registerSchema = z
       .regex(
         strongPasswordRegex,
         "Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial",
-      )
-      .refine(
-        (password) => !isCommonPassword(password),
-        "Ce mot de passe est trop courant, veuillez en choisir un autre",
-      )
-      .refine(
-        (password) => !/(.)\1{2,}/.test(password),
-        "Le mot de passe ne peut pas contenir plus de 2 caractères identiques consécutifs",
-      )
-      .refine(
-        (password) => !/^(.*?)(.+)\1$/.test(password),
-        "Le mot de passe ne peut pas contenir de motifs répétitifs",
       ),
 
     confirmPassword: z
@@ -153,10 +110,6 @@ export const passwordResetSchema = z
       .regex(
         strongPasswordRegex,
         "Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial",
-      )
-      .refine(
-        (password) => !isCommonPassword(password),
-        "Ce mot de passe est trop courant, veuillez en choisir un autre",
       ),
 
     confirmPassword: z

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SUPPORTED_COUNTRIES, type CountryCode } from "@/constants/countries";
+import { sanitizeHTML } from "../validation/product";
 
 // Extraire les codes pays dynamiquement depuis la source de vérité
 const countryCodes = SUPPORTED_COUNTRIES.map((c) => c.code) as [
@@ -17,7 +18,8 @@ export const vendorOnboardingSchema = z.object({
     .string()
     .max(500, "La description ne peut pas dépasser 500 caractères")
     .optional()
-    .or(z.literal("")),
+    .or(z.literal(""))
+    .transform((desc) => (desc ? sanitizeHTML(desc.trim()) : "")),
   country: z.enum(countryCodes, {
     message: "Sélectionnez un pays",
   }),

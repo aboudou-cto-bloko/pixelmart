@@ -52,7 +52,7 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     icon: Truck,
   },
   {
-    title: "Analytics",
+    title: "Analytiques",
     url: ROUTES.VENDOR_ANALYTICS,
     icon: BarChart3,
   },

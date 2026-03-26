@@ -40,6 +40,17 @@ export const becomeVendor = mutation({
       throw new Error("Seul un customer peut devenir vendor");
     }
 
+    // ---- Server-side validation ----
+    if (args.store_name.length < 3 || args.store_name.length > 60) {
+      throw new Error("Le nom doit contenir entre 3 et 60 caractères");
+    }
+    if (!/^[a-zA-ZÀ-ÿ0-9\s\-'.]+$/.test(args.store_name)) {
+      throw new Error("Caractères spéciaux non autorisés dans le nom");
+    }
+    if (args.description && args.description.length > 500) {
+      throw new Error("La description ne peut pas dépasser 500 caractères");
+    }
+
     // ---- Slug generation (collision-safe) ----
     const baseSlug = args.store_name
       .toLowerCase()
