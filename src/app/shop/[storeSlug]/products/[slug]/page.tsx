@@ -491,10 +491,7 @@ export default function ShopProductDetailPage() {
       <Separator />
 
       {/* Q&A */}
-      <ProductQASection
-        productId={product._id as Id<"products">}
-        storeOwnerId={store?.owner_id}
-      />
+      <ProductQASection productId={product._id as Id<"products">} />
     </div>
   );
 }
