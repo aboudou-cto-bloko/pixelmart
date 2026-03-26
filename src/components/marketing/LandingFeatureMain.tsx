@@ -13,13 +13,15 @@ const BULLETS = [
 
 export function LandingFeatureMain() {
   return (
-    <section className="py-32">
+    <section className="relative overflow-hidden py-32">
       <div className="container mx-auto px-4">
         <div className="grid items-center gap-16 lg:grid-cols-2 lg:gap-24">
-          {/* Dashboard fidèle — animé */}
-          <FadeIn direction="left" duration={0.6}>
-            <AnimatedDashboardMockup />
-          </FadeIn>
+          {/* Dashboard fidèle — conteneur isolé pour que les animations internes restent contenues */}
+          <div className="overflow-hidden">
+            <FadeIn direction="left" duration={0.6}>
+              <AnimatedDashboardMockup />
+            </FadeIn>
+          </div>
 
           {/* Texte */}
           <div className="flex flex-col gap-7">

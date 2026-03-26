@@ -91,7 +91,10 @@ export function LandingAlternating() {
   return (
     <div className="flex flex-col">
       {FEATURES.map((f) => (
-        <section key={f.tag} className="relative py-32 odd:bg-card/15">
+        <section
+          key={f.tag}
+          className="relative overflow-hidden py-32 odd:bg-card/15"
+        >
           {/* Ambient glow */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <div
@@ -104,14 +107,14 @@ export function LandingAlternating() {
             <div
               className={`grid items-center gap-16 lg:grid-cols-2 lg:gap-24 ${f.reverse ? "lg:grid-flow-dense" : ""}`}
             >
-              {/* Mockup */}
-              <FadeIn
-                direction={f.reverse ? "right" : "left"}
-                className={f.reverse ? "lg:col-start-2" : ""}
-                duration={0.6}
+              {/* Mockup — conteneur isolé overflow-hidden pour que les animations internes ne fassent pas trembler la page */}
+              <div
+                className={`overflow-hidden ${f.reverse ? "lg:col-start-2" : ""}`}
               >
-                {f.visual}
-              </FadeIn>
+                <FadeIn direction={f.reverse ? "right" : "left"} duration={0.6}>
+                  {f.visual}
+                </FadeIn>
+              </div>
 
               {/* Texte */}
               <div className="flex flex-col gap-7">

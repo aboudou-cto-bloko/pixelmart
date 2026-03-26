@@ -8,7 +8,7 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="dark relative min-h-screen bg-background text-foreground antialiased">
+    <div className="dark relative min-h-screen overflow-x-hidden bg-background text-foreground antialiased">
       {/* Colonnes de texte subliminal — fixées derrière tout le contenu */}
       <BackgroundColumns />
 
