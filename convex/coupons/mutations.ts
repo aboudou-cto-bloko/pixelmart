@@ -95,3 +95,46 @@ export const deactivate = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Réactiver un coupon désactivé.
+ */
+export const activate = mutation({
+  args: { couponId: v.id("coupons") },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    const coupon = await ctx.db.get(args.couponId);
+    if (!coupon) throw new Error("Coupon introuvable");
+    if (coupon.store_id !== store._id) {
+      throw new Error("Ce coupon ne vous appartient pas");
+    }
+
+    await ctx.db.patch(args.couponId, { is_active: true });
+    return { success: true };
+  },
+});
+
+/**
+ * Supprimer définitivement un coupon (seulement si jamais utilisé).
+ */
+export const remove = mutation({
+  args: { couponId: v.id("coupons") },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    const coupon = await ctx.db.get(args.couponId);
+    if (!coupon) throw new Error("Coupon introuvable");
+    if (coupon.store_id !== store._id) {
+      throw new Error("Ce coupon ne vous appartient pas");
+    }
+    if (coupon.used_count > 0) {
+      throw new Error(
+        "Impossible de supprimer un coupon déjà utilisé — désactivez-le à la place",
+      );
+    }
+
+    await ctx.db.delete(args.couponId);
+    return { success: true };
+  },
+});

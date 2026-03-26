@@ -56,6 +56,9 @@ export const ROUTES = {
   VENDOR_STORAGE: "/vendor/storage",
   VENDOR_BILLING: "/vendor/billing",
 
+  // ---- Vendor Coupons ----
+  VENDOR_COUPONS: "/vendor/coupons",
+
   // ---- Agent ----
   AGENT_HOME: "/agent",
 } as const;

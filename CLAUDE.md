@@ -82,7 +82,8 @@ pixelmart/
 │       └── helpers.ts        # NOTIFICATION_TYPES, status labels
 ├── emails/                    # React Email templates (rendered server-side)
 │   ├── components/
-│   │   └── Layout.tsx        # emailTheme, shared wrappers
+│   │   ├── Layout.tsx        # emailTheme, shared wrappers
+│   │   └── CTAButton.tsx     # Shared CTA button component
 │   ├── OrderConfirmation.tsx
 │   ├── NewOrder.tsx
 │   ├── OrderShipped.tsx
@@ -93,6 +94,11 @@ pixelmart/
 │   ├── PayoutCompleted.tsx
 │   ├── ReturnStatusUpdate.tsx
 │   ├── NewReview.tsx
+│   ├── StorageRequestReceived.tsx
+│   ├── StorageValidated.tsx
+│   ├── StorageRejected.tsx
+│   ├── StorageInvoiceCreated.tsx
+│   ├── StorageDebtDeducted.tsx
 │   ├── VerifyEmail.tsx       # Handled by Better Auth
 │   └── ResetPassword.tsx     # Handled by Better Auth
 ├── src/
@@ -102,7 +108,7 @@ pixelmart/
 │   │   ├── (storefront)/     # /shop/[slug], /search
 │   │   ├── (customer)/       # /account, /orders, /cart
 │   │   ├── (vendor)/         # /vendor/* (role: vendor | admin)
-│   │   ├── (agent)/          # /agent/* (role: agent) — in progress
+│   │   ├── (agent)/          # /agent/* (role: agent | admin) ✅
 │   │   └── (admin)/          # /admin/* (role: admin)
 │   ├── components/
 │   │   ├── ui/               # shadcn/ui base components (DO NOT modify)
@@ -110,8 +116,18 @@ pixelmart/
 │   │   ├── molecules/        # Composed atoms
 │   │   ├── organisms/        # Feature-complete sections
 │   │   ├── templates/        # Page layouts with slots
+│   │   ├── storage/
+│   │   │   └── templates/    # VendorStorageTemplate, VendorBillingTemplate
+│   │   ├── agent/
+│   │   │   └── templates/    # AgentStorageTemplate
+│   │   ├── layout/
+│   │   │   ├── VendorSidebar.tsx
+│   │   │   └── AgentSidebar.tsx
 │   │   ├── marketing/        # Landing page components only
 │   │   └── emails/           # Email sub-components (OrderItemsTable, etc.)
+│   ├── constants/
+│   │   ├── routes.ts         # ROUTES + SHOP_ROUTES constants
+│   │   └── vendor-nav.ts     # VENDOR_NAV_MAIN, VENDOR_NAV_SETTINGS
 │   ├── hooks/
 │   │   ├── useAddressAutocomplete.ts  # Nominatim geocoding + debounce
 │   │   ├── useBulkSelection.ts        # Multi-select state
@@ -193,16 +209,18 @@ function sanitizeHTML(html: string): string {
 ### Page Pattern (vendor dashboard)
 
 ```tsx
-// page.tsx — Server Component, minimal
-export default function DeliveryPage() {
-  return <DeliveryTemplate />;
+// page.tsx — Client Component, owns state + queries
+"use client";
+export default function StoragePage() {
+  const [filter, setFilter] = useState("all");
+  const data = useQuery(api.storage.queries.getByStore, {});
+  return <VendorStorageTemplate data={data ?? []} ... />;
 }
 
-// Template — Client Component, owns state + queries
+// Template — "use client", owns layout + UI logic
 "use client";
-export function DeliveryTemplate() {
-  const stats = useQuery(api.delivery.queries.getDeliveryStats, {});
-  return ( /* full layout */ );
+export function VendorStorageTemplate({ data, ... }) {
+  return ( /* full layout with Tabs, Table, Dialog */ );
 }
 ```
 
@@ -239,10 +257,11 @@ export function formatPrice(centimes: number, currency = "XOF"): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 }
 
-// convex/emails/send.ts
-function formatAmount(centimes: number, currency: string): string {
-  const amount = centimes / 100;  // emails always divide (display convention)
-  return new Intl.NumberFormat("fr-FR", { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+// emails/StorageXxx.tsx — fmt() helper inside email templates
+function fmt(centimes: number, currency: string): string {
+  const value = centimes / 100;  // emails always divide
+  if (currency === "XOF") return `${value.toLocaleString("fr-FR")} FCFA`;
+  return `${value.toFixed(2)} ${currency}`;
 }
 ```
 
@@ -259,36 +278,32 @@ export const notifyXxx = internalAction({
   handler: async (ctx, args) => {
     // 1. In-app
     await ctx.runMutation(internal.notifications.mutations.create, {
-      user_id, type, title, body, link, channels: ["email"], sent_via: ["email"],
+      userId, type, title, body, link, channels: ["email", "in_app"], sentVia: ["in_app"],
     });
-    // 2. Email (dynamic import)
-    const { render } = await import("@react-email/render");
-    const { XxxTemplate } = await import("../../emails/XxxTemplate");
-    const html = await render(<XxxTemplate {...props} />);
-    await ctx.runAction(internal.emails.send.sendRaw, { to, subject, html });
+    // 2. Email via getResend() + render()
+    const html = await render(XxxTemplate({ ...props }));
+    await resend.emails.send({ from: EMAIL_FROM, to, subject, html });
   }
 });
 ```
 
 **Notification types** (schema `notifications.type` field):
 
-| Type | Audience | Email |
-|------|----------|-------|
-| `order_new` | Vendor | ✅ |
-| `order_status` | Customer | ✅ |
-| `low_stock` | Vendor | ✅ |
-| `payment` | Vendor | ✅ |
-| `new_review` | Vendor | ✅ |
-| `return_status` | Vendor + Customer | ✅ |
-| `system` | Any | ❌ |
-| `promo` | Any | ❌ |
-| `storage_received` | Agent + Admin | ❌ |
-| `storage_validated` | Vendor | ✅ |
-| `storage_rejected` | Vendor | ✅ |
-| `storage_invoice` | Vendor | ✅ |
-| `storage_debt_deducted` | Vendor | ✅ |
-| `payout_failed` | Vendor | ✅ |
-| `ad_payment_failed` | Vendor | ✅ |
+| Type | Audience | Email | Dispatcher |
+|------|----------|-------|-----------|
+| `order_new` | Vendor | ✅ | `notifyNewOrderInApp` |
+| `order_status` | Customer | ✅ | `notifyOrderStatusGeneric` / `notifyOrderStatusInApp` |
+| `low_stock` | Vendor | ✅ | `notifyLowStock` |
+| `payment` | Vendor | ✅ | `notifyPayoutCompleted` |
+| `new_review` | Vendor | ✅ | `notifyNewReview` |
+| `return_status` | Vendor + Customer | ✅ | `notifyReturnStatus` |
+| `system` | Any | ❌ | `createInAppNotification` |
+| `promo` | Any | ❌ | `createInAppNotification` |
+| `storage_received` | Agent + Admin | ❌ | `createInAppNotification` |
+| `storage_validated` | Vendor | ✅ | `notifyStorageValidated` |
+| `storage_rejected` | Vendor | ✅ | `notifyStorageRejected` |
+| `storage_invoice` | Vendor | ✅ | `notifyStorageInvoiceCreated` / `notifyStorageInvoicePaid` |
+| `storage_debt_deducted` | Vendor | ✅ | `notifyStorageDebtDeducted` |
 
 ---
 
@@ -329,7 +344,7 @@ commission_amount = Math.round(total_amount * commission_rate / 10_000)
 ```
 
 ### F-05: Storage Debt Priority
-When a vendor requests a payout, outstanding `storage_debt` is deducted **first** from the gross payout amount, before fee calculation.
+When a vendor requests a payout, outstanding `storage_debt` is deducted **first** from the gross payout amount, before fee calculation. `settleDebtFromPayout` is called via scheduler after the payout record is created.
 
 ### F-06: Storage Blocking
 A vendor with `fee_status: "unpaid"` on any `storage_invoice` older than 30 days cannot withdraw their physical products.
@@ -360,14 +375,16 @@ in_stock → [stays]              (terminal until product withdrawn)
 
 ## Roles & Access Control
 
-| Role | Space | Guard |
-|------|-------|-------|
-| `customer` | `/account`, `/orders`, `/cart` | `AuthGuard roles={["customer", "vendor", "admin"]}` |
-| `vendor` | `/vendor/*` | `AuthGuard roles={["vendor", "admin"]}` |
-| `agent` | `/agent/*` | `AuthGuard roles={["agent", "admin"]}` |
-| `admin` | `/admin/*` | `AuthGuard roles={["admin"]}` |
+| Role | Space | Guard | Sidebar |
+|------|-------|-------|---------|
+| `customer` | `/account`, `/orders`, `/cart` | `AuthGuard roles={["customer", "vendor", "admin"]}` | — |
+| `vendor` | `/vendor/*` | `AuthGuard roles={["vendor", "admin"]}` | `VendorSidebar` |
+| `agent` | `/agent/*` | `AuthGuard roles={["agent", "admin"]}` | `AgentSidebar` |
+| `admin` | `/admin/*` | `AuthGuard roles={["admin"]}` | — |
 
-Middleware enforces at the edge (cookie check). `AuthGuard` is a second layer in the layout.
+Middleware enforces session at the edge (cookie check). `AuthGuard` is a second layer in each route group layout.
+
+`AuthGuard` type: `type Role = "admin" | "vendor" | "customer" | "agent"` — all four roles defined.
 
 ---
 
@@ -398,33 +415,39 @@ Props always receive **pre-formatted strings** for amounts (never raw centimes i
 
 ## Vendor Dashboard Pages
 
-| Route | Purpose |
-|-------|---------|
-| `/vendor/dashboard` | KPI overview |
-| `/vendor/orders` | Order list + management |
-| `/vendor/orders/[id]` | Order detail |
-| `/vendor/orders/returns` | Return requests |
-| `/vendor/products` | Product catalog |
-| `/vendor/products/new` | Create product |
-| `/vendor/products/[id]/edit` | Edit product |
-| `/vendor/delivery` | Delivery batches |
-| `/vendor/delivery/[id]` | Batch detail |
-| `/vendor/storage` | Storage requests + stock — **TODO** |
-| `/vendor/finance` | Finance overview |
-| `/vendor/finance/payouts` | Payout management |
-| `/vendor/finance/invoices` | Invoice history |
-| `/vendor/billing` | Storage billing & usage — **TODO** |
-| `/vendor/ads` | Ad space management |
-| `/vendor/store/settings` | Store settings |
-| `/vendor/store/theme` | Store theme |
-| `/vendor/store/meta` | Meta Pixel config |
-| `/vendor/settings` | Account settings |
-| `/vendor/settings/security` | 2FA settings |
-| `/vendor/notifications` | Notification center |
+| Route | Purpose | Status |
+|-------|---------|--------|
+| `/vendor/dashboard` | KPI overview | ✅ |
+| `/vendor/orders` | Order list + management | ✅ |
+| `/vendor/orders/[id]` | Order detail | ✅ |
+| `/vendor/orders/returns` | Return requests | ✅ |
+| `/vendor/products` | Product catalog | ✅ |
+| `/vendor/products/new` | Create product | ✅ |
+| `/vendor/products/[id]/edit` | Edit product | ✅ |
+| `/vendor/delivery` | Delivery batches | ✅ |
+| `/vendor/delivery/[id]` | Batch detail | ✅ |
+| `/vendor/storage` | Storage requests + stock | ✅ |
+| `/vendor/finance` | Finance overview | ✅ |
+| `/vendor/finance/payouts` | Payout management | ✅ |
+| `/vendor/finance/invoices` | Invoice history | ✅ |
+| `/vendor/billing` | Storage billing & usage | ✅ |
+| `/vendor/ads` | Ad space management | ✅ |
+| `/vendor/store/settings` | Store settings | ✅ |
+| `/vendor/store/theme` | Store theme | ✅ |
+| `/vendor/store/meta` | Meta Pixel config | ✅ |
+| `/vendor/settings` | Account settings | ✅ |
+| `/vendor/settings/security` | 2FA settings | ✅ |
+| `/vendor/notifications` | Notification center | ✅ |
+
+## Agent Pages
+
+| Route | Purpose | Status |
+|-------|---------|--------|
+| `/agent` | Réception entrepôt — scan code + mesures | ✅ |
 
 ---
 
-## Storage Module (Phase A + B — Done ✅)
+## Storage Module (Phases A + B + C + D — Done ✅)
 
 ### New Tables
 - `storage_requests` — vendor request lifecycle (pending_drop_off → received → in_stock/rejected)
@@ -446,6 +469,11 @@ STORAGE_FEE_HEAVY_PER_KG = 25_000  // 250 XOF per kg above 25
 
 ### Impact on Orders
 `orders.items[].storage_code?: string` — populated at order creation if the product is stored at the Pixel-Mart warehouse. Shown in delivery recap and livreur emails.
+
+### UI Components
+- `VendorStorageTemplate` — KPI cards + filter tabs + requests table + "Nouvelle demande" dialog
+- `VendorBillingTemplate` — invoices table + debt by period + alert for unpaid immediate invoices
+- `AgentStorageTemplate` — code lookup + realtime query + measurement form → `receiveRequest`
 
 ---
 
@@ -517,8 +545,8 @@ main                    ← production (protected, auto-deploys)
 
 ### Resend (Email)
 - Templates: `/emails/*.tsx` (React Email)
-- Sender: configured in env (`RESEND_FROM_EMAIL`)
-- All sends go through `internal.emails.send.*` actions
+- Sender: `Pixel-Mart <dev@aboudouzinsou.site>` (hardcoded in `EMAIL_FROM`)
+- All sends go through `convex/notifications/send.ts` dispatchers
 
 ### Better Auth
 - Session cookie: `better-auth.session_token` (HTTP-only)
@@ -535,12 +563,20 @@ main                    ← production (protected, auto-deploys)
 | `convex/http.ts` | Webhook routing (Moneroo + Better Auth) |
 | `convex/payments/webhooks.ts` | Moneroo event handlers |
 | `convex/notifications/send.ts` | Dual-channel notification dispatchers |
-| `convex/emails/send.ts` | Resend email actions |
+| `convex/notifications/helpers.ts` | `NOTIFICATION_TYPES` registry |
+| `convex/emails/send.ts` | Legacy Resend email actions |
 | `convex/lib/constants.ts` | All backend constants (fees, delays, rates) |
+| `convex/storage/mutations.ts` | Storage lifecycle mutations |
+| `convex/storage/queries.ts` | Storage queries (vendor, agent, admin) |
+| `convex/storage/helpers.ts` | `computeStorageFee`, `generateStorageCode`, `getOutstandingDebt` |
 | `convex/migrations/ensureCentimes.ts` | Safety migration — verify all amounts in centimes |
 | `src/lib/format.ts` | `formatPrice()`, `formatDate()`, `formatRelativeTime()` |
-| `src/middleware.ts` | Preview gate + auth gate |
-| `src/app/(vendor)/layout.tsx` | Vendor shell: AuthGuard + Sidebar + Breadcrumb |
+| `src/middleware.ts` | Preview gate + session auth gate |
+| `src/constants/routes.ts` | All app routes as constants |
+| `src/constants/vendor-nav.ts` | Vendor sidebar navigation items |
+| `src/components/auth/AuthGuard.tsx` | Role-based access guard (client-side) |
+| `src/app/(vendor)/layout.tsx` | Vendor shell: AuthGuard + VendorSidebar + Breadcrumb |
+| `src/app/(agent)/layout.tsx` | Agent shell: AuthGuard + AgentSidebar |
 | `tailwind.config.ts` | Theme + design tokens |
 
 ---
@@ -559,3 +595,4 @@ main                    ← production (protected, auto-deploys)
 - ❌ Create local type aliases for schema-derived types — use `Doc<"table">["field"]`
 - ❌ Divide centimes by 100 for XOF display — raw centimes = FCFA value
 - ❌ Push directly to `main`
+- ❌ Add `"agent"` to `AuthGuard` type without also ensuring the Convex schema includes it in the role union
