@@ -10,7 +10,6 @@ import {
   Settings,
   BarChart3,
   Bell,
-  Megaphone,
   Archive,
   Tag,
   type LucideIcon,
@@ -56,11 +55,11 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     url: ROUTES.VENDOR_ANALYTICS,
     icon: BarChart3,
   },
-  {
+  /*  {
     title: "Publicités",
     url: "/vendor/ads",
     icon: Megaphone,
-  },
+  }, */
   {
     title: "Finance",
     url: ROUTES.VENDOR_FINANCE,
