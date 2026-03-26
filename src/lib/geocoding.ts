@@ -174,8 +174,8 @@ function toRadians(degrees: number): number {
  * Les vendeurs peuvent configurer leur propre point de collecte.
  */
 export const DEFAULT_COLLECTION_POINTS: Record<string, Coordinates> = {
-  // Centre-ville Cotonou (Ganhi)
-  cotonou_center: { lat: 6.3654, lon: 2.4183 },
+  // Point de collecte Pixel-Mart
+  cotonou_center: { lat: 6.4105682373046875, lon: 2.328976631164551 },
   // Akpakpa
   akpakpa: { lat: 6.355, lon: 2.435 },
   // Cadjèhoun
@@ -185,7 +185,7 @@ export const DEFAULT_COLLECTION_POINTS: Record<string, Coordinates> = {
 };
 
 /**
- * Point de collecte par défaut (centre Cotonou).
+ * Point de collecte par défaut Pixel-Mart.
  */
 export const DEFAULT_COLLECTION_POINT =
   DEFAULT_COLLECTION_POINTS.cotonou_center;

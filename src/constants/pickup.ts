@@ -2,15 +2,18 @@
 
 import type { Coordinates } from "@/lib/geocoding";
 
-// ─── Pixel-Mart default warehouse (SOBEBRA, Cotonou) ─────────────────────────
+// ─── Pixel-Mart default warehouse ────────────────────────────────────────────
 
 export const PIXELMART_WAREHOUSE: Coordinates & { label: string } = {
-  lat: 6.3592,
-  lon: 2.4364,
-  label: "SOBEBRA, Zone Industrielle, Cotonou, Bénin",
+  lat: 6.4105682373046875,
+  lon: 2.328976631164551,
+  label: "Point de collecte Pixel-Mart, Cotonou, Bénin",
 };
 
 // ─── Zoom level for the map picker ───────────────────────────────────────────
 
-export const MAP_DEFAULT_ZOOM = 13;
-export const MAP_COTONOU_CENTER: Coordinates = { lat: 6.3654, lon: 2.4183 };
+export const MAP_DEFAULT_ZOOM = 15;
+export const MAP_COTONOU_CENTER: Coordinates = {
+  lat: 6.4105682373046875,
+  lon: 2.328976631164551,
+};

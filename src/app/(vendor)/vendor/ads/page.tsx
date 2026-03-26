@@ -54,6 +54,7 @@ import {
   Info,
   ExternalLink,
 } from "lucide-react";
+import { AdSpaceMap } from "@/components/ads/AdSpaceMap";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -204,6 +205,14 @@ export default function VendorAdsPage() {
         </p>
       </div>
 
+      {/* Aperçu visuel des emplacements */}
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Aperçu des emplacements</h2>
+        <AdSpaceMap />
+      </section>
+
+      <Separator />
+
       {/* Espaces disponibles */}
       <section>
         <h2 className="text-lg font-semibold mb-4">Emplacements disponibles</h2>
@@ -232,19 +241,19 @@ export default function VendorAdsPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">Jour</p>
                     <p className="text-sm font-semibold">
-                      {formatPrice(space.base_price_daily, "XOF")}
+                      {formatPrice(space.base_price_daily / 100, "XOF")}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Semaine</p>
                     <p className="text-sm font-semibold">
-                      {formatPrice(space.base_price_weekly, "XOF")}
+                      {formatPrice(space.base_price_weekly / 100, "XOF")}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Mois</p>
                     <p className="text-sm font-semibold">
-                      {formatPrice(space.base_price_monthly, "XOF")}
+                      {formatPrice(space.base_price_monthly / 100, "XOF")}
                     </p>
                   </div>
                 </div>
@@ -336,7 +345,7 @@ export default function VendorAdsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {formatPrice(booking.total_price, booking.currency)}
+                      {formatPrice(booking.total_price / 100, booking.currency)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusInfo.variant}>
