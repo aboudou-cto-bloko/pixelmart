@@ -60,6 +60,17 @@ export async function requireAdmin(ctx: Ctx) {
 }
 
 /**
+ * Requiert un utilisateur avec le rôle agent ou admin.
+ */
+export async function requireAgent(ctx: Ctx) {
+  const user = await requireAppUser(ctx);
+  if (user.role !== "agent" && user.role !== "admin") {
+    throw new Error("Accès réservé aux agents entrepôt");
+  }
+  return user;
+}
+
+/**
  * Retourne la boutique du vendor connecté.
  * Throw si le vendor n'a pas de boutique.
  */

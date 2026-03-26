@@ -424,7 +424,7 @@ Props always receive **pre-formatted strings** for amounts (never raw centimes i
 
 ---
 
-## Storage Module (Phase A — Done ✅)
+## Storage Module (Phase A + B — Done ✅)
 
 ### New Tables
 - `storage_requests` — vendor request lifecycle (pending_drop_off → received → in_stock/rejected)

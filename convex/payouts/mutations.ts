@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { getVendorStore } from "../users/helpers";
 import { validatePayoutRequest, calculatePayoutFee } from "./helpers";
+import { getOutstandingDebt } from "../storage/helpers";
 
 // ─── Request Payout (Vendor) ─────────────────────────────────
 
@@ -34,37 +35,47 @@ export const requestPayout = mutation({
       throw new Error(validation.error!);
     }
 
-    // 2. Calculer les frais
-    const fee = calculatePayoutFee(args.amount, args.payoutMethod);
-    const netAmount = args.amount - fee;
+    // 2. F-05 : Déduire la dette de stockage du montant brut
+    const outstandingDebt = await getOutstandingDebt(ctx, store._id);
+    if (outstandingDebt > args.amount) {
+      throw new Error(
+        `Votre dette de stockage (${outstandingDebt / 100} XOF) dépasse le montant du retrait`,
+      );
+    }
+    const grossAmount = args.amount; // montant demandé par le vendeur
+    const amountAfterDebt = grossAmount - outstandingDebt; // montant effectivement retiré
 
-    // 3. F-01 : Créer la transaction de débit AVANT le payout
+    // 3. Calculer les frais sur le montant net après dette
+    const fee = calculatePayoutFee(amountAfterDebt, args.payoutMethod);
+    const netAmount = amountAfterDebt - fee;
+
+    // 4. F-01 : Créer la transaction de débit AVANT le payout
     const balanceBefore = store.balance;
-    const balanceAfter = balanceBefore - args.amount;
+    const balanceAfter = balanceBefore - grossAmount;
 
     const transactionId = await ctx.db.insert("transactions", {
       store_id: store._id,
       type: "payout",
       direction: "debit",
-      amount: args.amount,
+      amount: grossAmount,
       currency: store.currency,
       balance_before: balanceBefore,
       balance_after: balanceAfter,
       status: "pending",
-      description: `Retrait de ${args.amount / 100} ${store.currency}`,
+      description: `Retrait de ${grossAmount / 100} ${store.currency}${outstandingDebt > 0 ? ` (dont ${outstandingDebt / 100} XOF dette stockage)` : ""}`,
       processed_at: Date.now(),
     });
 
-    // 4. Débiter le solde du store
+    // 5. Débiter le solde du store
     await ctx.db.patch(store._id, {
       balance: balanceAfter,
       updated_at: Date.now(),
     });
 
-    // 5. Créer le payout record
+    // 6. Créer le payout record
     const payoutId = await ctx.db.insert("payouts", {
       store_id: store._id,
-      amount: args.amount,
+      amount: amountAfterDebt,
       currency: store.currency,
       fee,
       status: "pending",
@@ -76,7 +87,16 @@ export const requestPayout = mutation({
       requested_at: Date.now(),
     });
 
-    // 6. Lancer l'action Moneroo en arrière-plan
+    // 7. Régler les dettes de stockage si applicable (F-05)
+    if (outstandingDebt > 0) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.storage.mutations.settleDebtFromPayout,
+        { storeId: store._id, payoutId },
+      );
+    }
+
+    // 8. Lancer l'action Moneroo en arrière-plan
     await ctx.scheduler.runAfter(
       0,
       internal.payouts.actions.initializePayoutViaMoneroo,
@@ -93,7 +113,14 @@ export const requestPayout = mutation({
       },
     );
 
-    return { payoutId, amount: args.amount, fee, netAmount };
+    return {
+      payoutId,
+      grossAmount,
+      debtDeducted: outstandingDebt,
+      amountAfterDebt,
+      fee,
+      netAmount,
+    };
   },
 });
 
