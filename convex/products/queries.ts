@@ -177,7 +177,11 @@ export const listActiveByStore = query({
     return Promise.all(
       products.map(async (product) => {
         const thumbnailUrl = await resolveImageUrl(ctx, product.images[0]);
-        return { ...product, thumbnailUrl };
+        return {
+          ...product,
+          images: thumbnailUrl ? [thumbnailUrl] : [],
+          thumbnailUrl,
+        };
       }),
     );
   },
