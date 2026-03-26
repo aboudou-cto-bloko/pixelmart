@@ -87,6 +87,14 @@ export default function StoreSettingsPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Contact
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactWhatsapp, setContactWhatsapp] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactWebsite, setContactWebsite] = useState("");
+  const [contactFacebook, setContactFacebook] = useState("");
+  const [contactInstagram, setContactInstagram] = useState("");
+
   // Delivery settings
   const [usePixelmartService, setUsePixelmartService] = useState(true);
   const [customPickup, setCustomPickup] = useState<
@@ -109,6 +117,13 @@ export default function StoreSettingsPage() {
       setCurrency(store.currency);
       setLogoStorageId(store.logo_url);
       setBannerStorageId(store.banner_url);
+
+      setContactPhone(store.contact_phone ?? "");
+      setContactWhatsapp(store.contact_whatsapp ?? "");
+      setContactEmail(store.contact_email ?? "");
+      setContactWebsite(store.contact_website ?? "");
+      setContactFacebook(store.contact_facebook ?? "");
+      setContactInstagram(store.contact_instagram ?? "");
 
       setUsePixelmartService(store.use_pixelmart_service ?? true);
       const hasCustomPickup =
@@ -159,11 +174,17 @@ export default function StoreSettingsPage() {
       await updateStore({
         name: name.trim(),
         description: description.trim(),
-        primary_color: primaryColor, // corrigé ici
+        primary_color: primaryColor,
         country,
         currency,
         logo_url: logoStorageId,
         banner_url: bannerStorageId,
+        contact_phone: contactPhone.trim(),
+        contact_whatsapp: contactWhatsapp.trim(),
+        contact_email: contactEmail.trim(),
+        contact_website: contactWebsite.trim(),
+        contact_facebook: contactFacebook.trim(),
+        contact_instagram: contactInstagram.trim(),
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -636,6 +657,80 @@ export default function StoreSettingsPage() {
           <p className="text-xs text-muted-foreground">
             Pour changer de plan, contactez le support.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Contact */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Informations de contact</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Affichées sur votre boutique pour que les clients puissent vous
+            joindre.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="contact_phone">Téléphone</Label>
+              <Input
+                id="contact_phone"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="+22961234567"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact_whatsapp">WhatsApp</Label>
+              <Input
+                id="contact_whatsapp"
+                value={contactWhatsapp}
+                onChange={(e) => setContactWhatsapp(e.target.value)}
+                placeholder="+22961234567"
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="contact_email">Email de contact</Label>
+              <Input
+                id="contact_email"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="contact@maboutique.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact_website">Site web</Label>
+              <Input
+                id="contact_website"
+                value={contactWebsite}
+                onChange={(e) => setContactWebsite(e.target.value)}
+                placeholder="https://maboutique.com"
+              />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="contact_facebook">Facebook</Label>
+              <Input
+                id="contact_facebook"
+                value={contactFacebook}
+                onChange={(e) => setContactFacebook(e.target.value)}
+                placeholder="https://facebook.com/maboutique"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contact_instagram">Instagram</Label>
+              <Input
+                id="contact_instagram"
+                value={contactInstagram}
+                onChange={(e) => setContactInstagram(e.target.value)}
+                placeholder="@maboutique"
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 

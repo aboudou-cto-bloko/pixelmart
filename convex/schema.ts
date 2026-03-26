@@ -38,6 +38,9 @@ export default defineSchema({
     // Preferences
     locale: v.union(v.literal("fr"), v.literal("en")),
 
+    // Multi-store: boutique active dans le dashboard vendeur
+    active_store_id: v.optional(v.id("stores")),
+
     // Metadata
     updated_at: v.number(),
   })
@@ -111,6 +114,14 @@ export default defineSchema({
     custom_pickup_lon: v.optional(v.number()),
     custom_pickup_label: v.optional(v.string()), // human-readable address
     has_storage_plan: v.optional(v.boolean()), // true = mode A (Pixel-Mart stores goods at default warehouse)
+
+    // Contact info
+    contact_phone: v.optional(v.string()), // E.164: +22961234567
+    contact_whatsapp: v.optional(v.string()), // E.164 (peut différer du téléphone)
+    contact_email: v.optional(v.string()),
+    contact_website: v.optional(v.string()),
+    contact_facebook: v.optional(v.string()), // URL complète ou handle
+    contact_instagram: v.optional(v.string()), // URL complète ou handle
 
     // Metadata
     updated_at: v.number(),

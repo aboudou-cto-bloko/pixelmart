@@ -71,12 +71,23 @@ export async function requireAgent(ctx: Ctx) {
 }
 
 /**
- * Retourne la boutique du vendor connecté.
- * Throw si le vendor n'a pas de boutique.
+ * Retourne la boutique active du vendor connecté.
+ * Priorité : active_store_id > première boutique trouvée.
+ * Throw si le vendor n'a aucune boutique.
  */
 export async function getVendorStore(ctx: Ctx) {
   const user = await requireVendor(ctx);
 
+  // Tente de charger la boutique active si définie
+  if (user.active_store_id) {
+    const activeStore = await ctx.db.get(user.active_store_id);
+    if (activeStore && activeStore.owner_id === user._id) {
+      return { user, store: activeStore };
+    }
+    // active_store_id obsolète — on continue avec le fallback
+  }
+
+  // Fallback : première boutique de ce vendor
   const store = await ctx.db
     .query("stores")
     .withIndex("by_owner", (q) => q.eq("owner_id", user._id))
