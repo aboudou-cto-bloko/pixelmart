@@ -7,7 +7,11 @@ export function LandingFooter() {
     <footer className="border-t border-border/30 py-10">
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left">
-          <img src="/Pixel-Mart.png" alt="Pixel-Mart" className="h-25 w-auto" />
+          <img
+            src="/Pixel-Mart-1.png"
+            alt="Pixel-Mart"
+            className="h-25 w-auto"
+          />
 
           <div className="flex gap-6 text-xs text-muted-foreground/50">
             <Link
