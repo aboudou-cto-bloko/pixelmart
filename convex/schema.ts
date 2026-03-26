@@ -23,6 +23,7 @@ export default defineSchema({
       v.literal("admin"),
       v.literal("vendor"),
       v.literal("customer"),
+      v.literal("agent"), // Agent entrepôt — réception & saisie physique
     ),
 
     // Security (app-level, not managed by Better Auth)
@@ -287,6 +288,7 @@ export default defineSchema({
         quantity: v.number(),
         unit_price: v.number(), // centimes
         total_price: v.number(), // centimes
+        storage_code: v.optional(v.string()), // ex: "PM-102" si produit stocké en entrepôt Pixel-Mart
       }),
     ),
 
@@ -897,6 +899,133 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_store_status", ["store_id", "status"])
     .index("by_batch_number", ["batch_number"]),
+
+  // ============================================
+  // STORAGE REQUESTS — Demandes de mise en stock
+  // ============================================
+  // Flux : pending_drop_off → received (agent) → in_stock | rejected (admin)
+  storage_requests: defineTable({
+    // Propriété
+    store_id: v.id("stores"),
+    product_id: v.optional(v.id("products")), // optionnel si produit pas encore créé
+
+    // Identification physique
+    storage_code: v.string(), // "PM-102" — généré à la création, écrit sur le colis
+
+    // Infos saisies par le vendeur
+    product_name: v.string(), // nom du produit (snapshot)
+    estimated_qty: v.optional(v.number()), // estimation vendeur
+
+    // Données officielles saisies par l'agent (source de vérité)
+    measurement_type: v.optional(
+      v.union(v.literal("units"), v.literal("weight")),
+    ),
+    actual_qty: v.optional(v.number()), // nombre exact d'unités (si measurement_type = "units")
+    actual_weight_kg: v.optional(v.number()), // poids réel en kg (si measurement_type = "weight")
+
+    // Workflow
+    status: v.union(
+      v.literal("pending_drop_off"), // en attente de dépôt à l'entrepôt
+      v.literal("received"), // reçu et mesuré par l'agent
+      v.literal("in_stock"), // validé par l'admin, produit en stock
+      v.literal("rejected"), // rejeté par l'admin
+    ),
+
+    // Agent qui a réceptionné
+    agent_id: v.optional(v.id("users")),
+    received_at: v.optional(v.number()),
+    agent_notes: v.optional(v.string()),
+
+    // Admin qui a validé / rejeté
+    admin_id: v.optional(v.id("users")),
+    validated_at: v.optional(v.number()),
+    rejection_reason: v.optional(v.string()),
+
+    // Facturation (calculée automatiquement après validation)
+    storage_fee: v.optional(v.number()), // centimes
+    invoice_id: v.optional(v.id("storage_invoices")),
+
+    // Notes
+    notes: v.optional(v.string()), // note libre du vendeur
+
+    // Timestamps
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_store", ["store_id"])
+    .index("by_code", ["storage_code"])
+    .index("by_status", ["status"])
+    .index("by_store_status", ["store_id", "status"])
+    .index("by_product", ["product_id"]),
+
+  // ============================================
+  // STORAGE INVOICES — Factures de stockage
+  // ============================================
+  storage_invoices: defineTable({
+    store_id: v.id("stores"),
+    request_id: v.id("storage_requests"),
+
+    // Montant
+    amount: v.number(), // centimes
+    currency: v.string(), // XOF
+
+    // Statut de paiement
+    status: v.union(
+      v.literal("unpaid"), // en attente de paiement
+      v.literal("paid"), // payé directement
+      v.literal("deducted_from_payout"), // déduit d'un retrait
+    ),
+
+    // Mode de paiement choisi par le vendeur
+    payment_method: v.optional(
+      v.union(
+        v.literal("immediate"), // paiement direct
+        v.literal("auto_debit"), // prélèvement automatique sur ventes
+        v.literal("deferred"), // paiement différé (dette mensuelle)
+      ),
+    ),
+
+    // Référence paiement Moneroo (si paiement immédiat)
+    payment_reference: v.optional(v.string()),
+    paid_at: v.optional(v.number()),
+
+    // Timestamps
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_store", ["store_id"])
+    .index("by_request", ["request_id"])
+    .index("by_status", ["store_id", "status"]),
+
+  // ============================================
+  // STORAGE DEBT — Dette mensuelle de stockage
+  // ============================================
+  // Accumulée quand le vendeur choisit le paiement différé.
+  // Déduite automatiquement (F-05) lors d'un retrait de gains.
+  storage_debt: defineTable({
+    store_id: v.id("stores"),
+
+    // Montant de la dette
+    amount: v.number(), // centimes (toujours positif)
+    currency: v.string(), // XOF
+
+    // Période (format "YYYY-MM", ex: "2026-03")
+    period: v.string(),
+
+    // Lien vers les factures incluses dans cette dette
+    invoice_ids: v.array(v.id("storage_invoices")),
+
+    // Règlement
+    settled_at: v.optional(v.number()),
+    payout_id: v.optional(v.id("payouts")), // retrait qui a soldé la dette
+
+    // Timestamps
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_store", ["store_id"])
+    .index("by_store_period", ["store_id", "period"])
+    .index("by_unsettled", ["store_id", "settled_at"]),
 
   // ============================================
   // DELIVERY RATES — Grille tarifaire (optionnel, peut être en constants)

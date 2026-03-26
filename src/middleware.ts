@@ -8,7 +8,7 @@ const PREVIEW_CODE = "pixelmart123@_";
 // Routes accessibles SANS code preview (marketing public + gate elle-même)
 const PREVIEW_PUBLIC = ["/access", "/landing", "/api/access"];
 
-// ── Auth public routes (inchangé) ─────────────────────────────────────────────
+// ── Auth public routes ────────────────────────────────────────────────────────
 const AUTH_PUBLIC = [
   "/",
   "/login",

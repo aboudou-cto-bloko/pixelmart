@@ -27,3 +27,46 @@ export const BALANCE_RELEASE_DELAY_MS = 48 * 60 * 60 * 1000;
 
 /** Format du numéro de commande */
 export const ORDER_NUMBER_PREFIX = "PM";
+
+// ── Stockage entrepôt ─────────────────────────────────────────────────────────
+
+/** Préfixe des codes de stockage (ex: PM-102) */
+export const STORAGE_CODE_PREFIX = "PM";
+
+/**
+ * Tarifs de stockage — centimes XOF.
+ *
+ * Palier unités :
+ *   ≤ 50 unités  → 100 XOF/unité (10 000 centimes)
+ *   > 50 unités  →  60 XOF/unité  ( 6 000 centimes)
+ *
+ * Palier poids :
+ *    0–5 kg      → inclus dans le palier unités (ou gratuit si uniquement du poids)
+ *   5–25 kg      → 5 000 XOF forfait (500 000 centimes)
+ *   > 25 kg      → 5 000 XOF + 250 XOF/kg supplémentaire au-dessus de 25 kg
+ */
+export const STORAGE_FEES = {
+  /** 100 XOF par unité (≤ 50 unités) */
+  PER_UNIT: 10_000,
+  /** 60 XOF par unité (> 50 unités) */
+  PER_UNIT_BULK: 6_000,
+  /** Seuil de basculement vers le tarif bulk */
+  BULK_THRESHOLD_UNITS: 50,
+  /** Forfait 5–25 kg : 5 000 XOF */
+  MEDIUM_KG_FLAT: 500_000,
+  /** Base > 25 kg : 5 000 XOF */
+  HEAVY_BASE: 500_000,
+  /** Surcoût > 25 kg : 250 XOF par kg supplémentaire */
+  HEAVY_PER_KG: 25_000,
+  /** Seuil medium/heavy en kg */
+  MEDIUM_MAX_KG: 25,
+  /** Seuil free/medium en kg */
+  FREE_MAX_KG: 5,
+} as const;
+
+/**
+ * Délai avant blocage du retrait si facture impayée (30 jours).
+ * Règle F-06 : un vendeur avec une facture impayée > 30 j ne peut pas
+ * retirer ses produits physiques.
+ */
+export const STORAGE_DEBT_BLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
