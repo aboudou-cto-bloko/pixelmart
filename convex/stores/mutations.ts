@@ -465,13 +465,13 @@ export const createAdditionalStore = mutation({
       is_verified: false,
       country: args.country ?? "BJ",
       use_pixelmart_service: usePixelmartService,
-      custom_pickup_lat: usePixelmartService
+      custom_pickup_lat: !usePixelmartService
         ? args.custom_pickup_lat
         : undefined,
-      custom_pickup_lon: usePixelmartService
+      custom_pickup_lon: !usePixelmartService
         ? args.custom_pickup_lon
         : undefined,
-      custom_pickup_label: usePixelmartService
+      custom_pickup_label: !usePixelmartService
         ? args.custom_pickup_label
         : undefined,
       has_storage_plan: hasStoragePlan,

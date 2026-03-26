@@ -175,9 +175,9 @@ export default function VendorOnboardingPage() {
         currency: country?.currency ?? "XOF",
         description: result.data.description ?? undefined,
         use_pixelmart_service: usePixelmartService,
-        custom_pickup_lat: usePixelmartService ? customPickup?.lat : undefined,
-        custom_pickup_lon: usePixelmartService ? customPickup?.lon : undefined,
-        custom_pickup_label: usePixelmartService
+        custom_pickup_lat: !usePixelmartService ? customPickup?.lat : undefined,
+        custom_pickup_lon: !usePixelmartService ? customPickup?.lon : undefined,
+        custom_pickup_label: !usePixelmartService
           ? customPickup?.label
           : undefined,
       });

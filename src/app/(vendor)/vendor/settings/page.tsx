@@ -122,6 +122,13 @@ export default function StoreSettingsPage() {
 
       // Delivery settings — default is true if field not yet set
       const usePM = store.use_pixelmart_service ?? true;
+      console.log("🔍 DEBUG - Loading store data:", {
+        use_pixelmart_service: store.use_pixelmart_service,
+        custom_pickup_lat: store.custom_pickup_lat,
+        custom_pickup_lon: store.custom_pickup_lon,
+        custom_pickup_label: store.custom_pickup_label,
+      });
+
       setUsePixelmartService(usePM);
       if (
         !usePM &&
@@ -129,11 +136,21 @@ export default function StoreSettingsPage() {
         store.custom_pickup_lon !== undefined &&
         store.custom_pickup_label
       ) {
-        setCustomPickup({
+        const pickupData = {
+          lat: store.custom_pickup_lat,
+          lon: store.custom_pickup_lon,
+          label: store.custom_pickup_label,
+        };
+        console.log("🔍 DEBUG - Setting custom pickup:", pickupData);
+        setCustomPickup(pickupData);
+      } else {
+        console.log("🔍 DEBUG - Not setting custom pickup:", {
+          usePM,
           lat: store.custom_pickup_lat,
           lon: store.custom_pickup_lon,
           label: store.custom_pickup_label,
         });
+        setCustomPickup(undefined);
       }
     }
   }, [store]);
@@ -212,18 +229,27 @@ export default function StoreSettingsPage() {
         customPickupLabel: customPickup?.label,
       };
 
+      console.log("🔍 DEBUG - Delivery data being sent:", deliveryData);
+
       const validatedData = deliverySettingsSchema.parse(deliveryData);
 
-      await updateDeliverySettings({
+      console.log("🔍 DEBUG - Validated data:", validatedData);
+
+      const mutationArgs = {
         use_pixelmart_service: validatedData.usePixelmartService,
         custom_pickup_lat: validatedData.customPickupLat,
         custom_pickup_lon: validatedData.customPickupLon,
         custom_pickup_label: validatedData.customPickupLabel,
-      });
+      };
+
+      console.log("🔍 DEBUG - Mutation args:", mutationArgs);
+
+      await updateDeliverySettings(mutationArgs);
 
       setDeliverySuccess(true);
       setTimeout(() => setDeliverySuccess(false), 3000);
     } catch (err) {
+      console.error("🔍 DEBUG - Save error:", err);
       if (err instanceof z.ZodError) {
         const firstError = err.issues[0];
         setDeliveryError(
