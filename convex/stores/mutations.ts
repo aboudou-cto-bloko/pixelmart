@@ -356,6 +356,7 @@ export const updateStoreTheme = mutation({
   args: {
     theme_id: v.string(),
     primary_color: v.optional(v.string()),
+    theme_mode: v.optional(v.union(v.literal("light"), v.literal("dark"))),
   },
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
@@ -373,6 +374,7 @@ export const updateStoreTheme = mutation({
     await ctx.db.patch(store._id, {
       theme_id: args.theme_id,
       primary_color: args.primary_color,
+      theme_mode: args.theme_mode ?? "light",
       updated_at: Date.now(),
     });
 
