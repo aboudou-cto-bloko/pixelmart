@@ -74,8 +74,8 @@ export default function StoreThemePage() {
         <h1 className="text-2xl font-bold tracking-tight">
           Thème de la boutique
         </h1>
-        <p className="text-muted-foreground">
-          Personnalisez l&apos;apparence de votre vitrine publique
+        <p className="text-sm text-muted-foreground mt-1">
+          Personnalisez l'apparence de votre vitrine publique
         </p>
       </div>
 
