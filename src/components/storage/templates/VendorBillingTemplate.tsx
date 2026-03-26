@@ -24,7 +24,7 @@ interface StorageInvoice {
   amount: number;
   currency: string;
   status: "unpaid" | "paid" | "deducted_from_payout";
-  payment_method: "immediate" | "auto_debit" | "deferred";
+  payment_method?: "immediate" | "auto_debit" | "deferred";
   created_at: number;
   paid_at?: number;
   product_name: string;
@@ -58,12 +58,14 @@ const INVOICE_STATUS_BADGE: Record<
   deducted_from_payout: { label: "Déduite du retrait", variant: "secondary" },
 };
 
-const PAYMENT_METHOD_LABELS: Record<StorageInvoice["payment_method"], string> =
-  {
-    immediate: "Paiement immédiat",
-    auto_debit: "Prélèvement ventes",
-    deferred: "Paiement différé",
-  };
+const PAYMENT_METHOD_LABELS: Record<
+  "immediate" | "auto_debit" | "deferred",
+  string
+> = {
+  immediate: "Paiement immédiat",
+  auto_debit: "Prélèvement ventes",
+  deferred: "Paiement différé",
+};
 
 function PayButton({ invoiceId }: { invoiceId: string }) {
   const [loading, setLoading] = useState(false);
@@ -148,7 +150,9 @@ function InvoicesTable({
                 {formatPrice(inv.amount, inv.currency)}
               </TableCell>
               <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
-                {PAYMENT_METHOD_LABELS[inv.payment_method]}
+                {inv.payment_method
+                  ? PAYMENT_METHOD_LABELS[inv.payment_method]
+                  : "—"}
               </TableCell>
               <TableCell>
                 <Badge variant={badge.variant}>{badge.label}</Badge>
