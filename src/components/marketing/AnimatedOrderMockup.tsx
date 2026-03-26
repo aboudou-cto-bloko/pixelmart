@@ -96,18 +96,9 @@ export function AnimatedOrderMockup() {
   const isInView = useInView(ref, { once: true, margin: "-20%" });
   const [visibleSteps, setVisibleSteps] = useState(0);
   const [showNotif, setShowNotif] = useState(false);
-  const [cycleId, setCycleId] = useState(0);
-
   useEffect(() => {
     if (!isInView) return;
     const t: ReturnType<typeof setTimeout>[] = [];
-
-    t.push(
-      setTimeout(() => {
-        setVisibleSteps(0);
-        setShowNotif(false);
-      }, 0),
-    );
 
     t.push(setTimeout(() => setVisibleSteps(1), 600));
     t.push(setTimeout(() => setVisibleSteps(2), 1400));
@@ -124,15 +115,9 @@ export function AnimatedOrderMockup() {
         setShowNotif(false);
       }, 4400),
     );
-    t.push(
-      setTimeout(() => {
-        setVisibleSteps(0);
-        setCycleId((c) => c + 1);
-      }, 7500),
-    );
 
     return () => t.forEach(clearTimeout);
-  }, [cycleId, isInView]);
+  }, [isInView]);
 
   const currentStep = STEPS[Math.max(0, visibleSteps - 1)];
 

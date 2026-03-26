@@ -85,19 +85,9 @@ export function AnimatedDeliveryMockup() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [visibleOrders, setVisibleOrders] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [cycleId, setCycleId] = useState(0);
-
   useEffect(() => {
     if (!isInView) return;
     const t: ReturnType<typeof setTimeout>[] = [];
-
-    t.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setVisibleOrders(0);
-        setSelected(new Set());
-      }, 0),
-    );
 
     t.push(setTimeout(() => setPhase("stats"), 400));
     t.push(setTimeout(() => setPhase("orders"), 900));
@@ -113,17 +103,9 @@ export function AnimatedDeliveryMockup() {
     t.push(setTimeout(() => setSelected(new Set([0, 1])), 3500));
     t.push(setTimeout(() => setPhase("creating"), 4300));
     t.push(setTimeout(() => setPhase("done"), 5400));
-    t.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setVisibleOrders(0);
-        setSelected(new Set());
-        setCycleId((c) => c + 1);
-      }, 8500),
-    );
 
     return () => t.forEach(clearTimeout);
-  }, [cycleId, isInView]);
+  }, [isInView]);
 
   const show = (p: Phase) => {
     const order: Phase[] = [
