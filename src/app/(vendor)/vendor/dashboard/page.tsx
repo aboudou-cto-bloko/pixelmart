@@ -61,19 +61,19 @@ export default function VendorDashboardPage() {
       {/* Alertes urgentes */}
       {orders.paid > 0 && (
         <Link href="/vendor/orders?status=paid" className="block">
-          <Card className="border-yellow-500/30 bg-yellow-50/50 dark:bg-yellow-900/5">
+          <Card className="border-yellow-400/20 bg-yellow-400/5">
             <CardContent className="p-4 flex items-center gap-3">
-              <AlertTriangle className="size-5 text-yellow-600 shrink-0" />
+              <AlertTriangle className="size-5 text-yellow-400 shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium">
                   {orders.paid} commande{orders.paid > 1 ? "s" : ""} en attente
                   de traitement
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground/60">
                   Des clients ont payé — confirmez la prise en charge.
                 </p>
               </div>
-              <ChevronRight className="size-4 text-muted-foreground" />
+              <ChevronRight className="size-4 text-muted-foreground/60" />
             </CardContent>
           </Card>
         </Link>
@@ -120,7 +120,7 @@ export default function VendorDashboardPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
-                <BarChart3 className="size-4 text-muted-foreground" />
+                <BarChart3 className="size-4 text-muted-foreground/60" />
                 Revenus — 7 derniers jours
               </CardTitle>
             </CardHeader>
@@ -153,7 +153,7 @@ export default function VendorDashboardPage() {
                       <Link
                         key={order._id}
                         href={`/vendor/orders/${order._id}`}
-                        className="flex items-center gap-3 hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors"
+                        className="flex items-center gap-3 hover:bg-muted/20 rounded-lg p-2 -mx-2 transition-colors"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -208,7 +208,7 @@ export default function VendorDashboardPage() {
               <Separator />
               <div className="flex justify-between font-semibold">
                 <span>Revenu net</span>
-                <span className="text-green-600">
+                <span className="text-green-400">
                   {formatPrice(revenue.netTotal, "XOF")}
                 </span>
               </div>
@@ -219,7 +219,7 @@ export default function VendorDashboardPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">En attente (48h)</span>
-                <span className="text-yellow-600">
+                <span className="text-yellow-400">
                   {formatPrice(store.pending_balance, "XOF")}
                 </span>
               </div>
@@ -231,7 +231,7 @@ export default function VendorDashboardPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="size-4 text-muted-foreground" />
+                  <TrendingUp className="size-4 text-muted-foreground/60" />
                   Meilleures ventes
                 </CardTitle>
               </CardHeader>
@@ -276,7 +276,7 @@ export default function VendorDashboardPage() {
           {products.lowStock.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2 text-yellow-600">
+                <CardTitle className="text-sm flex items-center gap-2 text-yellow-400">
                   <AlertTriangle className="size-4" />
                   Stock faible
                 </CardTitle>
@@ -286,7 +286,7 @@ export default function VendorDashboardPage() {
                   <Link
                     key={product._id}
                     href={`/vendor/products/${product._id}/edit`}
-                    className="flex items-center gap-3 hover:bg-muted/50 rounded-lg p-1.5 -mx-1.5 transition-colors"
+                    className="flex items-center gap-3 hover:bg-muted/20 rounded-lg p-1.5 -mx-1.5 transition-colors"
                   >
                     <div className="relative size-9 shrink-0 overflow-hidden rounded-md bg-muted">
                       {product.image ? (
@@ -308,7 +308,7 @@ export default function VendorDashboardPage() {
                     </div>
                     <Badge
                       variant="secondary"
-                      className="text-[10px] text-yellow-700 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/20"
+                      className="text-[10px] text-yellow-400 bg-yellow-400/10"
                     >
                       {product.quantity} restant
                       {product.quantity > 1 ? "s" : ""}
@@ -329,37 +329,37 @@ export default function VendorDashboardPage() {
                 label="En attente"
                 count={orders.pending}
                 total={orders.total}
-                color="bg-yellow-500"
+                color="bg-yellow-400/70"
               />
               <StatusRow
                 label="Payées"
                 count={orders.paid}
                 total={orders.total}
-                color="bg-blue-500"
+                color="bg-blue-400/70"
               />
               <StatusRow
                 label="En préparation"
                 count={orders.processing}
                 total={orders.total}
-                color="bg-indigo-500"
+                color="bg-indigo-400/70"
               />
               <StatusRow
                 label="Expédiées"
                 count={orders.shipped}
                 total={orders.total}
-                color="bg-purple-500"
+                color="bg-purple-400/70"
               />
               <StatusRow
                 label="Livrées"
                 count={orders.delivered}
                 total={orders.total}
-                color="bg-green-500"
+                color="bg-green-400/70"
               />
               <StatusRow
                 label="Annulées"
                 count={orders.cancelled}
                 total={orders.total}
-                color="bg-red-500"
+                color="bg-red-400/70"
               />
             </CardContent>
           </Card>
@@ -390,13 +390,13 @@ function KPICard({
     <Card>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <Icon className="size-4 text-muted-foreground" />
-          {trend === "up" && <TrendingUp className="size-3.5 text-green-500" />}
-          {alert && <AlertTriangle className="size-3.5 text-yellow-500" />}
+          <Icon className="size-4 text-muted-foreground/60" />
+          {trend === "up" && <TrendingUp className="size-3.5 text-green-400" />}
+          {alert && <AlertTriangle className="size-3.5 text-yellow-400" />}
         </div>
         <p className="text-xl font-bold">{value}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{subtext}</p>
-        <p className="text-[11px] text-muted-foreground mt-1">{label}</p>
+        <p className="text-xs text-muted-foreground/50 mt-0.5">{subtext}</p>
+        <p className="text-[11px] text-muted-foreground/40 mt-1">{label}</p>
       </CardContent>
     </Card>
   );
@@ -454,17 +454,17 @@ function RevenueChart({
             >
               <div className="w-full flex flex-col items-center justify-end h-[120px]">
                 {day.revenue > 0 && (
-                  <span className="text-[9px] text-muted-foreground mb-1">
+                  <span className="text-[9px] text-muted-foreground/40 mb-1">
                     {day.orders}
                   </span>
                 )}
                 <div
-                  className="w-full rounded-t-sm bg-primary/80 hover:bg-primary transition-colors min-h-[4px]"
+                  className="w-full rounded-t-sm bg-primary/70 hover:bg-primary/80 transition-colors min-h-[4px]"
                   style={{ height: `${height}%` }}
                   title={`${formatPrice(day.revenue, "XOF")} — ${day.orders} commande(s)`}
                 />
               </div>
-              <span className="text-[10px] text-muted-foreground leading-tight text-center">
+              <span className="text-[10px] text-muted-foreground/35 leading-tight text-center">
                 {day.date}
               </span>
             </div>
