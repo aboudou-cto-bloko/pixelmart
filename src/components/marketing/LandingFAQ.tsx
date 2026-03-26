@@ -24,10 +24,6 @@ const FAQS = [
     a: "Oui. Pixel-Mart vous donne une URL dédiée du type /shop/votre-boutique — sans aucun logo Pixel-Mart visible. Vous pouvez choisir vos couleurs, uploader votre logo et personnaliser l'apparence. Cette boutique est liée à votre compte vendeur.",
   },
   {
-    q: "Puis-je vendre des produits numériques (ebooks, formations, etc.) ?",
-    a: "Oui. Lors de la création d'un produit, vous pouvez le marquer comme « produit digital ». Pas de gestion de stock, pas de livraison physique. Le fichier est associé au produit.",
-  },
-  {
     q: "Quelle commission Pixel-Mart prélève-t-elle ?",
     a: "En offre Free, la commission est de 5% sur chaque vente (500 points de base). Les offres Pro et Business réduiront cette commission. La commission est calculée automatiquement et déduite de votre net à encaisser.",
   },
