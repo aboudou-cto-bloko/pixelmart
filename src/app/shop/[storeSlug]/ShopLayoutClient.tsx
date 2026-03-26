@@ -31,6 +31,8 @@ export function ShopLayoutClient({
     notFound();
   }
 
+  const isDark = config.themeMode === "dark";
+
   return (
     <MetaPixelProvider
       pixelId={config.pixelId}
@@ -38,10 +40,33 @@ export function ShopLayoutClient({
     >
       <ShopCartProvider storeSlug={storeSlug}>
         <div
+          data-theme-mode={config.themeMode ?? "light"}
           className="flex min-h-screen flex-col"
           style={
             {
-              "--shop-primary": config.primaryColor,
+              // --- Shop-specific variables ---
+              ...config.themeCssVars,
+              // --- Override Tailwind/shadcn CSS variables so that
+              //     bg-background, bg-muted, bg-card, text-foreground,
+              //     text-muted-foreground, border all respond to the theme ---
+              "--background": "var(--shop-background)",
+              "--foreground": "var(--shop-foreground)",
+              "--card": "var(--shop-background)",
+              "--card-foreground": "var(--shop-foreground)",
+              "--popover": "var(--shop-background)",
+              "--popover-foreground": "var(--shop-foreground)",
+              "--primary": "var(--shop-primary)",
+              "--primary-foreground": "var(--shop-primary-foreground)",
+              "--muted": "var(--shop-muted)",
+              "--muted-foreground": "var(--shop-muted-foreground)",
+              "--border": "var(--shop-border)",
+              "--input": "var(--shop-border)",
+              "--radius": "var(--shop-radius)",
+              // --- Apply theme immediately on the root element ---
+              backgroundColor: "var(--shop-background)",
+              color: "var(--shop-foreground)",
+              fontFamily: "var(--shop-font-body)",
+              colorScheme: isDark ? "dark" : "light",
             } as React.CSSProperties
           }
         >
@@ -58,7 +83,7 @@ export function ShopLayoutClient({
             storeSlug={storeSlug}
             contact={config.contact}
           />
-          <Toaster position="bottom-right" />
+          <Toaster position="bottom-right" theme={isDark ? "dark" : "light"} />
         </div>
       </ShopCartProvider>
     </MetaPixelProvider>
