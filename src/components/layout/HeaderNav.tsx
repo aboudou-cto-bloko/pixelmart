@@ -146,7 +146,7 @@ export function HeaderNav() {
                 <Link
                   href={ROUTES.STORES}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                  className="block rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                 >
                   Boutiques
                 </Link>
@@ -156,7 +156,7 @@ export function HeaderNav() {
                   <Link
                     href={ROUTES.LOGIN}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                   >
                     <LogIn className="size-4" />
                     Se connecter
@@ -168,7 +168,7 @@ export function HeaderNav() {
                 <Link
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm text-sidebar-foreground/50 hover:text-sidebar-accent-foreground transition-colors"
+                  className="text-sm text-sidebar-foreground/70 hover:text-sidebar-accent-foreground transition-colors"
                 >
                   Contactez-nous
                 </Link>

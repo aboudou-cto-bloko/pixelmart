@@ -51,14 +51,14 @@ export function MobileCategoryAccordion({
               <Link
                 href={ROUTES.CATEGORY(cat.slug)}
                 onClick={onClose}
-                className="flex-1 rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                className="flex-1 rounded-md px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
               >
                 {cat.name}
               </Link>
               {hasChildren && (
                 <button
                   onClick={() => toggleCategory(cat._id)}
-                  className="p-2 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors"
+                  className="p-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground rounded-md transition-colors"
                   aria-label={isExpanded ? "Fermer" : "Ouvrir"}
                 >
                   <ChevronRight
@@ -76,7 +76,7 @@ export function MobileCategoryAccordion({
                     key={child._id}
                     href={ROUTES.CATEGORY(child.slug)}
                     onClick={onClose}
-                    className="block rounded-md px-3 py-1.5 text-sm text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                    className="block rounded-md px-3 py-1.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                   >
                     {child.name}
                   </Link>
