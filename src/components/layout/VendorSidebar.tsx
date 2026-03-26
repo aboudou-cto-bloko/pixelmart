@@ -11,7 +11,6 @@ import {
   BadgeCheck,
   ChevronsUpDown,
   LogOut,
-  Settings,
   ExternalLink,
   Plus,
   Check,
@@ -286,12 +285,6 @@ function UserFooter() {
                 <Link href="/vendor/settings">
                   <BadgeCheck className="mr-2 h-4 w-4" />
                   Compte
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/vendor/settings/security">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Sécurité
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
