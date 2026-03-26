@@ -7,12 +7,12 @@ import {
   Wallet,
   Store,
   Truck,
-  MessageSquare,
-  Star,
   Settings,
   BarChart3,
   Bell,
   Megaphone,
+  Archive,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "./routes";
@@ -80,6 +80,20 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
       { title: "Avis", url: "/vendor/reviews" },
       { title: "Thème", url: "/vendor/store/theme" },
       { title: "Meta Pixel & Boutique", url: "/vendor/store/meta" },
+    ],
+  },
+  {
+    title: "Codes promo",
+    url: ROUTES.VENDOR_COUPONS,
+    icon: Tag,
+  },
+  {
+    title: "Stockage",
+    url: ROUTES.VENDOR_STORAGE,
+    icon: Archive,
+    items: [
+      { title: "Mes stocks", url: ROUTES.VENDOR_STORAGE },
+      { title: "Facturation stockage", url: ROUTES.VENDOR_BILLING },
     ],
   },
   {

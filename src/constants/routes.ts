@@ -51,6 +51,16 @@ export const ROUTES = {
 
   // ---- Vendor Meta Settings ----
   VENDOR_STORE_META: "/vendor/store/meta",
+
+  // ---- Vendor Storage & Billing ----
+  VENDOR_STORAGE: "/vendor/storage",
+  VENDOR_BILLING: "/vendor/billing",
+
+  // ---- Vendor Coupons ----
+  VENDOR_COUPONS: "/vendor/coupons",
+
+  // ---- Agent ----
+  AGENT_HOME: "/agent",
 } as const;
 
 export const SHOP_ROUTES = {

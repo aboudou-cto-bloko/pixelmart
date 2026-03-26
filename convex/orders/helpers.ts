@@ -9,6 +9,7 @@ import {
   ORDER_NUMBER_PREFIX,
   type SubscriptionTier,
 } from "../lib/constants";
+import { getStorageCodeForProduct } from "../storage/helpers";
 
 /**
  * Address validation for server-side security
@@ -308,6 +309,7 @@ export interface ValidatedOrderItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  storage_code?: string; // présent si le produit est stocké en entrepôt Pixel-Mart
 }
 
 // ─── Item Validation ─────────────────────────────────────────
@@ -374,6 +376,8 @@ export async function validateAndBuildItems(
       );
     }
 
+    const storageCode = await getStorageCodeForProduct(ctx, product._id);
+
     validatedItems.push({
       product_id: product._id,
       variant_id: item.variantId,
@@ -383,6 +387,7 @@ export async function validateAndBuildItems(
       quantity: item.quantity,
       unit_price: unitPrice,
       total_price: unitPrice * item.quantity,
+      storage_code: storageCode,
     });
   }
 

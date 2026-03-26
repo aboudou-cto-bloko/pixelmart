@@ -39,9 +39,9 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
         order_number?: string;
         store_id?: string;
         payout_id?: string;
-        // ── Ajout : paiements publicitaires ──
         type?: string;
         booking_id?: string;
+        invoice_id?: string; // stockage
       };
     };
   };
@@ -60,15 +60,43 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
   const orderId = data.metadata?.order_id as Id<"orders"> | undefined;
   const payoutId = data.metadata?.payout_id as Id<"payouts"> | undefined;
   const bookingId = data.metadata?.booking_id as Id<"ad_bookings"> | undefined;
-  const isAdPayment =
-    data.metadata?.type === "ad_payment" && bookingId !== null;
+  const invoiceId = data.metadata?.invoice_id as
+    | Id<"storage_invoices">
+    | undefined;
+  const isAdPayment = data.metadata?.type === "ad_payment" && !!bookingId;
+  const isStoragePayment =
+    data.metadata?.type === "storage_payment" && !!invoiceId;
 
   // Aucun identifiant reconnu → on accepte silencieusement (évite les retries Moneroo)
-  if (!orderId && !payoutId && !isAdPayment) {
+  if (!orderId && !payoutId && !isAdPayment && !isStoragePayment) {
     return new Response("OK", { status: 200 });
   }
 
   try {
+    // ── STORAGE PAYMENT FLOW ──
+    if (isStoragePayment) {
+      switch (data.status) {
+        case "success": {
+          await ctx.runMutation(
+            internal.storage.mutations.confirmStoragePayment,
+            { invoiceId: invoiceId!, externalRef: data.id },
+          );
+          break;
+        }
+        case "failed":
+        case "cancelled": {
+          await ctx.runMutation(internal.storage.mutations.failStoragePayment, {
+            invoiceId: invoiceId!,
+            reason: `Moneroo: ${data.status} (ref: ${data.id})`,
+          });
+          break;
+        }
+        default:
+          break;
+      }
+      return new Response("OK", { status: 200 });
+    }
+
     // ── AD PAYMENT FLOW ──
     if (isAdPayment) {
       switch (data.status) {
