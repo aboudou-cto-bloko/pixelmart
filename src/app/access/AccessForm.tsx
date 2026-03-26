@@ -4,7 +4,6 @@ import { useActionState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Lock, ArrowRight, Loader2 } from "lucide-react";
 import { verifyAccessCode } from "./actions";
-import { PixelMartLogoSvg } from "@/components/marketing/PixelMartLogoSvg";
 
 export function AccessForm({ from }: { from: string }) {
   const [state, action, isPending] = useActionState(verifyAccessCode, null);
@@ -29,7 +28,7 @@ export function AccessForm({ from }: { from: string }) {
         transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="mb-12"
       >
-        <PixelMartLogoSvg markOnly className="h-12" />
+        <img src="/Pixel-Mart.png" alt="Pixel-Mart" className="h-10 w-auto" />
       </motion.div>
 
       <motion.div
