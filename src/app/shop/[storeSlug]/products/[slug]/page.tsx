@@ -83,8 +83,7 @@ export default function ShopProductDetailPage() {
   const { trackEvent, generateEventId } = useMetaPixel();
 
   const [quantity, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
+  const [isOrdering, setIsOrdering] = useState(false);
 
   const product = useQuery(api.products.queries.getBySlug, { slug });
   const store = useQuery(api.stores.queries.getBySlug, { slug: storeSlug });
@@ -109,10 +108,10 @@ export default function ShopProductDetailPage() {
     );
   }, [product?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddToCart = useCallback(async () => {
-    if (!product || !store || isAdding) return;
+  const handleOrder = useCallback(async () => {
+    if (!product || !store || isOrdering) return;
 
-    setIsAdding(true);
+    setIsOrdering(true);
     const eventId = generateEventId();
 
     try {
@@ -132,9 +131,8 @@ export default function ShopProductDetailPage() {
         isDigital: product.is_digital,
       });
 
-      // Track AddToCart
       trackEvent(
-        "AddToCart",
+        "InitiateCheckout",
         {
           content_ids: [product._id],
           content_type: "product",
@@ -145,13 +143,10 @@ export default function ShopProductDetailPage() {
         eventId,
       );
 
-      setAdded(true);
-      setTimeout(() => setAdded(false), 2000);
+      router.push(SHOP_ROUTES.CHECKOUT(storeSlug));
     } catch (error) {
-      console.error("Error adding to cart:", error);
-      // TODO: Show user-friendly error message
-    } finally {
-      setIsAdding(false);
+      console.error("Erreur lors de la commande:", error);
+      setIsOrdering(false);
     }
   }, [
     product,
@@ -160,17 +155,10 @@ export default function ShopProductDetailPage() {
     addItem,
     trackEvent,
     generateEventId,
-    isAdding,
+    isOrdering,
+    router,
+    storeSlug,
   ]);
-
-  const handleBuyNow = useCallback(async () => {
-    try {
-      await handleAddToCart();
-      router.push(SHOP_ROUTES.CART(storeSlug));
-    } catch (error) {
-      // Error already handled in handleAddToCart
-    }
-  }, [handleAddToCart, router, storeSlug]);
 
   if (product === undefined) {
     return (
@@ -320,36 +308,22 @@ export default function ShopProductDetailPage() {
                     )}
                 </>
               )}
-              <div className="flex gap-3">
-                <Button
-                  className="flex-1"
-                  onClick={handleAddToCart}
-                  variant="outline"
-                  disabled={added || isAdding}
-                >
-                  {added ? (
-                    <>
-                      <Check className="size-4 mr-2" />
-                      Ajouté
-                    </>
-                  ) : isAdding ? (
-                    "Ajout..."
-                  ) : (
-                    <>
-                      <ShoppingCart className="size-4 mr-2" />
-                      Ajouter au panier
-                    </>
-                  )}
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={handleBuyNow}
-                  disabled={isAdding}
-                  style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
-                >
-                  {isAdding ? "Ajout..." : "Commander"}
-                </Button>
-              </div>
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handleOrder}
+                disabled={isOrdering}
+                style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
+              >
+                {isOrdering ? (
+                  "Redirection..."
+                ) : (
+                  <>
+                    <ShoppingCart className="size-4 mr-2" />
+                    Commander
+                  </>
+                )}
+              </Button>
             </div>
           ) : (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
