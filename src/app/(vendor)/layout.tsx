@@ -26,7 +26,7 @@ const ALL_NAV_ITEMS = [...VENDOR_NAV_MAIN, ...VENDOR_NAV_SETTINGS];
 // Fonction pour trouver un item de navigation à partir du pathname
 function findNavItem(
   pathname: string,
-): { parent?: string; label: string } | null {
+): { parentLabel?: string; parentUrl?: string; label: string } | null {
   // 1. Recherche d'une correspondance exacte
   for (const item of ALL_NAV_ITEMS) {
     if (item.url === pathname) {
@@ -36,15 +36,51 @@ function findNavItem(
     if (item.items) {
       for (const subItem of item.items) {
         if (subItem.url === pathname) {
-          return { parent: item.title, label: subItem.title };
+          return {
+            parentLabel: item.title,
+            parentUrl: item.url,
+            label: subItem.title,
+          };
         }
       }
     }
   }
 
-  // 2. Gestion des routes dynamiques (ex: /vendor/products/[id]/edit)
+  // 2. Gestion des routes dynamiques
   if (pathname.includes("/products/") && pathname.endsWith("/edit")) {
-    return { parent: "Produits", label: "Modifier le produit" };
+    return {
+      parentLabel: "Produits",
+      parentUrl: "/vendor/products",
+      label: "Modifier le produit",
+    };
+  }
+  if (pathname.match(/^\/vendor\/orders\/[^/]+$/)) {
+    return {
+      parentLabel: "Commandes",
+      parentUrl: "/vendor/orders",
+      label: "Détail commande",
+    };
+  }
+  if (pathname.match(/^\/vendor\/delivery\/[^/]+$/)) {
+    return {
+      parentLabel: "Livraisons",
+      parentUrl: "/vendor/delivery",
+      label: "Détail livraison",
+    };
+  }
+  if (pathname === "/vendor/store/new") {
+    return {
+      parentLabel: "Boutique",
+      parentUrl: "/vendor/store/settings",
+      label: "Nouvelle boutique",
+    };
+  }
+  if (pathname === "/vendor/settings/security") {
+    return {
+      parentLabel: "Paramètres",
+      parentUrl: "/vendor/settings",
+      label: "Sécurité",
+    };
   }
 
   // 3. Fallback (ne devrait pas arriver)
@@ -58,13 +94,11 @@ function VendorBreadcrumb() {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {breadcrumb.parent && (
+        {breadcrumb.parentLabel && breadcrumb.parentUrl && (
           <>
             <BreadcrumbItem className="hidden md:block">
-              <BreadcrumbLink
-                href={`/vendor/${breadcrumb.parent.toLowerCase()}`}
-              >
-                {breadcrumb.parent}
+              <BreadcrumbLink href={breadcrumb.parentUrl}>
+                {breadcrumb.parentLabel}
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator className="hidden md:block" />
