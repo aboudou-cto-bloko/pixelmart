@@ -10,14 +10,17 @@ interface ThemePreviewProps {
   themeId: ThemePresetId;
   isSelected: boolean;
   onSelect: (id: ThemePresetId) => void;
+  darkMode?: boolean;
 }
 
 export function ThemePreview({
   themeId,
   isSelected,
   onSelect,
+  darkMode = false,
 }: ThemePreviewProps) {
   const theme = THEME_PRESETS[themeId];
+  const colors = darkMode ? theme.dark : theme.preview;
 
   return (
     <button
@@ -40,14 +43,14 @@ export function ThemePreview({
       <div
         className="mb-3 overflow-hidden rounded"
         style={{
-          backgroundColor: theme.preview.background,
+          backgroundColor: colors.background,
           borderRadius: theme.borderRadius,
         }}
       >
         {/* Mini header */}
         <div
           className="h-8 flex items-center px-3"
-          style={{ backgroundColor: theme.preview.primary }}
+          style={{ backgroundColor: colors.primary }}
         >
           <div className="h-2 w-12 rounded-full bg-white/60" />
         </div>
@@ -56,21 +59,21 @@ export function ThemePreview({
         <div className="p-3 space-y-2">
           <div
             className="h-2 w-3/4 rounded"
-            style={{ backgroundColor: theme.preview.foreground + "30" }}
+            style={{ backgroundColor: colors.foreground + "30" }}
           />
           <div className="flex gap-2">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
                 className="h-12 flex-1 rounded"
-                style={{ backgroundColor: theme.preview.muted }}
+                style={{ backgroundColor: colors.muted }}
               />
             ))}
           </div>
           <div
             className="h-6 w-20 rounded"
             style={{
-              backgroundColor: theme.preview.primary,
+              backgroundColor: colors.primary,
               borderRadius: theme.borderRadius,
             }}
           />

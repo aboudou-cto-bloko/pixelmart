@@ -88,7 +88,16 @@ export function ShopProductCard({
 
   return (
     <Link href={productHref} className="block">
-      <div className="group bg-card rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl hover:border-[var(--shop-primary,#6366f1)] transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98]">
+      <div
+        className="group bg-card rounded-xl border overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1 active:scale-[0.98]"
+        style={{ borderColor: "var(--shop-border, #e5e7eb)" }}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.borderColor = "var(--shop-primary, #6366f1)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.borderColor = "var(--shop-border, #e5e7eb)")
+        }
+      >
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
           {images[0] ? (

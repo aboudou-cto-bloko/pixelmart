@@ -63,8 +63,9 @@ export default defineSchema({
     banner_url: v.optional(v.string()),
 
     // Appearance
-    theme_id: v.string(), // "default" | "modern" | "classic"
+    theme_id: v.string(), // "default" | "modern" | "classic" | "royal" | "nature"
     primary_color: v.optional(v.string()), // hex: #FF5722
+    theme_mode: v.optional(v.union(v.literal("light"), v.literal("dark"))), // default: "light"
 
     // Status
     status: v.union(

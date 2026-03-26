@@ -3,6 +3,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { resolveImageUrl } from "../products/helpers";
+import { buildCssVariables, getThemeById } from "../stores/themes";
 
 /**
  * Config publique Meta Pixel (sans token secret).
@@ -24,6 +25,15 @@ export const getPublicConfig = query({
       ? await resolveImageUrl(ctx, store.logo_url)
       : null;
 
+    const themeId = store.theme_id ?? "default";
+    const themeMode = (store.theme_mode ?? "light") as "light" | "dark";
+    const theme = getThemeById(themeId);
+    const cssVars = buildCssVariables(
+      theme,
+      store.primary_color,
+      themeMode === "dark",
+    );
+
     return {
       storeId: store._id,
       storeName: store.name,
@@ -33,6 +43,9 @@ export const getPublicConfig = query({
       testEventCode: store.meta_test_event_code ?? null,
       vendorShopEnabled: store.vendor_shop_enabled ?? false,
       primaryColor: store.primary_color ?? "#6366f1",
+      themeId,
+      themeMode,
+      themeCssVars: cssVars,
       logoUrl,
       currency: store.currency ?? "XOF",
       isVerified: store.is_verified,
