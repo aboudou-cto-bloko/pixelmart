@@ -53,7 +53,11 @@ export function ShopLayoutClient({
           <main className="flex-1">
             <div className="container mx-auto px-4 py-6">{children}</div>
           </main>
-          <ShopFooter storeName={config.storeName} storeSlug={storeSlug} />
+          <ShopFooter
+            storeName={config.storeName}
+            storeSlug={storeSlug}
+            contact={config.contact}
+          />
           <Toaster position="bottom-right" />
         </div>
       </ShopCartProvider>

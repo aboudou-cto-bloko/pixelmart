@@ -3,6 +3,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -29,6 +30,7 @@ import { formatPrice } from "@/lib/utils";
 import { getOrderStatusConfig, formatShortDate } from "@/lib/order-helpers";
 
 export default function VendorDashboardPage() {
+  const { user } = useCurrentUser();
   const dashboard = useQuery(api.dashboard.queries.getVendorDashboard);
 
   if (dashboard === undefined) {
@@ -47,10 +49,10 @@ export default function VendorDashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Bienvenue sur {store.name}
-          </p>
+          <h1 className="text-2xl font-bold">
+            Bienvenue{user?.name ? `, ${user.name.split(" ")[0]}` : ""} 👋
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">{store.name}</p>
         </div>
         <Badge variant="outline" className="gap-1.5">
           <Crown className="size-3" />

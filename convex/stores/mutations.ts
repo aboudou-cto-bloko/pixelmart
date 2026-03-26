@@ -2,7 +2,7 @@
 
 import { mutation } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
-import { getVendorStore } from "../users/helpers";
+import { getVendorStore, requireVendor } from "../users/helpers";
 import { STORE_THEMES } from "./themes";
 
 /**
@@ -138,6 +138,13 @@ export const updateStore = mutation({
     primary_color: v.optional(v.string()),
     country: v.optional(v.string()),
     currency: v.optional(v.string()),
+    // Contact
+    contact_phone: v.optional(v.string()),
+    contact_whatsapp: v.optional(v.string()),
+    contact_email: v.optional(v.string()),
+    contact_website: v.optional(v.string()),
+    contact_facebook: v.optional(v.string()),
+    contact_instagram: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
@@ -198,6 +205,18 @@ export const updateStore = mutation({
     if (validatedData.currency !== undefined) {
       updates.currency = validatedData.currency;
     }
+    if (args.contact_phone !== undefined)
+      updates.contact_phone = args.contact_phone || undefined;
+    if (args.contact_whatsapp !== undefined)
+      updates.contact_whatsapp = args.contact_whatsapp || undefined;
+    if (args.contact_email !== undefined)
+      updates.contact_email = args.contact_email || undefined;
+    if (args.contact_website !== undefined)
+      updates.contact_website = args.contact_website || undefined;
+    if (args.contact_facebook !== undefined)
+      updates.contact_facebook = args.contact_facebook || undefined;
+    if (args.contact_instagram !== undefined)
+      updates.contact_instagram = args.contact_instagram || undefined;
 
     await ctx.db.patch(store._id, updates);
     return { success: true };
@@ -358,5 +377,116 @@ export const updateStoreTheme = mutation({
     });
 
     return { success: true };
+  },
+});
+
+/**
+ * Change la boutique active du vendor (multi-boutiques).
+ */
+export const switchActiveStore = mutation({
+  args: { store_id: v.id("stores") },
+  handler: async (ctx, { store_id }) => {
+    const user = await requireVendor(ctx);
+    const targetStore = await ctx.db.get(store_id);
+    if (!targetStore || targetStore.owner_id !== user._id) {
+      throw new ConvexError("Boutique introuvable ou non autorisée");
+    }
+    await ctx.db.patch(user._id, {
+      active_store_id: store_id,
+      updated_at: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+/**
+ * Crée une boutique supplémentaire pour un vendor déjà existant.
+ */
+export const createAdditionalStore = mutation({
+  args: {
+    store_name: v.string(),
+    country: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    description: v.optional(v.string()),
+    contact_phone: v.optional(v.string()),
+    contact_whatsapp: v.optional(v.string()),
+    contact_email: v.optional(v.string()),
+    use_pixelmart_service: v.optional(v.boolean()),
+    custom_pickup_lat: v.optional(v.number()),
+    custom_pickup_lon: v.optional(v.number()),
+    custom_pickup_label: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user } = await getVendorStore(ctx);
+
+    if (args.store_name.length < 3 || args.store_name.length > 60) {
+      throw new ConvexError("Le nom doit contenir entre 3 et 60 caractères");
+    }
+
+    // Slug generation
+    const baseSlug = args.store_name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    let slug = baseSlug;
+    let counter = 0;
+    while (true) {
+      const existing = await ctx.db
+        .query("stores")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .unique();
+      if (!existing) break;
+      counter++;
+      slug = `${baseSlug}-${counter}`;
+    }
+
+    const usePixelmartService = args.use_pixelmart_service ?? true;
+    const hasCustomPickup = args.custom_pickup_lat !== undefined;
+    const hasStoragePlan = usePixelmartService && !hasCustomPickup;
+
+    const storeId = await ctx.db.insert("stores", {
+      owner_id: user._id,
+      name: args.store_name,
+      slug,
+      description: args.description ?? "",
+      theme_id: "default",
+      status: "active",
+      subscription_tier: "free",
+      commission_rate: 500,
+      balance: 0,
+      pending_balance: 0,
+      currency: args.currency ?? "XOF",
+      level: "bronze",
+      total_orders: 0,
+      avg_rating: 0,
+      is_verified: false,
+      country: args.country ?? "BJ",
+      use_pixelmart_service: usePixelmartService,
+      custom_pickup_lat: usePixelmartService
+        ? args.custom_pickup_lat
+        : undefined,
+      custom_pickup_lon: usePixelmartService
+        ? args.custom_pickup_lon
+        : undefined,
+      custom_pickup_label: usePixelmartService
+        ? args.custom_pickup_label
+        : undefined,
+      has_storage_plan: hasStoragePlan,
+      contact_phone: args.contact_phone || undefined,
+      contact_whatsapp: args.contact_whatsapp || undefined,
+      contact_email: args.contact_email || undefined,
+      updated_at: Date.now(),
+    });
+
+    // Activer immédiatement la nouvelle boutique
+    await ctx.db.patch(user._id, {
+      active_store_id: storeId,
+      updated_at: Date.now(),
+    });
+
+    return { storeId, slug };
   },
 });

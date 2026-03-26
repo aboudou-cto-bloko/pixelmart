@@ -13,9 +13,14 @@ import {
   LogOut,
   Settings,
   ExternalLink,
+  Plus,
+  Check,
 } from "lucide-react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { authClient } from "@/lib/auth-client";
+import type { Id } from "../../../convex/_generated/dataModel";
 import {
   Sidebar,
   SidebarContent,
@@ -74,26 +79,74 @@ function useAutoCloseMobileSidebar() {
   return setOpenMobile;
 }
 
-// ---- Store Header ----
-function StoreHeader() {
-  const { user } = useCurrentUser();
+// ---- Store Switcher ----
+function StoreSwitcher() {
+  const stores = useQuery(api.stores.queries.listMyStores, {});
+  const switchStore = useMutation(api.stores.mutations.switchActiveStore);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const activeStore = stores?.find((s) => s.isActive) ?? stores?.[0];
+
+  const handleSwitch = async (storeId: Id<"stores">) => {
+    if (activeStore?._id === storeId) return;
+    await switchStore({ store_id: storeId });
+  };
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton size="lg" asChild>
-          <Link href={ROUTES.VENDOR_DASHBOARD}>
-            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Store className="size-4" />
-            </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">Pixel-Mart</span>
-              <span className="truncate text-xs text-muted-foreground">
-                Vendeur
-              </span>
-            </div>
-          </Link>
-        </SidebarMenuButton>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton size="lg">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
+                <Store className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
+                <span className="truncate font-semibold">
+                  {activeStore?.name ?? "Ma boutique"}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                  Vendeur
+                </span>
+              </div>
+              <ChevronsUpDown className="ml-auto size-4 shrink-0" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            className="w-64 rounded-lg"
+            side={isMobile ? "bottom" : "right"}
+            align="start"
+            sideOffset={4}
+          >
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              Mes boutiques
+            </DropdownMenuLabel>
+            {stores?.map((store) => (
+              <DropdownMenuItem
+                key={store._id}
+                onClick={() => handleSwitch(store._id)}
+                className="gap-2"
+              >
+                <div className="flex size-6 items-center justify-center rounded-sm bg-muted shrink-0">
+                  <Store className="size-3.5" />
+                </div>
+                <span className="flex-1 truncate">{store.name}</span>
+                {store.isActive && (
+                  <Check className="size-4 text-primary shrink-0" />
+                )}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/vendor/store/new" className="gap-2">
+                <div className="flex size-6 items-center justify-center rounded-sm border border-dashed shrink-0">
+                  <Plus className="size-3.5" />
+                </div>
+                <span>Créer une boutique</span>
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
   );
@@ -259,7 +312,7 @@ export function VendorSidebar(props: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <StoreHeader />
+        <StoreSwitcher />
       </SidebarHeader>
       <SidebarContent>
         <NavSection label="Gestion" items={VENDOR_NAV_MAIN} />

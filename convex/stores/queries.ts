@@ -240,3 +240,37 @@ export const getFeaturedStores = query({
     return storesWithLogos;
   },
 });
+
+/**
+ * Liste toutes les boutiques appartenant au vendor connecté.
+ */
+export const listMyStores = query({
+  args: {},
+  handler: async (ctx) => {
+    const { user, store: activeStore } = await getVendorStore(ctx);
+
+    const stores = await ctx.db
+      .query("stores")
+      .withIndex("by_owner", (q) => q.eq("owner_id", user._id))
+      .collect();
+
+    const storesWithLogos = await Promise.all(
+      stores.map(async (s) => {
+        const logoUrl = s.logo_url
+          ? await resolveImageUrl(ctx, s.logo_url)
+          : null;
+        return {
+          _id: s._id,
+          name: s.name,
+          slug: s.slug,
+          logo_url: logoUrl,
+          status: s.status,
+          subscription_tier: s.subscription_tier,
+          isActive: s._id === activeStore._id,
+        };
+      }),
+    );
+
+    return storesWithLogos;
+  },
+});

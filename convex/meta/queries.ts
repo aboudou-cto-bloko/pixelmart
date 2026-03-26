@@ -38,6 +38,14 @@ export const getPublicConfig = query({
       isVerified: store.is_verified,
       avgRating: store.avg_rating,
       totalOrders: store.total_orders,
+      contact: {
+        phone: store.contact_phone ?? null,
+        whatsapp: store.contact_whatsapp ?? null,
+        email: store.contact_email ?? null,
+        website: store.contact_website ?? null,
+        facebook: store.contact_facebook ?? null,
+        instagram: store.contact_instagram ?? null,
+      },
     };
   },
 });
