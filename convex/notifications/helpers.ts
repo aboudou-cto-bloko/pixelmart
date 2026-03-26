@@ -40,6 +40,31 @@ export const NOTIFICATION_TYPES = {
     icon: "tag",
     defaultChannels: ["in_app"],
   },
+  storage_received: {
+    label: "Colis réceptionné",
+    icon: "package",
+    defaultChannels: ["in_app"],
+  },
+  storage_validated: {
+    label: "Stockage validé",
+    icon: "check-circle",
+    defaultChannels: ["email", "in_app"],
+  },
+  storage_rejected: {
+    label: "Stockage rejeté",
+    icon: "x-circle",
+    defaultChannels: ["email", "in_app"],
+  },
+  storage_invoice: {
+    label: "Facture stockage",
+    icon: "file-text",
+    defaultChannels: ["email", "in_app"],
+  },
+  storage_debt_deducted: {
+    label: "Dette stockage déduite",
+    icon: "minus-circle",
+    defaultChannels: ["email", "in_app"],
+  },
 } as const;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;

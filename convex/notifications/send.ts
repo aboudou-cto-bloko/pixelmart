@@ -11,6 +11,11 @@ import { render } from "@react-email/render";
 import LowStockAlert from "../../emails/LowStockAlert";
 import PayoutCompleted from "../../emails/PayoutCompleted";
 import OrderStatusUpdate from "../../emails/OrderStatusUpdate";
+import StorageRequestReceived from "../../emails/StorageRequestReceived";
+import StorageValidated from "../../emails/StorageValidated";
+import StorageRejected from "../../emails/StorageRejected";
+import StorageInvoiceCreated from "../../emails/StorageInvoiceCreated";
+import StorageDebtDeducted from "../../emails/StorageDebtDeducted";
 
 const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
 
@@ -387,6 +392,314 @@ export const notifyReturnStatus = internalAction({
       } catch (error) {
         console.error("Failed to send return status email:", error);
       }
+    }
+  },
+});
+
+// ─── Storage: Request Received (email + in-app) → Vendor ─────────────────
+
+export const notifyStorageRequestReceived = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    storageCode: v.string(),
+    productName: v.string(),
+    estimatedQty: v.optional(v.number()),
+    storeName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "storage_received",
+      title: "Demande de stockage créée",
+      body: `Code : ${args.storageCode} — Écrivez ce code sur votre colis "${args.productName}"`,
+      link: "/vendor/storage",
+      channels: ["email", "in_app"],
+      sentVia: ["in_app"],
+      metadata: { storage_code: args.storageCode },
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        StorageRequestReceived({
+          vendorName: args.vendorName,
+          storageCode: args.storageCode,
+          productName: args.productName,
+          estimatedQty: args.estimatedQty,
+          storeName: args.storeName,
+        }),
+      );
+
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Demande de stockage créée — Code : ${args.storageCode}`,
+        html,
+      });
+    } catch (error) {
+      console.error(
+        "[Notification] StorageRequestReceived email failed:",
+        error,
+      );
+    }
+  },
+});
+
+// ─── Storage: Validated (email + in-app) → Vendor ────────────────────────
+
+export const notifyStorageValidated = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    storageCode: v.string(),
+    productName: v.string(),
+    storageFee: v.number(),
+    currency: v.string(),
+    paymentMethod: v.union(
+      v.literal("immediate"),
+      v.literal("auto_debit"),
+      v.literal("deferred"),
+    ),
+    actualQty: v.optional(v.number()),
+    actualWeightKg: v.optional(v.number()),
+    measurementType: v.optional(
+      v.union(v.literal("units"), v.literal("weight")),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const fmtFee = `${(args.storageFee / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "storage_validated",
+      title: "Produit mis en stock",
+      body: `${args.storageCode} — "${args.productName}" est maintenant en stock. Frais : ${fmtFee}.`,
+      link: "/vendor/storage",
+      channels: ["email", "in_app"],
+      sentVia: ["in_app"],
+      metadata: { storage_code: args.storageCode },
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        StorageValidated({
+          vendorName: args.vendorName,
+          storageCode: args.storageCode,
+          productName: args.productName,
+          storageFee: args.storageFee,
+          currency: args.currency,
+          paymentMethod: args.paymentMethod,
+          actualQty: args.actualQty,
+          actualWeightKg: args.actualWeightKg,
+          measurementType: args.measurementType,
+        }),
+      );
+
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `${args.storageCode} en stock — Frais : ${fmtFee}`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] StorageValidated email failed:", error);
+    }
+  },
+});
+
+// ─── Storage: Rejected (email + in-app) → Vendor ─────────────────────────
+
+export const notifyStorageRejected = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    storageCode: v.string(),
+    productName: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "storage_rejected",
+      title: "Demande de stockage rejetée",
+      body: `${args.storageCode} — "${args.productName}" a été rejeté`,
+      link: "/vendor/storage",
+      channels: ["email", "in_app"],
+      sentVia: ["in_app"],
+      metadata: { storage_code: args.storageCode },
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        StorageRejected({
+          vendorName: args.vendorName,
+          storageCode: args.storageCode,
+          productName: args.productName,
+          reason: args.reason,
+        }),
+      );
+
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Demande de stockage ${args.storageCode} rejetée`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] StorageRejected email failed:", error);
+    }
+  },
+});
+
+// ─── Storage: Invoice Created (email + in-app) → Vendor ──────────────────
+
+export const notifyStorageInvoiceCreated = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    storageCode: v.string(),
+    productName: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    paymentMethod: v.union(
+      v.literal("immediate"),
+      v.literal("auto_debit"),
+      v.literal("deferred"),
+    ),
+    dueDate: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const fmtAmt = `${(args.amount / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "storage_invoice",
+      title: "Facture de stockage",
+      body: `${args.storageCode} — Montant : ${fmtAmt}`,
+      link: "/vendor/billing",
+      channels: ["email", "in_app"],
+      sentVia: ["in_app"],
+      metadata: { storage_code: args.storageCode },
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        StorageInvoiceCreated({
+          vendorName: args.vendorName,
+          storageCode: args.storageCode,
+          productName: args.productName,
+          amount: args.amount,
+          currency: args.currency,
+          paymentMethod: args.paymentMethod,
+          dueDate: args.dueDate,
+        }),
+      );
+
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Facture de stockage — ${fmtAmt}`,
+        html,
+      });
+    } catch (error) {
+      console.error(
+        "[Notification] StorageInvoiceCreated email failed:",
+        error,
+      );
+    }
+  },
+});
+
+// ─── Storage: Invoice Paid (in-app only) → Vendor ────────────────────────
+
+export const notifyStorageInvoicePaid = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    amount: v.number(),
+    currency: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const fmtAmt = `${(args.amount / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "storage_invoice",
+      title: "Facture de stockage réglée",
+      body: `Votre facture de ${fmtAmt} a été confirmée`,
+      link: "/vendor/billing",
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+  },
+});
+
+// ─── Storage: Debt Deducted (email + in-app) → Vendor ────────────────────
+
+export const notifyStorageDebtDeducted = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    deductedAmount: v.number(),
+    currency: v.string(),
+    grossPayout: v.number(),
+    netPayout: v.number(),
+    period: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const fmtAmt = `${(args.deductedAmount / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "storage_debt_deducted",
+      title: "Dette de stockage déduite",
+      body: `${fmtAmt} déduit de votre retrait (${args.period})`,
+      link: "/vendor/billing",
+      channels: ["email", "in_app"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        StorageDebtDeducted({
+          vendorName: args.vendorName,
+          deductedAmount: args.deductedAmount,
+          currency: args.currency,
+          grossPayout: args.grossPayout,
+          netPayout: args.netPayout,
+          period: args.period,
+        }),
+      );
+
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Dette de stockage déduite — ${fmtAmt}`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] StorageDebtDeducted email failed:", error);
     }
   },
 });

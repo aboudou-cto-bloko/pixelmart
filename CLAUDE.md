@@ -304,8 +304,8 @@ Single Moneroo endpoint dispatches by `event.type`:
 | `ad_payment.failed` | `failAdPayment` | ✅ |
 | `payout.completed` | `confirmPayout` | ✅ |
 | `payout.failed` | `failPayout` | ✅ |
-| `storage_payment.success` | `confirmStoragePayment` | ❌ to implement |
-| `storage_payment.failed` | `failStoragePayment` | ❌ to implement |
+| `storage_payment.success` | `confirmStoragePayment` | ✅ |
+| `storage_payment.failed` | `failStoragePayment` | ✅ |
 
 Always verify signature: `verifyMonerooSignature(req, secret)` before any processing.
 
@@ -388,11 +388,11 @@ Props always receive **pre-formatted strings** for amounts (never raw centimes i
 | `PayoutCompleted` | `payout.completed` webhook | Vendor |
 | `ReturnStatusUpdate` | Return status change | Vendor + Customer |
 | `NewReview` | Review published | Vendor |
-| `StorageRequestReceived` | Request created | Vendor — **TODO** |
-| `StorageValidated` | Admin validates | Vendor — **TODO** |
-| `StorageRejected` | Admin rejects | Vendor — **TODO** |
-| `StorageInvoiceCreated` | Invoice generated | Vendor — **TODO** |
-| `StorageDebtDeducted` | Debt deducted on payout | Vendor — **TODO** |
+| `StorageRequestReceived` | Request created | Vendor |
+| `StorageValidated` | Admin validates | Vendor |
+| `StorageRejected` | Admin rejects | Vendor |
+| `StorageInvoiceCreated` | Invoice generated | Vendor |
+| `StorageDebtDeducted` | Debt deducted on payout | Vendor |
 
 ---
 

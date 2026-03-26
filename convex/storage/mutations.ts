@@ -55,19 +55,18 @@ export const createRequest = mutation({
       updated_at: now,
     });
 
-    // Notifier le vendeur
+    // Notifier le vendeur (email + in-app)
     await ctx.scheduler.runAfter(
       0,
-      internal.notifications.send.createInAppNotification,
+      internal.notifications.send.notifyStorageRequestReceived,
       {
-        userId: user._id,
-        type: "storage_received",
-        title: "Demande de stockage créée",
-        body: `Code : ${storageCode} — Écrivez ce code sur votre colis "${args.product_name.trim()}"`,
-        link: "/vendor/storage",
-        channels: ["in_app"],
-        sentVia: ["in_app"],
-        metadata: { storage_code: storageCode, request_id: requestId },
+        vendorUserId: user._id,
+        vendorEmail: user.email,
+        vendorName: user.name ?? user.email,
+        storageCode,
+        productName: args.product_name.trim(),
+        estimatedQty: args.estimated_qty,
+        storeName: store.name,
       },
     );
 
@@ -261,26 +260,43 @@ export const validateRequest = mutation({
       }
     }
 
-    // Notifier le vendeur (in-app — email ajouté en Phase C)
+    // Notifier le vendeur (email + in-app)
     const storeForNotif = await ctx.db.get(request.store_id);
     if (storeForNotif) {
       const vendorForNotif = await ctx.db.get(storeForNotif.owner_id);
       if (vendorForNotif) {
+        // Notification: stockage validé
         await ctx.scheduler.runAfter(
           0,
-          internal.notifications.send.createInAppNotification,
+          internal.notifications.send.notifyStorageValidated,
           {
-            userId: vendorForNotif._id,
-            type: "storage_validated",
-            title: "Produit mis en stock",
-            body: `${request.storage_code} — "${request.product_name}" est maintenant en stock. Frais : ${storageFee / 100} XOF.`,
-            link: "/vendor/storage",
-            channels: ["in_app"],
-            sentVia: ["in_app"],
-            metadata: {
-              storage_code: request.storage_code,
-              invoice_id: invoiceId,
-            },
+            vendorUserId: vendorForNotif._id,
+            vendorEmail: vendorForNotif.email,
+            vendorName: vendorForNotif.name ?? vendorForNotif.email,
+            storageCode: request.storage_code,
+            productName: request.product_name,
+            storageFee,
+            currency: DEFAULT_CURRENCY,
+            paymentMethod,
+            actualQty: request.actual_qty,
+            actualWeightKg: request.actual_weight_kg,
+            measurementType: request.measurement_type,
+          },
+        );
+
+        // Notification: facture créée
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyStorageInvoiceCreated,
+          {
+            vendorUserId: vendorForNotif._id,
+            vendorEmail: vendorForNotif.email,
+            vendorName: vendorForNotif.name ?? vendorForNotif.email,
+            storageCode: request.storage_code,
+            productName: request.product_name,
+            amount: storageFee,
+            currency: DEFAULT_CURRENCY,
+            paymentMethod,
           },
         );
       }
@@ -322,23 +338,21 @@ export const rejectRequest = mutation({
       updated_at: now,
     });
 
-    // Notifier le vendeur (in-app — email ajouté en Phase C)
+    // Notifier le vendeur (email + in-app)
     const storeForReject = await ctx.db.get(request.store_id);
     if (storeForReject) {
       const vendorForReject = await ctx.db.get(storeForReject.owner_id);
       if (vendorForReject) {
         await ctx.scheduler.runAfter(
           0,
-          internal.notifications.send.createInAppNotification,
+          internal.notifications.send.notifyStorageRejected,
           {
-            userId: vendorForReject._id,
-            type: "storage_rejected",
-            title: "Demande de stockage rejetée",
-            body: `${request.storage_code} — "${request.product_name}" a été rejeté : ${args.rejection_reason.trim()}`,
-            link: "/vendor/storage",
-            channels: ["in_app"],
-            sentVia: ["in_app"],
-            metadata: { storage_code: request.storage_code },
+            vendorUserId: vendorForReject._id,
+            vendorEmail: vendorForReject.email,
+            vendorName: vendorForReject.name ?? vendorForReject.email,
+            storageCode: request.storage_code,
+            productName: request.product_name,
+            reason: args.rejection_reason.trim(),
           },
         );
       }
@@ -411,23 +425,18 @@ export const confirmStoragePayment = internalMutation({
       updated_at: now,
     });
 
-    // Notifier le vendeur (in-app — email ajouté en Phase C)
+    // Notifier le vendeur (in-app)
     const storeForPay = await ctx.db.get(invoice.store_id);
     if (storeForPay) {
       const vendorForPay = await ctx.db.get(storeForPay.owner_id);
       if (vendorForPay) {
         await ctx.scheduler.runAfter(
           0,
-          internal.notifications.send.createInAppNotification,
+          internal.notifications.send.notifyStorageInvoicePaid,
           {
-            userId: vendorForPay._id,
-            type: "storage_invoice",
-            title: "Facture de stockage réglée",
-            body: `Votre facture de ${invoice.amount / 100} XOF a été confirmée.`,
-            link: "/vendor/billing",
-            channels: ["in_app"],
-            sentVia: ["in_app"],
-            metadata: { invoice_id: args.invoiceId },
+            vendorUserId: vendorForPay._id,
+            amount: invoice.amount,
+            currency: invoice.currency,
           },
         );
       }
