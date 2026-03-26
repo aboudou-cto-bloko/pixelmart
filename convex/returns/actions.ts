@@ -68,11 +68,6 @@ export const processMonerooRefund = internalAction({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(
-          `Moneroo refund init failed (${response.status}):`,
-          errorText,
-        );
         return;
       }
 
@@ -87,12 +82,6 @@ export const processMonerooRefund = internalAction({
             reference: result.data.id,
           },
         );
-
-        console.log(
-          `Refund for return ${args.returnId} initialized: ${result.data.id}`,
-        );
-      } else {
-        console.error("Moneroo refund init: unexpected response", result);
       }
     } catch (error) {
       console.error("Moneroo refund init error:", error);

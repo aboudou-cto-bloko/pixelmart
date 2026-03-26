@@ -95,10 +95,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
-      minPasswordLength: 8,
+      minPasswordLength: 12, // Increased from 8 to 12
       maxPasswordLength: 128,
       autoSignIn: false,
-      resetPasswordTokenExpiresIn: 3600,
+      resetPasswordTokenExpiresIn: 1800, // Reduced from 3600 to 1800 (30 minutes)
 
       sendResetPassword: async ({ user, url }) => {
         const html = await render(
@@ -116,6 +116,125 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
           html,
           text,
         });
+      },
+
+      // Password strength validation
+      passwordValidator: (password: string) => {
+        // Enforce strong password requirements on backend
+        if (password.length < 12) {
+          return {
+            isValid: false,
+            message: "Le mot de passe doit contenir au moins 12 caractères",
+          };
+        }
+
+        if (!/(?=.*[a-z])/.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre minuscule",
+          };
+        }
+
+        if (!/(?=.*[A-Z])/.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins une lettre majuscule",
+          };
+        }
+
+        if (!/(?=.*\d)/.test(password)) {
+          return {
+            isValid: false,
+            message: "Le mot de passe doit contenir au moins un chiffre",
+          };
+        }
+
+        if (!/(?=.*[!@#$%^&*(),.?":{}|<>[\]\\`~;+=_-])/.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe doit contenir au moins un caractère spécial",
+          };
+        }
+
+        // Check for repeated characters
+        if (/(.)\1{2,}/.test(password)) {
+          return {
+            isValid: false,
+            message:
+              "Le mot de passe ne peut pas contenir plus de 2 caractères identiques consécutifs",
+          };
+        }
+
+        // Check against common passwords
+        const commonPasswords = [
+          "password",
+          "123456",
+          "password123",
+          "admin",
+          "qwerty",
+          "letmein",
+          "welcome",
+          "monkey",
+          "1234567890",
+          "password1",
+          "123456789",
+          "12345678",
+          "Password1",
+          "password!",
+          "Password!",
+          "azerty",
+          "motdepasse",
+        ];
+
+        if (commonPasswords.includes(password.toLowerCase())) {
+          return {
+            isValid: false,
+            message:
+              "Ce mot de passe est trop courant, veuillez en choisir un autre",
+          };
+        }
+
+        return { isValid: true };
+      },
+    },
+
+    // ---- Rate Limiting ----
+    rateLimit: {
+      enabled: true,
+      window: 15 * 60 * 1000, // 15 minutes window
+      max: 5, // Max 5 attempts per window
+      message: "Trop de tentatives. Veuillez réessayer dans quelques minutes.",
+    },
+
+    // ---- Account Lockout ----
+    accountLockout: {
+      enabled: true,
+      maxFailedAttempts: 5, // Lock after 5 failed attempts
+      lockoutDuration: 30 * 60 * 1000, // 30 minutes lockout
+      resetFailedAttemptsAfter: 24 * 60 * 60 * 1000, // Reset counter after 24 hours
+    },
+
+    // ---- Advanced Security ----
+    advanced: {
+      crossSubDomainCookies: {
+        enabled: false, // Prevent cross-subdomain attacks
+      },
+      generateId: () => {
+        // Use crypto-secure ID generation
+        return crypto.randomUUID();
+      },
+    },
+
+    // ---- Session Security ----
+    session: {
+      expiresIn: 60 * 60 * 24 * 7, // 7 days instead of default 30
+      updateAge: 60 * 60 * 24, // Update session every 24 hours
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60 * 1000, // 5 minutes cache
       },
     },
 
@@ -140,7 +259,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       },
       sendOnSignUp: true,
       autoSignInAfterVerification: true,
-      expiresIn: 3600,
+      expiresIn: 1800, // Reduced from 3600 to 1800 (30 minutes)
     },
 
     // ---- Google OAuth ----

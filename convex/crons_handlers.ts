@@ -240,10 +240,6 @@ export const autoPublishReviews = internalMutation({
       await ctx.db.patch(review._id, { is_published: true });
       await recalculateRatings(ctx, review.product_id, review.store_id);
     }
-
-    if (pendingReviews.length > 0) {
-      console.log(`Auto-published ${pendingReviews.length} reviews`);
-    }
   },
 });
 
@@ -290,12 +286,6 @@ export const processAdBookings = internalMutation({
     // 3. Promouvoir les bookings en queue pour les slots libérés
     for (const slotId of slotsFreed) {
       await promoteQueuedBookings(ctx, slotId);
-    }
-
-    if (toActivate.length || toComplete.length) {
-      console.log(
-        `Ad bookings processed: ${toActivate.length} activated, ${toComplete.length} completed`,
-      );
     }
   },
 });

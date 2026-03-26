@@ -2,6 +2,7 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -11,6 +12,8 @@ import {
   ShoppingCart,
   ArrowRight,
   Store,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
@@ -169,6 +172,68 @@ function StoreGroup({
   );
 }
 
+// ─── Validation Warnings ────────────────────────────────────
+function ValidationWarnings({
+  warnings,
+  hasChanges,
+  onRefresh,
+  isValidating,
+}: {
+  warnings: string[];
+  hasChanges: boolean;
+  onRefresh: () => void;
+  isValidating: boolean;
+}) {
+  if (warnings.length === 0 && !hasChanges) return null;
+
+  return (
+    <Card className="border-yellow-200 bg-yellow-50">
+      <CardContent className="pt-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="size-5 text-yellow-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <h3 className="font-medium text-yellow-800 mb-2">
+              {hasChanges ? "Votre panier a été mis à jour" : "Attention"}
+            </h3>
+            {warnings.length > 0 && (
+              <ul className="text-sm text-yellow-700 space-y-1">
+                {warnings.map((warning, index) => (
+                  <li key={index}>• {warning}</li>
+                ))}
+              </ul>
+            )}
+            {hasChanges && (
+              <p className="text-sm text-yellow-700 mt-2">
+                Les prix ou stocks de certains articles ont changé. Veuillez
+                vérifier votre commande.
+              </p>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRefresh}
+              disabled={isValidating}
+              className="mt-3 border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+            >
+              {isValidating ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Validation...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Revalider le panier
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Empty Cart ──────────────────────────────────────────────
 function EmptyCart() {
   return (
@@ -248,7 +313,38 @@ export default function CartPage() {
     updateQuantity,
     removeItem,
     clearCart,
+    syncWithServer,
   } = useCart();
+
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Validate cart when component mounts
+  useEffect(() => {
+    if (totalItems > 0) {
+      handleValidateCart();
+    }
+  }, []); // Only run once on mount
+
+  const handleValidateCart = async () => {
+    setIsValidating(true);
+    setValidationWarnings([]);
+
+    try {
+      const result = await syncWithServer();
+
+      if (result.errors.length > 0) {
+        setValidationWarnings(result.errors);
+      }
+
+      setHasChanges(result.hasChanges);
+    } catch (error) {
+      setValidationWarnings(["Erreur lors de la validation du panier"]);
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   if (totalItems === 0) {
     return (
@@ -278,6 +374,14 @@ export default function CartPage() {
           Vider le panier
         </Button>
       </div>
+
+      {/* Validation warnings */}
+      <ValidationWarnings
+        warnings={validationWarnings}
+        hasChanges={hasChanges}
+        onRefresh={handleValidateCart}
+        isValidating={isValidating}
+      />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Items grouped by store */}

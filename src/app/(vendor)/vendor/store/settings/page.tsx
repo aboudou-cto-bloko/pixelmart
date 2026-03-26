@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import Image from "next/image";
+import { z } from "zod";
 import {
   Loader2,
   Save,
@@ -12,6 +13,10 @@ import {
   Palette,
   Globe,
   ImageIcon,
+  Truck,
+  MapPin,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -36,11 +41,28 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SUPPORTED_COUNTRIES } from "@/constants/countries";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
-import { formatPrice } from "@/lib/utils"; // IMPORT AJOUTÉ
+import { formatPrice } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import {
+  LocationPicker,
+  type PickedLocation,
+} from "@/components/maps/LocationPicker";
+import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
+import {
+  storeSettingsSchema,
+  deliverySettingsSchema,
+  validateImageFile,
+  getSafeSettingsErrorMessage,
+  RateLimiter,
+} from "@/lib/validation/store-settings";
 
 export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);
+  const hasPendingOrders = useQuery(api.stores.queries.hasPendingOrders);
   const updateStore = useMutation(api.stores.mutations.updateStore);
+  const updateDeliverySettings = useMutation(
+    api.stores.mutations.updateDeliverySettings,
+  );
   const generateUploadUrl = useMutation(api.stores.mutations.generateUploadUrl);
 
   const [name, setName] = useState("");
@@ -48,13 +70,31 @@ export default function StoreSettingsPage() {
   const [primaryColor, setPrimaryColor] = useState("#6366f1"); // renommé
   const [country, setCountry] = useState("BJ");
   const [currency, setCurrency] = useState("XOF");
-  const [logoUrl, setLogoUrl] = useState<string | undefined>();
-  const [bannerUrl, setBannerUrl] = useState<string | undefined>();
+  const [logoStorageId, setLogoStorageId] = useState<string | undefined>();
+  const [bannerStorageId, setBannerStorageId] = useState<string | undefined>();
+
+  const logoUrl = useQuery(
+    api.files.queries.getUrl,
+    logoStorageId ? { storageId: logoStorageId } : "skip",
+  );
+  const bannerUrl = useQuery(
+    api.files.queries.getUrl,
+    bannerStorageId ? { storageId: bannerStorageId } : "skip",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Delivery settings
+  const [usePixelmartService, setUsePixelmartService] = useState(true);
+  const [customPickup, setCustomPickup] = useState<
+    PickedLocation | undefined
+  >();
+  const [isSavingDelivery, setIsSavingDelivery] = useState(false);
+  const [deliverySuccess, setDeliverySuccess] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -67,15 +107,29 @@ export default function StoreSettingsPage() {
       setPrimaryColor(store.primary_color ?? "#6366f1");
       setCountry(store.country);
       setCurrency(store.currency);
-      setLogoUrl(store.logo_url);
-      setBannerUrl(store.banner_url);
+      setLogoStorageId(store.logo_url);
+      setBannerStorageId(store.banner_url);
+
+      setUsePixelmartService(store.use_pixelmart_service ?? true);
+      const hasCustomPickup =
+        store.custom_pickup_lat !== undefined &&
+        store.custom_pickup_lon !== undefined &&
+        !!store.custom_pickup_label;
+      if (hasCustomPickup) {
+        setCustomPickup({
+          lat: store.custom_pickup_lat!,
+          lon: store.custom_pickup_lon!,
+          label: store.custom_pickup_label!,
+        });
+      }
     }
   }, [store]);
 
   async function handleUpload(file: File, type: "logo" | "banner") {
     const setUploading =
       type === "logo" ? setIsUploadingLogo : setIsUploadingBanner;
-    const setUrl = type === "logo" ? setLogoUrl : setBannerUrl;
+    const setStorageId =
+      type === "logo" ? setLogoStorageId : setBannerStorageId;
 
     setUploading(true);
     try {
@@ -88,11 +142,7 @@ export default function StoreSettingsPage() {
       });
 
       const { storageId } = await response.json();
-
-      // TODO: Convertir storageId en URL réelle
-      // Pour l'instant on stocke le storageId, mais cela ne fonctionnera pas avec Image.
-      // Il faudrait appeler une query pour obtenir l'URL.
-      setUrl(storageId);
+      setStorageId(storageId as string);
     } catch (err) {
       setError("Erreur lors de l'upload de l'image");
     } finally {
@@ -112,8 +162,8 @@ export default function StoreSettingsPage() {
         primary_color: primaryColor, // corrigé ici
         country,
         currency,
-        logo_url: logoUrl,
-        banner_url: bannerUrl,
+        logo_url: logoStorageId,
+        banner_url: bannerStorageId,
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -121,6 +171,30 @@ export default function StoreSettingsPage() {
       setError(err instanceof Error ? err.message : "Erreur de sauvegarde");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleSaveDelivery() {
+    setIsSavingDelivery(true);
+    setDeliveryError(null);
+    setDeliverySuccess(false);
+    try {
+      await updateDeliverySettings({
+        use_pixelmart_service: usePixelmartService,
+        custom_pickup_lat: usePixelmartService ? customPickup?.lat : undefined,
+        custom_pickup_lon: usePixelmartService ? customPickup?.lon : undefined,
+        custom_pickup_label: usePixelmartService
+          ? customPickup?.label
+          : undefined,
+      });
+      setDeliverySuccess(true);
+      setTimeout(() => setDeliverySuccess(false), 3000);
+    } catch (err) {
+      setDeliveryError(
+        err instanceof Error ? err.message : "Erreur de sauvegarde",
+      );
+    } finally {
+      setIsSavingDelivery(false);
     }
   }
 
@@ -214,7 +288,7 @@ export default function StoreSettingsPage() {
               <div className="relative size-20 rounded-xl bg-muted overflow-hidden border flex items-center justify-center">
                 {logoUrl ? (
                   <Image
-                    src={logoUrl}
+                    src={logoUrl ?? ""}
                     alt="Logo"
                     fill
                     sizes="80px"
@@ -246,14 +320,14 @@ export default function StoreSettingsPage() {
                   ) : (
                     <Upload className="size-3.5 mr-2" />
                   )}
-                  {logoUrl ? "Changer" : "Ajouter"}
+                  {logoStorageId ? "Changer" : "Ajouter"}
                 </Button>
-                {logoUrl && (
+                {logoStorageId && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive"
-                    onClick={() => setLogoUrl(undefined)}
+                    onClick={() => setLogoStorageId(undefined)}
                   >
                     <X className="size-3.5 mr-1" />
                     Retirer
@@ -272,7 +346,7 @@ export default function StoreSettingsPage() {
               <div className="relative h-32 w-full rounded-xl bg-muted overflow-hidden border flex items-center justify-center">
                 {bannerUrl ? (
                   <Image
-                    src={bannerUrl}
+                    src={bannerUrl ?? ""}
                     alt="Bannière"
                     fill
                     sizes="600px"
@@ -304,14 +378,14 @@ export default function StoreSettingsPage() {
                   ) : (
                     <Upload className="size-3.5 mr-2" />
                   )}
-                  {bannerUrl ? "Changer" : "Ajouter"}
+                  {bannerStorageId ? "Changer" : "Ajouter"}
                 </Button>
-                {bannerUrl && (
+                {bannerStorageId && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-destructive"
-                    onClick={() => setBannerUrl(undefined)}
+                    onClick={() => setBannerStorageId(undefined)}
                   >
                     <X className="size-3.5 mr-1" />
                     Retirer
@@ -319,6 +393,139 @@ export default function StoreSettingsPage() {
                 )}
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Delivery & Pickup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Truck className="size-4" />
+            Livraison & Point de retrait
+          </CardTitle>
+          <CardDescription>
+            Définissez comment vos clients récupèrent leurs commandes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Pending orders lock */}
+          {hasPendingOrders && (
+            <div className="flex items-start gap-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-yellow-600" />
+              <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                Vous avez des commandes en cours. Ces paramètres seront
+                modifiables une fois toutes les commandes terminées ou annulées.
+              </p>
+            </div>
+          )}
+
+          {/* Toggle */}
+          <div
+            className={`flex items-start justify-between gap-4 ${hasPendingOrders ? "opacity-50 pointer-events-none select-none" : ""}`}
+          >
+            <div className="space-y-1">
+              <p className="text-sm font-semibold">
+                Utiliser le service de livraison Pixel-Mart
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {usePixelmartService
+                  ? "Pixel-Mart gère la livraison de vos commandes."
+                  : "Vous gérez vous-même la livraison. Pixel-Mart ne calcule aucun frais de livraison pour vos commandes."}
+              </p>
+            </div>
+            <Switch
+              checked={usePixelmartService}
+              onCheckedChange={(val) => {
+                setUsePixelmartService(val);
+                if (!val) setCustomPickup(undefined);
+              }}
+              disabled={!!hasPendingOrders}
+            />
+          </div>
+
+          {/* Service ON — optional pickup */}
+          {usePixelmartService && !hasPendingOrders && (
+            <div className="space-y-4">
+              {/* Info banner */}
+              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
+                <Info className="size-4 shrink-0 mt-0.5 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  {customPickup ? (
+                    <>
+                      Pixel-Mart collectera depuis votre point de retrait.{" "}
+                      <span className="font-medium text-foreground">
+                        Seule la livraison sera facturée
+                      </span>{" "}
+                      (pas de stockage).
+                    </>
+                  ) : (
+                    <>
+                      Par défaut, notre entrepôt{" "}
+                      <span className="font-medium text-foreground">
+                        {PIXELMART_WAREHOUSE.label}
+                      </span>{" "}
+                      sera utilisé.{" "}
+                      <span className="font-medium text-foreground">
+                        Le stockage et la livraison seront facturés.
+                      </span>{" "}
+                      Définissez un point de collecte ci-dessous pour
+                      n&apos;être facturé que pour la livraison.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              {/* Optional pickup map */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <MapPin className="size-4 text-primary" />
+                  <p className="text-sm font-medium">
+                    Point de collecte{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optionnel)
+                    </span>
+                  </p>
+                  {customPickup && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomPickup(undefined)}
+                      className="ml-auto text-xs text-destructive hover:underline"
+                    >
+                      Retirer
+                    </button>
+                  )}
+                </div>
+                <LocationPicker
+                  value={customPickup}
+                  onChange={setCustomPickup}
+                  height={280}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Save */}
+          <div className="flex items-center gap-3 pt-1">
+            <Button
+              type="button"
+              onClick={handleSaveDelivery}
+              disabled={isSavingDelivery || !!hasPendingOrders}
+              size="sm"
+            >
+              {isSavingDelivery ? (
+                <Loader2 className="size-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="size-4 mr-2" />
+              )}
+              Enregistrer la livraison
+            </Button>
+            {deliverySuccess && (
+              <p className="text-sm text-green-600">Livraison mise à jour ✓</p>
+            )}
+            {deliveryError && (
+              <p className="text-sm text-destructive">{deliveryError}</p>
+            )}
           </div>
         </CardContent>
       </Card>

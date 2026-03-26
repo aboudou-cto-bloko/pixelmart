@@ -371,13 +371,9 @@ export const confirmAdPayment = internalMutation({
   handler: async (ctx, { bookingId, externalRef }) => {
     const booking = await ctx.db.get(bookingId);
     if (!booking) {
-      console.warn(`confirmAdPayment: booking ${bookingId} introuvable`);
       return;
     }
     if (booking.payment_status === "paid") {
-      console.warn(
-        `confirmAdPayment: booking ${bookingId} déjà payé — idempotent skip`,
-      );
       return;
     }
 
@@ -422,7 +418,6 @@ export const failAdPayment = internalMutation({
   handler: async (ctx, { bookingId, reason }) => {
     const booking = await ctx.db.get(bookingId);
     if (!booking) {
-      console.warn(`failAdPayment: booking ${bookingId} introuvable`);
       return;
     }
 

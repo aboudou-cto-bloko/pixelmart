@@ -13,10 +13,6 @@ function getMonerooKey(): string {
   return key;
 }
 
-function getSiteUrl(): string {
-  return process.env.SITE_URL ?? "http://localhost:3001";
-}
-
 // ─── Initialize Payout via Moneroo ──────────────────────────
 
 export const initializePayoutViaMoneroo = internalAction({
@@ -78,12 +74,6 @@ export const initializePayoutViaMoneroo = internalAction({
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(
-          `Moneroo payout init failed (${response.status}):`,
-          errorText,
-        );
-
         // Fail le payout
         await ctx.runMutation(internal.payouts.mutations.failPayout, {
           payoutId: args.payoutId,
@@ -95,7 +85,6 @@ export const initializePayoutViaMoneroo = internalAction({
       const result = await response.json();
 
       if (!result.success || !result.data?.id) {
-        console.error("Moneroo payout init: unexpected response", result);
         await ctx.runMutation(internal.payouts.mutations.failPayout, {
           payoutId: args.payoutId,
           reason: "Moneroo: réponse inattendue",
@@ -109,12 +98,7 @@ export const initializePayoutViaMoneroo = internalAction({
         reference: result.data.id,
         status: "processing",
       });
-
-      console.log(
-        `Payout ${args.payoutId} initialized with Moneroo ID: ${result.data.id}`,
-      );
     } catch (error) {
-      console.error("Moneroo payout init error:", error);
       await ctx.runMutation(internal.payouts.mutations.failPayout, {
         payoutId: args.payoutId,
         reason: `Erreur réseau: ${error instanceof Error ? error.message : "unknown"}`,
@@ -146,7 +130,6 @@ export const verifyPayout = internalAction({
       );
 
       if (!response.ok) {
-        console.error(`Moneroo payout verify failed: ${response.status}`);
         return null;
       }
 
@@ -166,8 +149,7 @@ export const verifyPayout = internalAction({
       }
 
       return { status };
-    } catch (error) {
-      console.error("Moneroo payout verify error:", error);
+    } catch {
       return null;
     }
   },

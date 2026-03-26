@@ -81,6 +81,7 @@ export default function ShopProductDetailPage() {
 
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   const product = useQuery(api.products.queries.getBySlug, { slug });
   const store = useQuery(api.stores.queries.getBySlug, { slug: storeSlug });
@@ -101,44 +102,67 @@ export default function ShopProductDetailPage() {
     );
   }, [product?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddToCart = useCallback(() => {
-    if (!product || !store) return;
+  const handleAddToCart = useCallback(async () => {
+    if (!product || !store || isAdding) return;
 
+    setIsAdding(true);
     const eventId = generateEventId();
 
-    addItem({
-      productId: product._id as Id<"products">,
-      title: product.title,
-      variantTitle: undefined,
-      slug: product.slug,
-      image: product.images?.[0] ?? "",
-      price: product.price,
-      comparePrice: product.compare_price,
-      quantity,
-      maxQuantity: product.quantity ?? 99,
-      isDigital: product.is_digital,
-    });
+    try {
+      await addItem({
+        productId: product._id as Id<"products">,
+        title: product.title,
+        variantTitle: undefined,
+        slug: product.slug,
+        image: product.images?.[0] ?? "",
+        price: product.price,
+        comparePrice: product.compare_price,
+        storeId: store._id,
+        storeName: store.name,
+        storeSlug: store.slug,
+        quantity,
+        maxQuantity: product.quantity ?? 99,
+        isDigital: product.is_digital,
+      });
 
-    // Track AddToCart
-    trackEvent(
-      "AddToCart",
-      {
-        content_ids: [product._id],
-        content_type: "product",
-        value: (product.price * quantity) / 100,
-        currency: store.currency ?? "XOF",
-        num_items: quantity,
-      },
-      eventId,
-    );
+      // Track AddToCart
+      trackEvent(
+        "AddToCart",
+        {
+          content_ids: [product._id],
+          content_type: "product",
+          value: (product.price * quantity) / 100,
+          currency: store.currency ?? "XOF",
+          num_items: quantity,
+        },
+        eventId,
+      );
 
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
-  }, [product, store, quantity, addItem, trackEvent, generateEventId]);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      // TODO: Show user-friendly error message
+    } finally {
+      setIsAdding(false);
+    }
+  }, [
+    product,
+    store,
+    quantity,
+    addItem,
+    trackEvent,
+    generateEventId,
+    isAdding,
+  ]);
 
-  const handleBuyNow = useCallback(() => {
-    handleAddToCart();
-    router.push(SHOP_ROUTES.CART(storeSlug));
+  const handleBuyNow = useCallback(async () => {
+    try {
+      await handleAddToCart();
+      router.push(SHOP_ROUTES.CART(storeSlug));
+    } catch (error) {
+      // Error already handled in handleAddToCart
+    }
   }, [handleAddToCart, router, storeSlug]);
 
   if (product === undefined) {
@@ -289,13 +313,15 @@ export default function ShopProductDetailPage() {
                   className="flex-1"
                   onClick={handleAddToCart}
                   variant="outline"
-                  disabled={added}
+                  disabled={added || isAdding}
                 >
                   {added ? (
                     <>
                       <Check className="size-4 mr-2" />
                       Ajouté
                     </>
+                  ) : isAdding ? (
+                    "Ajout..."
                   ) : (
                     <>
                       <ShoppingCart className="size-4 mr-2" />
@@ -306,9 +332,10 @@ export default function ShopProductDetailPage() {
                 <Button
                   className="flex-1"
                   onClick={handleBuyNow}
+                  disabled={isAdding}
                   style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
                 >
-                  Commander
+                  {isAdding ? "Ajout..." : "Commander"}
                 </Button>
               </div>
             </div>

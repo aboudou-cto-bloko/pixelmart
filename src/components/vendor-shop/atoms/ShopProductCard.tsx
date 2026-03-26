@@ -5,11 +5,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { useShopCart } from "../providers";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 export interface ShopProductCardData {
   _id: string;
@@ -25,6 +27,8 @@ export interface ShopProductCardData {
 interface ShopProductCardProps {
   product: ShopProductCardData;
   storeSlug: string;
+  storeId: Id<"stores">;
+  storeName: string;
   currency?: string;
   showAddToCart?: boolean;
 }
@@ -32,11 +36,14 @@ interface ShopProductCardProps {
 export function ShopProductCard({
   product,
   storeSlug,
+  storeId,
+  storeName,
   currency = "XOF",
   showAddToCart = false,
 }: ShopProductCardProps) {
   const router = useRouter();
   const { addItem } = useShopCart();
+  const [isAdding, setIsAdding] = useState(false);
 
   const { title, slug, price, compare_price, images, is_digital, quantity } =
     product;
@@ -48,21 +55,35 @@ export function ShopProductCard({
 
   const productHref = SHOP_ROUTES.PRODUCT(storeSlug, slug);
 
-  function handleAddToCart(e: React.MouseEvent) {
+  async function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    addItem({
-      productId: product._id,
-      title: product.title,
-      slug: product.slug,
-      image: images[0] ?? "",
-      price: product.price,
-      comparePrice: compare_price,
-      quantity: 1,
-      maxQuantity: quantity ?? 99,
-      isDigital: is_digital,
-    });
-    router.push(SHOP_ROUTES.CART(storeSlug));
+
+    if (isAdding) return;
+
+    setIsAdding(true);
+    try {
+      await addItem({
+        productId: product._id as Id<"products">,
+        title: product.title,
+        slug: product.slug,
+        image: images[0] ?? "",
+        price: product.price,
+        comparePrice: compare_price,
+        storeId,
+        storeName,
+        storeSlug,
+        quantity: 1,
+        maxQuantity: quantity ?? 99,
+        isDigital: is_digital,
+      });
+      router.push(SHOP_ROUTES.CART(storeSlug));
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      // TODO: Show user-friendly error message
+    } finally {
+      setIsAdding(false);
+    }
   }
 
   return (
@@ -130,9 +151,10 @@ export function ShopProductCard({
               size="sm"
               className="w-full mt-3"
               onClick={handleAddToCart}
+              disabled={isAdding}
               style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
             >
-              Commander
+              {isAdding ? "Ajout..." : "Commander"}
             </Button>
           )}
         </div>

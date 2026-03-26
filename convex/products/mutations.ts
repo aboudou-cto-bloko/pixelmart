@@ -3,7 +3,12 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getVendorStore } from "../users/helpers";
-import { generateProductSlug, safeDeleteFile } from "./helpers";
+import {
+  generateProductSlug,
+  safeDeleteFile,
+  sanitizeHTML,
+  validateProductData,
+} from "./helpers";
 
 /**
  * Crée un nouveau produit.
@@ -18,6 +23,7 @@ export const create = mutation({
     category_id: v.id("categories"),
     tags: v.array(v.string()),
     images: v.array(v.string()), // storageIds from Convex Storage
+    image_roles: v.optional(v.array(v.string())),
     price: v.number(),
     compare_price: v.optional(v.number()),
     cost_price: v.optional(v.number()),
@@ -27,27 +33,34 @@ export const create = mutation({
     quantity: v.number(),
     low_stock_threshold: v.optional(v.number()),
     weight: v.optional(v.number()),
+    color: v.optional(v.string()),
+    material: v.optional(v.string()),
+    dimensions: v.optional(v.string()),
     is_digital: v.boolean(),
     digital_file_url: v.optional(v.string()),
     seo_title: v.optional(v.string()),
     seo_description: v.optional(v.string()),
+    seo_keywords: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
 
-    // ---- Validations ----
-    if (args.price <= 0) {
-      throw new Error("Le prix doit être supérieur à 0");
-    }
-    if (args.compare_price !== undefined && args.compare_price <= args.price) {
-      throw new Error("Le prix barré doit être supérieur au prix de vente");
-    }
-    if (args.images.length === 0) {
-      throw new Error("Au moins une image est requise");
-    }
-    if (args.images.length > 10) {
-      throw new Error("Maximum 10 images par produit");
-    }
+    // ---- Server-side validation and sanitization ----
+    const validatedData = validateProductData({
+      title: args.title,
+      description: args.description,
+      short_description: args.short_description,
+      tags: args.tags,
+      price: args.price,
+      compare_price: args.compare_price,
+      cost_price: args.cost_price,
+      sku: args.sku,
+      barcode: args.barcode,
+      seo_title: args.seo_title,
+      seo_description: args.seo_description,
+      seo_keywords: args.seo_keywords,
+      images: args.images,
+    });
 
     // Vérifier que la catégorie existe et est active
     const category = await ctx.db.get(args.category_id);
@@ -56,31 +69,36 @@ export const create = mutation({
     }
 
     // Générer le slug
-    const slug = await generateProductSlug(ctx, args.title);
+    const slug = await generateProductSlug(ctx, validatedData.title);
 
     const productId = await ctx.db.insert("products", {
       store_id: store._id,
-      title: args.title,
+      title: validatedData.title,
       slug,
-      description: args.description,
-      short_description: args.short_description,
+      description: validatedData.description,
+      short_description: validatedData.short_description,
       category_id: args.category_id,
-      tags: args.tags,
-      images: args.images,
-      price: args.price,
-      compare_price: args.compare_price,
-      cost_price: args.cost_price,
-      sku: args.sku,
-      barcode: args.barcode,
+      tags: validatedData.tags,
+      images: validatedData.images,
+      image_roles: args.image_roles,
+      price: validatedData.price,
+      compare_price: validatedData.compare_price,
+      cost_price: validatedData.cost_price,
+      sku: validatedData.sku,
+      barcode: validatedData.barcode,
       track_inventory: args.track_inventory,
       quantity: args.quantity,
       low_stock_threshold: args.low_stock_threshold ?? 5,
       weight: args.weight,
+      color: args.color,
+      material: args.material,
+      dimensions: args.dimensions,
       status: "draft",
       is_digital: args.is_digital,
       digital_file_url: args.digital_file_url,
-      seo_title: args.seo_title,
-      seo_description: args.seo_description,
+      seo_title: validatedData.seo_title,
+      seo_description: validatedData.seo_description,
+      seo_keywords: validatedData.seo_keywords,
       published_at: undefined,
       updated_at: Date.now(),
     });
@@ -102,6 +120,7 @@ export const update = mutation({
     category_id: v.optional(v.id("categories")),
     tags: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
+    image_roles: v.optional(v.array(v.string())),
     price: v.optional(v.number()),
     compare_price: v.optional(v.number()),
     cost_price: v.optional(v.number()),
@@ -111,10 +130,14 @@ export const update = mutation({
     quantity: v.optional(v.number()),
     low_stock_threshold: v.optional(v.number()),
     weight: v.optional(v.number()),
+    color: v.optional(v.string()),
+    material: v.optional(v.string()),
+    dimensions: v.optional(v.string()),
     is_digital: v.optional(v.boolean()),
     digital_file_url: v.optional(v.string()),
     seo_title: v.optional(v.string()),
     seo_description: v.optional(v.string()),
+    seo_keywords: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
@@ -125,21 +148,25 @@ export const update = mutation({
       throw new Error("Ce produit n'appartient pas à votre boutique");
     }
 
-    // ---- Validations conditionnelles ----
-    const newPrice = args.price ?? product.price;
-    if (args.price !== undefined && args.price <= 0) {
-      throw new Error("Le prix doit être supérieur à 0");
-    }
-    const newComparePrice = args.compare_price ?? product.compare_price;
-    if (newComparePrice !== undefined && newComparePrice <= newPrice) {
-      throw new Error("Le prix barré doit être supérieur au prix de vente");
-    }
-    if (args.images !== undefined && args.images.length === 0) {
-      throw new Error("Au moins une image est requise");
-    }
-    if (args.images !== undefined && args.images.length > 10) {
-      throw new Error("Maximum 10 images par produit");
-    }
+    // ---- Prepare data for validation (merge with existing) ----
+    const dataToValidate = {
+      title: args.title ?? product.title,
+      description: args.description ?? product.description,
+      short_description: args.short_description ?? product.short_description,
+      tags: args.tags ?? product.tags,
+      price: args.price ?? product.price,
+      compare_price: args.compare_price ?? product.compare_price,
+      cost_price: args.cost_price ?? product.cost_price,
+      sku: args.sku ?? product.sku,
+      barcode: args.barcode ?? product.barcode,
+      seo_title: args.seo_title ?? product.seo_title,
+      seo_description: args.seo_description ?? product.seo_description,
+      seo_keywords: args.seo_keywords ?? product.seo_keywords,
+      images: args.images ?? product.images,
+    };
+
+    // ---- Server-side validation and sanitization ----
+    const validatedData = validateProductData(dataToValidate);
 
     if (args.category_id) {
       const category = await ctx.db.get(args.category_id);
@@ -148,37 +175,50 @@ export const update = mutation({
       }
     }
 
-    // ---- Build updates ----
+    // ---- Build updates using validated data ----
     const updates: Record<string, unknown> = { updated_at: Date.now() };
 
     if (args.title !== undefined) {
-      updates.title = args.title;
-      updates.slug = await generateProductSlug(ctx, args.title, args.id);
+      updates.title = validatedData.title;
+      updates.slug = await generateProductSlug(
+        ctx,
+        validatedData.title,
+        args.id,
+      );
     }
-    if (args.description !== undefined) updates.description = args.description;
+    if (args.description !== undefined)
+      updates.description = validatedData.description;
     if (args.short_description !== undefined)
-      updates.short_description = args.short_description;
+      updates.short_description = validatedData.short_description;
     if (args.category_id !== undefined) updates.category_id = args.category_id;
-    if (args.tags !== undefined) updates.tags = args.tags;
-    if (args.images !== undefined) updates.images = args.images;
-    if (args.price !== undefined) updates.price = args.price;
+    if (args.tags !== undefined) updates.tags = validatedData.tags;
+    if (args.images !== undefined) updates.images = validatedData.images;
+    if (args.image_roles !== undefined) updates.image_roles = args.image_roles;
+    if (args.price !== undefined) updates.price = validatedData.price;
     if (args.compare_price !== undefined)
-      updates.compare_price = args.compare_price;
-    if (args.cost_price !== undefined) updates.cost_price = args.cost_price;
-    if (args.sku !== undefined) updates.sku = args.sku;
-    if (args.barcode !== undefined) updates.barcode = args.barcode;
+      updates.compare_price = validatedData.compare_price;
+    if (args.cost_price !== undefined)
+      updates.cost_price = validatedData.cost_price;
+    if (args.sku !== undefined) updates.sku = validatedData.sku;
+    if (args.barcode !== undefined) updates.barcode = validatedData.barcode;
     if (args.track_inventory !== undefined)
       updates.track_inventory = args.track_inventory;
     if (args.quantity !== undefined) updates.quantity = args.quantity;
     if (args.low_stock_threshold !== undefined)
       updates.low_stock_threshold = args.low_stock_threshold;
     if (args.weight !== undefined) updates.weight = args.weight;
+    if (args.color !== undefined) updates.color = args.color;
+    if (args.material !== undefined) updates.material = args.material;
+    if (args.dimensions !== undefined) updates.dimensions = args.dimensions;
     if (args.is_digital !== undefined) updates.is_digital = args.is_digital;
     if (args.digital_file_url !== undefined)
       updates.digital_file_url = args.digital_file_url;
-    if (args.seo_title !== undefined) updates.seo_title = args.seo_title;
+    if (args.seo_title !== undefined)
+      updates.seo_title = validatedData.seo_title;
     if (args.seo_description !== undefined)
-      updates.seo_description = args.seo_description;
+      updates.seo_description = validatedData.seo_description;
+    if (args.seo_keywords !== undefined)
+      updates.seo_keywords = validatedData.seo_keywords;
 
     await ctx.db.patch(args.id, updates);
     return args.id;
@@ -361,6 +401,7 @@ export const duplicate = mutation({
       category_id: source.category_id,
       tags: [...source.tags],
       images: [...source.images], // storageIds partagés
+      image_roles: source.image_roles ? [...source.image_roles] : undefined,
       price: source.price,
       compare_price: source.compare_price,
       cost_price: source.cost_price,
@@ -370,6 +411,9 @@ export const duplicate = mutation({
       quantity: source.quantity,
       low_stock_threshold: source.low_stock_threshold,
       weight: source.weight,
+      color: source.color,
+      material: source.material,
+      dimensions: source.dimensions,
       status: "draft",
       is_digital: source.is_digital,
       digital_file_url: source.digital_file_url,

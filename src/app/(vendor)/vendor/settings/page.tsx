@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import Image from "next/image";
+import { z } from "zod";
 import {
   Loader2,
   Save,
@@ -12,6 +13,9 @@ import {
   Palette,
   Globe,
   ImageIcon,
+  Truck,
+  MapPin,
+  AlertTriangle,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -37,10 +41,29 @@ import { Separator } from "@/components/ui/separator";
 import { SUPPORTED_COUNTRIES } from "@/constants/countries";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { formatPrice } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import {
+  LocationPicker,
+  type PickedLocation,
+} from "@/components/maps/LocationPicker";
+import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
+import {
+  storeSettingsSchema,
+  deliverySettingsSchema,
+  validateImageFile,
+  getSafeSettingsErrorMessage,
+  RateLimiter,
+  type StoreSettingsData,
+  type DeliverySettingsData,
+} from "@/lib/validation/store-settings";
 
 export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);
+  const hasPendingOrders = useQuery(api.stores.queries.hasPendingOrders);
   const updateStore = useMutation(api.stores.mutations.updateStore);
+  const updateDeliverySettings = useMutation(
+    api.stores.mutations.updateDeliverySettings,
+  );
   const generateUploadUrl = useMutation(api.stores.mutations.generateUploadUrl);
 
   const [name, setName] = useState("");
@@ -55,9 +78,26 @@ export default function StoreSettingsPage() {
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Delivery settings
+  const [usePixelmartService, setUsePixelmartService] = useState(true);
+  const [customPickup, setCustomPickup] = useState<
+    PickedLocation | undefined
+  >();
+  const [isSavingDelivery, setIsSavingDelivery] = useState(false);
+  const [deliverySuccess, setDeliverySuccess] = useState(false);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  // Helper function to clear field errors
+  function clearFieldError(fieldName: string) {
+    if (fieldErrors[fieldName]) {
+      setFieldErrors((prev) => ({ ...prev, [fieldName]: "" }));
+    }
+  }
 
   // Obtenir les URLs à partir des storageIds
   const logoImageUrl = useQuery(
@@ -79,6 +119,22 @@ export default function StoreSettingsPage() {
       setCurrency(store.currency);
       setLogoStorageId(store.logo_url); // store.logo_url est le storageId
       setBannerStorageId(store.banner_url);
+
+      // Delivery settings — default is true if field not yet set
+      const usePM = store.use_pixelmart_service ?? true;
+      setUsePixelmartService(usePM);
+      if (
+        !usePM &&
+        store.custom_pickup_lat !== undefined &&
+        store.custom_pickup_lon !== undefined &&
+        store.custom_pickup_label
+      ) {
+        setCustomPickup({
+          lat: store.custom_pickup_lat,
+          lon: store.custom_pickup_lon,
+          label: store.custom_pickup_label,
+        });
+      }
     }
   }, [store]);
 
@@ -88,8 +144,26 @@ export default function StoreSettingsPage() {
     const setStorageId =
       type === "logo" ? setLogoStorageId : setBannerStorageId;
 
+    // Rate limiting check
+    const rateLimit = RateLimiter.checkRateLimit(`upload-${type}`, 5000); // 5 second cooldown
+    if (!rateLimit.allowed) {
+      setError(
+        `Veuillez attendre ${RateLimiter.formatRemainingTime(rateLimit.remainingTime!)} avant d'uploader à nouveau`,
+      );
+      return;
+    }
+
+    setError(null);
     setUploading(true);
+
     try {
+      // Validate file before upload
+      const validation = await validateImageFile(file);
+      if (!validation.isValid) {
+        setError(validation.error!);
+        return;
+      }
+
       const uploadUrl = await generateUploadUrl();
 
       const response = await fetch(uploadUrl, {
@@ -98,34 +172,123 @@ export default function StoreSettingsPage() {
         body: file,
       });
 
-      const { storageId } = await response.json();
-      setStorageId(storageId); // Stocker le storageId, l'URL sera résolue automatiquement par la query
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result.storageId) {
+        throw new Error("Invalid upload response");
+      }
+
+      setStorageId(result.storageId);
     } catch (err) {
-      setError("Erreur lors de l'upload de l'image");
+      setError(getSafeSettingsErrorMessage(err));
     } finally {
       setUploading(false);
     }
   }
 
+  async function handleSaveDelivery() {
+    // Rate limiting check
+    const rateLimit = RateLimiter.checkRateLimit("save-delivery", 3000); // 3 second cooldown
+    if (!rateLimit.allowed) {
+      setDeliveryError(
+        `Veuillez attendre ${RateLimiter.formatRemainingTime(rateLimit.remainingTime!)} avant de sauvegarder à nouveau`,
+      );
+      return;
+    }
+
+    setIsSavingDelivery(true);
+    setDeliveryError(null);
+    setDeliverySuccess(false);
+
+    try {
+      // Validate delivery settings
+      const deliveryData: DeliverySettingsData = {
+        usePixelmartService,
+        customPickupLat: customPickup?.lat,
+        customPickupLon: customPickup?.lon,
+        customPickupLabel: customPickup?.label,
+      };
+
+      const validatedData = deliverySettingsSchema.parse(deliveryData);
+
+      await updateDeliverySettings({
+        use_pixelmart_service: validatedData.usePixelmartService,
+        custom_pickup_lat: validatedData.customPickupLat,
+        custom_pickup_lon: validatedData.customPickupLon,
+        custom_pickup_label: validatedData.customPickupLabel,
+      });
+
+      setDeliverySuccess(true);
+      setTimeout(() => setDeliverySuccess(false), 3000);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        const firstError = err.issues[0];
+        setDeliveryError(
+          firstError?.message || "Données de livraison invalides",
+        );
+      } else {
+        setDeliveryError(getSafeSettingsErrorMessage(err));
+      }
+    } finally {
+      setIsSavingDelivery(false);
+    }
+  }
+
   async function handleSave() {
+    // Rate limiting check
+    const rateLimit = RateLimiter.checkRateLimit("save-settings", 3000); // 3 second cooldown
+    if (!rateLimit.allowed) {
+      setError(
+        `Veuillez attendre ${RateLimiter.formatRemainingTime(rateLimit.remainingTime!)} avant de sauvegarder à nouveau`,
+      );
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     setSuccess(false);
+    setFieldErrors({});
 
     try {
-      await updateStore({
-        name: name.trim(),
-        description: description.trim(),
-        primary_color: primaryColor,
+      // Client-side validation
+      const validatedData = storeSettingsSchema.parse({
+        name,
+        description,
+        primaryColor,
         country,
         currency,
-        logo_url: logoStorageId, // Envoyer le storageId
+      });
+
+      await updateStore({
+        name: validatedData.name,
+        description: validatedData.description || undefined,
+        primary_color: validatedData.primaryColor,
+        country: validatedData.country,
+        currency: validatedData.currency,
+        logo_url: logoStorageId,
         banner_url: bannerStorageId,
       });
+
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de sauvegarde");
+      if (err instanceof z.ZodError) {
+        // Handle validation errors
+        const newFieldErrors: Record<string, string> = {};
+        err.issues.forEach((issue) => {
+          const field = issue.path[0] as string;
+          if (field && !newFieldErrors[field]) {
+            newFieldErrors[field] = issue.message;
+          }
+        });
+        setFieldErrors(newFieldErrors);
+        setError("Veuillez corriger les erreurs ci-dessous");
+      } else {
+        setError(getSafeSettingsErrorMessage(err));
+      }
     } finally {
       setIsSaving(false);
     }
@@ -171,16 +334,25 @@ export default function StoreSettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="store-name">Nom de la boutique</Label>
+            <Label htmlFor="store-name">Nom de la boutique *</Label>
             <Input
               id="store-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearFieldError("name");
+              }}
               placeholder="Ma super boutique"
-              className="mt-1"
+              className={`mt-1 ${fieldErrors.name ? "border-destructive" : ""}`}
+              maxLength={100}
             />
+            {fieldErrors.name && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.name}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">
-              URL : /stores/{store.slug}
+              URL : /stores/{store.slug} • {name.length}/100
             </p>
           </div>
 
@@ -189,12 +361,20 @@ export default function StoreSettingsPage() {
             <Textarea
               id="store-desc"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                clearFieldError("description");
+              }}
               placeholder="Décrivez votre boutique en quelques lignes…"
               rows={4}
               maxLength={2000}
-              className="mt-1"
+              className={`mt-1 ${fieldErrors.description ? "border-destructive" : ""}`}
             />
+            {fieldErrors.description && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.description}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground mt-1 text-right">
               {description.length}/2000
             </p>
@@ -340,26 +520,158 @@ export default function StoreSettingsPage() {
         </CardHeader>
         <CardContent>
           <div>
-            <Label htmlFor="theme-color">Couleur principale</Label>
+            <Label htmlFor="theme-color">Couleur principale *</Label>
             <div className="flex items-center gap-3 mt-1">
               <input
                 id="theme-color"
                 type="color"
                 value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
+                onChange={(e) => {
+                  setPrimaryColor(e.target.value);
+                  clearFieldError("primaryColor");
+                }}
                 className="size-10 rounded-lg border cursor-pointer"
               />
               <Input
                 value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
+                onChange={(e) => {
+                  setPrimaryColor(e.target.value);
+                  clearFieldError("primaryColor");
+                }}
                 placeholder="#6366f1"
-                className="w-32 font-mono text-sm"
+                className={`w-32 font-mono text-sm ${fieldErrors.primaryColor ? "border-destructive" : ""}`}
+                pattern="^#[0-9A-Fa-f]{6}$"
+                maxLength={7}
               />
               <div
                 className="size-10 rounded-lg border"
                 style={{ backgroundColor: primaryColor }}
               />
             </div>
+            {fieldErrors.primaryColor && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.primaryColor}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Format hexadécimal (ex: #6366f1)
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Delivery & Pickup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Truck className="size-4" />
+            Livraison & Point de retrait
+          </CardTitle>
+          <CardDescription>
+            Définissez comment vos clients récupèrent leurs commandes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Pending orders lock */}
+          {hasPendingOrders && (
+            <div className="flex items-start gap-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3">
+              <AlertTriangle className="size-4 shrink-0 mt-0.5 text-yellow-600" />
+              <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                Vous avez des commandes en cours. Ces paramètres seront
+                modifiables une fois toutes les commandes terminées ou annulées.
+              </p>
+            </div>
+          )}
+
+          {/* Toggle */}
+          <div
+            className={`flex items-start justify-between gap-4 ${hasPendingOrders ? "opacity-50 pointer-events-none select-none" : ""}`}
+          >
+            <div className="space-y-1">
+              <p className="text-sm font-medium">
+                Utiliser le service Pixel-Mart
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Activé : vos produits sont stockés et expédiés depuis notre
+                entrepôt ({PIXELMART_WAREHOUSE.label}).
+                <br />
+                Désactivé : vous gérez vous-même le stockage et définissez votre
+                propre point de retrait.
+              </p>
+            </div>
+            <Switch
+              checked={usePixelmartService}
+              onCheckedChange={(val) => {
+                setUsePixelmartService(val);
+                if (val) setCustomPickup(undefined);
+              }}
+              disabled={!!hasPendingOrders}
+            />
+          </div>
+
+          {/* Custom pickup map — shown only when service is OFF */}
+          {!usePixelmartService && !hasPendingOrders && (
+            <div className="space-y-3 rounded-lg border p-4 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <MapPin className="size-4 text-primary" />
+                <p className="text-sm font-medium">
+                  Votre point de retrait{" "}
+                  <span className="text-destructive">*</span>
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Cliquez sur la carte ou recherchez votre adresse pour définir
+                votre point de retrait.
+              </p>
+              <LocationPicker
+                value={customPickup}
+                onChange={setCustomPickup}
+                height={300}
+              />
+              {!customPickup && (
+                <p className="text-xs text-destructive font-medium">
+                  ⚠ Adresse obligatoire — vous ne pourrez pas sauvegarder sans
+                  définir votre point de retrait.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Read-only display when service is ON */}
+          {usePixelmartService && (
+            <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
+              <MapPin className="size-4 shrink-0 mt-0.5 text-primary" />
+              <p className="text-xs text-muted-foreground">
+                {PIXELMART_WAREHOUSE.label}
+              </p>
+            </div>
+          )}
+
+          {/* Save delivery */}
+          <div className="flex items-center gap-3 pt-1">
+            <Button
+              type="button"
+              onClick={handleSaveDelivery}
+              disabled={
+                isSavingDelivery ||
+                !!hasPendingOrders ||
+                (!usePixelmartService && !customPickup)
+              }
+              size="sm"
+            >
+              {isSavingDelivery ? (
+                <Loader2 className="size-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="size-4 mr-2" />
+              )}
+              Enregistrer la livraison
+            </Button>
+            {deliverySuccess && (
+              <p className="text-sm text-green-600">Livraison mise à jour ✓</p>
+            )}
+            {deliveryError && (
+              <p className="text-sm text-destructive">{deliveryError}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -374,9 +686,17 @@ export default function StoreSettingsPage() {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label>Pays</Label>
-            <Select value={country} onValueChange={setCountry}>
-              <SelectTrigger className="mt-1">
+            <Label>Pays *</Label>
+            <Select
+              value={country}
+              onValueChange={(value) => {
+                setCountry(value);
+                clearFieldError("country");
+              }}
+            >
+              <SelectTrigger
+                className={`mt-1 ${fieldErrors.country ? "border-destructive" : ""}`}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -387,11 +707,24 @@ export default function StoreSettingsPage() {
                 ))}
               </SelectContent>
             </Select>
+            {fieldErrors.country && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.country}
+              </p>
+            )}
           </div>
           <div>
-            <Label>Devise</Label>
-            <Select value={currency} onValueChange={setCurrency}>
-              <SelectTrigger className="mt-1">
+            <Label>Devise *</Label>
+            <Select
+              value={currency}
+              onValueChange={(value) => {
+                setCurrency(value);
+                clearFieldError("currency");
+              }}
+            >
+              <SelectTrigger
+                className={`mt-1 ${fieldErrors.currency ? "border-destructive" : ""}`}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -400,6 +733,11 @@ export default function StoreSettingsPage() {
                 <SelectItem value="USD">USD (Dollar US)</SelectItem>
               </SelectContent>
             </Select>
+            {fieldErrors.currency && (
+              <p className="text-sm text-destructive mt-1">
+                {fieldErrors.currency}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

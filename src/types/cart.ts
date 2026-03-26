@@ -52,10 +52,15 @@ export interface CartState {
 }
 
 export interface CartActions {
-  addItem: (item: Omit<CartItem, "cartItemId">) => void;
+  addItem: (item: Omit<CartItem, "cartItemId">) => Promise<void>;
   removeItem: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
   clearStore: (storeId: string) => void;
   getItemCount: () => number;
+  syncWithServer: () => Promise<{
+    hasChanges: boolean;
+    errors: string[];
+    unavailableItems: string[];
+  }>;
 }

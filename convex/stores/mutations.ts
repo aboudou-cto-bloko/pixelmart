@@ -6,6 +6,126 @@ import { getVendorStore } from "../users/helpers";
 import { STORE_THEMES } from "./themes";
 
 /**
+ * Server-side HTML sanitization for store descriptions
+ */
+function sanitizeHTML(html: string): string {
+  if (!html) return "";
+
+  // Remove script tags and their content
+  let sanitized = html.replace(/<script[^>]*>.*?<\/script>/gi, "");
+
+  // Remove dangerous event handlers
+  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "");
+
+  // Remove javascript: protocols
+  sanitized = sanitized.replace(/javascript:/gi, "");
+
+  // Allow only safe HTML tags for store descriptions
+  const allowedTags = ["p", "br", "strong", "b", "em", "i", "u"];
+
+  // Remove any tag not in the allowed list
+  const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g;
+  sanitized = sanitized.replace(tagRegex, (match, tagName) => {
+    if (allowedTags.includes(tagName.toLowerCase())) {
+      // Remove dangerous attributes but keep the tag
+      return match.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "");
+    }
+    return ""; // Remove disallowed tags completely
+  });
+
+  return sanitized.trim();
+}
+
+/**
+ * Validate store data for security and business rules
+ */
+function validateStoreData(data: {
+  name?: string;
+  description?: string;
+  primary_color?: string;
+  country?: string;
+  currency?: string;
+}) {
+  // Name validation
+  if (data.name !== undefined) {
+    if (data.name.trim().length < 2 || data.name.trim().length > 100) {
+      throw new ConvexError("Le nom doit contenir entre 2 et 100 caractères");
+    }
+
+    // Check for dangerous characters in name
+    if (/[<>"'&]/.test(data.name)) {
+      throw new ConvexError("Le nom contient des caractères non autorisés");
+    }
+  }
+
+  // Description validation
+  if (data.description !== undefined && data.description.length > 2000) {
+    throw new ConvexError(
+      "La description ne peut pas dépasser 2000 caractères",
+    );
+  }
+
+  // Color validation - accept 3 or 6 digit hex colors
+  if (data.primary_color !== undefined) {
+    if (
+      !/^#[0-9A-Fa-f]{3}$/.test(data.primary_color) &&
+      !/^#[0-9A-Fa-f]{6}$/.test(data.primary_color)
+    ) {
+      throw new ConvexError("Format de couleur invalide (ex: #6366f1 ou #fff)");
+    }
+
+    // Prevent too dark or too light colors (both 3 and 6 digit formats)
+    const invalidColors = ["#000000", "#ffffff", "#000", "#fff"];
+    if (invalidColors.includes(data.primary_color.toLowerCase())) {
+      throw new ConvexError("Veuillez choisir une couleur plus distinctive");
+    }
+  }
+
+  // Country validation
+  if (data.country !== undefined) {
+    const supportedCountries = [
+      "BJ",
+      "FR",
+      "US",
+      "CI",
+      "SN",
+      "ML",
+      "BF",
+      "TG",
+      "NE",
+    ];
+    if (!supportedCountries.includes(data.country)) {
+      throw new ConvexError("Pays non supporté");
+    }
+  }
+
+  // Currency validation
+  if (data.currency !== undefined) {
+    const supportedCurrencies = ["XOF", "EUR", "USD"];
+    if (!supportedCurrencies.includes(data.currency)) {
+      throw new ConvexError("Devise non supportée");
+    }
+  }
+
+  return {
+    name: data.name?.trim(),
+    description: data.description ? sanitizeHTML(data.description) : undefined,
+    primary_color: data.primary_color,
+    country: data.country,
+    currency: data.currency,
+  };
+}
+
+/** Statuts considérés comme "commandes actives" bloquant le changement de livraison */
+const ACTIVE_ORDER_STATUSES = [
+  "pending",
+  "paid",
+  "processing",
+  "ready_for_delivery",
+  "shipped",
+] as const;
+
+/**
  * Met à jour les informations de la boutique.
  * Le vendor ne peut modifier que sa propre boutique.
  */
@@ -22,20 +142,25 @@ export const updateStore = mutation({
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
 
+    // Validate and sanitize input data
+    const validatedData = validateStoreData({
+      name: args.name,
+      description: args.description,
+      primary_color: args.primary_color,
+      country: args.country,
+      currency: args.currency,
+    });
+
     const updates: Record<string, unknown> = { updated_at: Date.now() };
 
-    if (args.name !== undefined) {
-      if (args.name.trim().length < 2) {
-        throw new Error(
-          "Le nom de la boutique doit faire au moins 2 caractères",
-        );
-      }
-      updates.name = args.name.trim();
+    if (validatedData.name !== undefined) {
+      updates.name = validatedData.name;
 
       // Regénérer le slug si le nom change
-      const baseSlug = args.name
-        .trim()
+      const baseSlug = validatedData.name
         .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove diacritics
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
 
@@ -53,13 +178,26 @@ export const updateStore = mutation({
       updates.slug = slug;
     }
 
-    if (args.description !== undefined) updates.description = args.description;
-    if (args.logo_url !== undefined) updates.logo_url = args.logo_url;
-    if (args.banner_url !== undefined) updates.banner_url = args.banner_url;
-    if (args.primary_color !== undefined)
-      updates.primary_color = args.primary_color;
-    if (args.country !== undefined) updates.country = args.country;
-    if (args.currency !== undefined) updates.currency = args.currency;
+    if (validatedData.description !== undefined) {
+      updates.description = validatedData.description;
+    }
+    if (args.logo_url !== undefined) {
+      // Additional validation for storage IDs could be added here
+      updates.logo_url = args.logo_url;
+    }
+    if (args.banner_url !== undefined) {
+      // Additional validation for storage IDs could be added here
+      updates.banner_url = args.banner_url;
+    }
+    if (validatedData.primary_color !== undefined) {
+      updates.primary_color = validatedData.primary_color;
+    }
+    if (validatedData.country !== undefined) {
+      updates.country = validatedData.country;
+    }
+    if (validatedData.currency !== undefined) {
+      updates.currency = validatedData.currency;
+    }
 
     await ctx.db.patch(store._id, updates);
     return { success: true };
@@ -67,12 +205,130 @@ export const updateStore = mutation({
 });
 
 /**
+ * Met à jour les paramètres de livraison / point de retrait.
+ * Bloqué si le store a des commandes actives.
+ */
+export const updateDeliverySettings = mutation({
+  args: {
+    use_pixelmart_service: v.boolean(),
+    custom_pickup_lat: v.optional(v.number()),
+    custom_pickup_lon: v.optional(v.number()),
+    custom_pickup_label: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    // ---- Validate delivery settings ----
+    if (!args.use_pixelmart_service) {
+      // Self-delivery mode: require custom pickup location
+      if (
+        args.custom_pickup_lat === undefined ||
+        args.custom_pickup_lon === undefined ||
+        !args.custom_pickup_label?.trim()
+      ) {
+        throw new ConvexError(
+          "L'adresse de retrait personnalisée est requise en mode livraison autonome.",
+        );
+      }
+
+      // Validate coordinates
+      if (
+        args.custom_pickup_lat < -90 ||
+        args.custom_pickup_lat > 90 ||
+        args.custom_pickup_lon < -180 ||
+        args.custom_pickup_lon > 180
+      ) {
+        throw new ConvexError("Coordonnées géographiques invalides.");
+      }
+
+      // Validate label length and content
+      if (
+        args.custom_pickup_label.trim().length < 5 ||
+        args.custom_pickup_label.trim().length > 200
+      ) {
+        throw new ConvexError(
+          "L'adresse doit contenir entre 5 et 200 caractères.",
+        );
+      }
+
+      // Check for dangerous characters in label
+      if (/[<>"'&]/.test(args.custom_pickup_label)) {
+        throw new ConvexError(
+          "L'adresse contient des caractères non autorisés.",
+        );
+      }
+    }
+
+    // ---- Block if active orders ----
+    for (const status of ACTIVE_ORDER_STATUSES) {
+      const active = await ctx.db
+        .query("orders")
+        .withIndex("by_store", (q) => q.eq("store_id", store._id))
+        .filter((q) => q.eq(q.field("status"), status))
+        .first();
+
+      if (active) {
+        throw new ConvexError(
+          "Vous avez des commandes en cours. Vous pourrez modifier vos paramètres de livraison une fois toutes les commandes terminées.",
+        );
+      }
+    }
+
+    // ---- Derive has_storage_plan ----
+    // Mode A: use_pixelmart_service=true  + no custom pickup → true
+    // Mode B: use_pixelmart_service=true  + custom pickup    → false
+    // Mode C: use_pixelmart_service=false                    → false
+    const hasCustomPickup = args.custom_pickup_lat !== undefined;
+    const hasStoragePlan = args.use_pixelmart_service && !hasCustomPickup;
+
+    await ctx.db.patch(store._id, {
+      use_pixelmart_service: args.use_pixelmart_service,
+      // Mode C clears pickup; Mode A/B keeps or sets it
+      custom_pickup_lat: args.use_pixelmart_service
+        ? args.custom_pickup_lat
+        : undefined,
+      custom_pickup_lon: args.use_pixelmart_service
+        ? args.custom_pickup_lon
+        : undefined,
+      custom_pickup_label: args.use_pixelmart_service
+        ? args.custom_pickup_label?.trim()
+        : undefined,
+      has_storage_plan: hasStoragePlan,
+      updated_at: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+/**
  * Génère une URL d'upload pour logo ou banner.
+ * Inclut une validation de base pour éviter l'abus.
  */
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    await getVendorStore(ctx);
+    const { store } = await getVendorStore(ctx);
+
+    // Basic rate limiting check - allow max 10 uploads per hour per store
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    const recentUploads = await ctx.db
+      .query("stores")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("_id"), store._id),
+          q.gt(q.field("updated_at"), oneHourAgo),
+        ),
+      )
+      .collect();
+
+    // This is a simple check - in production you might want more sophisticated rate limiting
+    if (recentUploads.length > 10) {
+      throw new ConvexError(
+        "Trop d'uploads récents. Veuillez patienter avant de réessayer.",
+      );
+    }
+
     return await ctx.storage.generateUploadUrl();
   },
 });

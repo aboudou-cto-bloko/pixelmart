@@ -94,8 +94,6 @@ export const initializePayment = action({
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("Moneroo init error:", response.status, errorBody);
       throw new Error(
         `Erreur Moneroo (${response.status}) : impossible d'initialiser le paiement`,
       );
@@ -177,8 +175,6 @@ export const initializeShopPayment = action({
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("Moneroo shop init error:", response.status, errorBody);
       throw new Error(
         `Erreur Moneroo (${response.status}) : impossible d'initialiser le paiement`,
       );
