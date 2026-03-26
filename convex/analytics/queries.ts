@@ -19,6 +19,10 @@ import {
 // 1. SALES OVERVIEW — KPIs with period comparison
 // ──────────────────────────────────────────────
 
+const SOURCE_ARG = v.optional(
+  v.union(v.literal("marketplace"), v.literal("vendor_shop")),
+);
+
 export const getSalesOverview = query({
   args: {
     period: v.union(
@@ -27,8 +31,9 @@ export const getSalesOverview = query({
       v.literal("90d"),
       v.literal("12m"),
     ),
+    source: SOURCE_ARG,
   },
-  handler: async (ctx, { period }) => {
+  handler: async (ctx, { period, source }) => {
     const result = await getVendorStore(ctx);
     if (!result) return null;
     const { store } = result;
@@ -42,10 +47,14 @@ export const getSalesOverview = query({
       "delivered",
     ]);
 
-    const allOrders = await ctx.db
+    const rawOrders = await ctx.db
       .query("orders")
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
       .collect();
+
+    const allOrders = source
+      ? rawOrders.filter((o) => o.source === source)
+      : rawOrders;
 
     const currentOrders = allOrders.filter(
       (o) =>
@@ -134,8 +143,9 @@ export const getSalesChart = query({
     granularity: v.optional(
       v.union(v.literal("day"), v.literal("week"), v.literal("month")),
     ),
+    source: SOURCE_ARG,
   },
-  handler: async (ctx, { period, granularity: granularityArg }) => {
+  handler: async (ctx, { period, granularity: granularityArg, source }) => {
     const result = await getVendorStore(ctx);
     if (!result) return null;
     const { store } = result;
@@ -153,10 +163,14 @@ export const getSalesChart = query({
       "delivered",
     ]);
 
-    const orders = await ctx.db
+    const rawOrders = await ctx.db
       .query("orders")
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
       .collect();
+
+    const orders = source
+      ? rawOrders.filter((o) => o.source === source)
+      : rawOrders;
 
     const filteredOrders = orders.filter(
       (o) =>
@@ -207,8 +221,9 @@ export const getTopProducts = query({
       v.literal("12m"),
     ),
     limit: v.optional(v.number()),
+    source: SOURCE_ARG,
   },
-  handler: async (ctx, { period, limit = 10 }) => {
+  handler: async (ctx, { period, limit = 10, source }) => {
     const result = await getVendorStore(ctx);
     if (!result) return null;
     const { store } = result;
@@ -221,10 +236,14 @@ export const getTopProducts = query({
       "delivered",
     ]);
 
-    const orders = await ctx.db
+    const rawOrders = await ctx.db
       .query("orders")
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
       .collect();
+
+    const orders = source
+      ? rawOrders.filter((o) => o.source === source)
+      : rawOrders;
 
     const filteredOrders = orders.filter(
       (o) =>
@@ -286,8 +305,9 @@ export const getRevenueByCategory = query({
       v.literal("90d"),
       v.literal("12m"),
     ),
+    source: SOURCE_ARG,
   },
-  handler: async (ctx, { period }) => {
+  handler: async (ctx, { period, source }) => {
     const result = await getVendorStore(ctx);
     if (!result) return null;
     const { store } = result;
@@ -300,10 +320,14 @@ export const getRevenueByCategory = query({
       "delivered",
     ]);
 
-    const orders = await ctx.db
+    const rawOrders = await ctx.db
       .query("orders")
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
       .collect();
+
+    const orders = source
+      ? rawOrders.filter((o) => o.source === source)
+      : rawOrders;
 
     const filteredOrders = orders.filter(
       (o) =>
@@ -381,8 +405,9 @@ export const getCustomerInsights = query({
       v.literal("90d"),
       v.literal("12m"),
     ),
+    source: SOURCE_ARG,
   },
-  handler: async (ctx, { period }) => {
+  handler: async (ctx, { period, source }) => {
     const result = await getVendorStore(ctx);
     if (!result) return null;
     const { store } = result;
@@ -395,10 +420,14 @@ export const getCustomerInsights = query({
       "delivered",
     ]);
 
-    const allOrders = await ctx.db
+    const rawOrders = await ctx.db
       .query("orders")
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
       .collect();
+
+    const allOrders = source
+      ? rawOrders.filter((o) => o.source === source)
+      : rawOrders;
 
     const paidOrders = allOrders.filter((o) => paidStatuses.has(o.status));
 

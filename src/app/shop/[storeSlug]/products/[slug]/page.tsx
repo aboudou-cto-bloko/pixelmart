@@ -15,10 +15,13 @@ import {
   Star,
   Check,
   Package,
+  RotateCcw,
+  Lock,
 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductReviewList } from "@/components/reviews";
+import { ProductQASection } from "@/components/questions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -85,6 +88,10 @@ export default function ShopProductDetailPage() {
 
   const product = useQuery(api.products.queries.getBySlug, { slug });
   const store = useQuery(api.stores.queries.getBySlug, { slug: storeSlug });
+  const specs = useQuery(
+    api.product_specs.queries.listByProduct,
+    product ? { product_id: product._id } : "skip",
+  );
 
   // Track ViewContent quand le produit est chargé
   useEffect(() => {
@@ -233,7 +240,11 @@ export default function ShopProductDetailPage() {
       {/* Main product area */}
       <div className="grid gap-8 md:grid-cols-2">
         {/* Gallery */}
-        <ProductGallery images={product.images ?? []} title={product.title} />
+        <ProductGallery
+          images={product.images ?? []}
+          title={product.title}
+          imageRoles={product.image_roles}
+        />
 
         {/* Info */}
         <div className="space-y-5">
@@ -291,22 +302,23 @@ export default function ShopProductDetailPage() {
 
           <Separator />
 
-          {/* Description */}
-          {product.description && (
-            <p className="text-muted-foreground leading-relaxed text-sm">
-              {product.description}
-            </p>
-          )}
-
           {/* Quantity + Actions */}
-          {!isOutOfStock && (
-            <div className="space-y-4">
+          {!isOutOfStock ? (
+            <div className="space-y-3">
               {!product.is_digital && (
-                <QuantitySelector
-                  value={quantity}
-                  max={product.quantity ?? 99}
-                  onChange={setQuantity}
-                />
+                <>
+                  <QuantitySelector
+                    value={quantity}
+                    max={product.quantity ?? 99}
+                    onChange={setQuantity}
+                  />
+                  {(product.quantity ?? 99) <= 10 &&
+                    (product.quantity ?? 99) > 0 && (
+                      <p className="text-sm text-orange-600 font-medium">
+                        ⚡ Plus que {product.quantity} en stock
+                      </p>
+                    )}
+                </>
               )}
               <div className="flex gap-3">
                 <Button
@@ -339,19 +351,134 @@ export default function ShopProductDetailPage() {
                 </Button>
               </div>
             </div>
+          ) : (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+              <p className="text-sm font-medium text-destructive">
+                Ce produit est actuellement en rupture de stock.
+              </p>
+            </div>
           )}
 
-          {isOutOfStock && (
-            <p className="text-muted-foreground text-sm">
-              Ce produit n'est temporairement plus disponible.
-            </p>
+          {/* Tags — key points */}
+          {product.tags && product.tags.length > 0 && (
+            <div className="bg-muted/30 rounded-lg p-4">
+              <h3 className="text-sm font-semibold mb-3">Points clés</h3>
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {product.tags.slice(0, 8).map((tag) => (
+                  <li key={tag} className="flex items-start gap-2 text-sm">
+                    <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
+                    <span className="text-muted-foreground capitalize">
+                      {tag.toLowerCase()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
-          {/* Trust signals */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <ShieldCheck className="size-4 text-green-500" />
-            Paiement sécurisé · Boutique vérifiée
+          {/* Trust icons */}
+          <div className="flex flex-wrap items-center justify-center gap-4 py-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="size-4 text-green-500" />
+              <span>Paiement sécurisé</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Lock className="size-4" />
+              <span>Protection acheteurs</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <RotateCcw className="size-4 text-blue-500" />
+              <span>Retours sous 3 jours</span>
+            </div>
           </div>
+
+          <Separator />
+
+          {/* Description */}
+          {product.description && (
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Description</h3>
+              <div
+                className="prose prose-sm max-w-none text-muted-foreground"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
+            </div>
+          )}
+
+          {/* Tags as badges */}
+          {product.tags && product.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {product.tags.map((tag) => (
+                <Badge key={tag} variant="outline" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Specs table */}
+          {(product.weight ||
+            product.color ||
+            product.material ||
+            product.dimensions ||
+            product.sku ||
+            (specs && specs.length > 0)) && (
+            <div className="rounded-lg border overflow-hidden">
+              <div className="bg-muted/60 px-4 py-2.5 border-b flex items-center gap-2">
+                <Package className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Caractéristiques</h3>
+              </div>
+              <table className="w-full text-sm">
+                <tbody>
+                  {[
+                    product.color && { label: "Couleur", value: product.color },
+                    product.material && {
+                      label: "Matériau",
+                      value: product.material,
+                    },
+                    product.weight && {
+                      label: "Poids",
+                      value:
+                        product.weight >= 1000
+                          ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
+                          : `${product.weight} g`,
+                    },
+                    product.dimensions && {
+                      label: "Dimensions",
+                      value: product.dimensions,
+                    },
+                    product.sku && {
+                      label: "Référence (SKU)",
+                      value: product.sku,
+                    },
+                    ...(specs ?? []).map((spec) => ({
+                      label: spec.spec_key,
+                      value: spec.spec_value,
+                    })),
+                  ]
+                    .filter(Boolean)
+                    .map((row, i) => {
+                      if (!row) return null;
+                      return (
+                        <tr
+                          key={row.label}
+                          className={
+                            i % 2 === 0 ? "bg-background" : "bg-muted/30"
+                          }
+                        >
+                          <td className="px-4 py-2.5 w-2/5 text-muted-foreground font-medium">
+                            {row.label}
+                          </td>
+                          <td className="px-4 py-2.5 text-foreground">
+                            {row.value}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
@@ -360,6 +487,11 @@ export default function ShopProductDetailPage() {
         <h2 className="text-lg font-semibold mb-4">Avis clients</h2>
         <ProductReviewList productId={product._id as Id<"products">} />
       </div>
+
+      <Separator />
+
+      {/* Q&A */}
+      <ProductQASection productId={product._id as Id<"products">} />
     </div>
   );
 }

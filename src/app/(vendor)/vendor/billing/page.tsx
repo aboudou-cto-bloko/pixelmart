@@ -11,9 +11,14 @@ export default function VendorBillingPage() {
 
   const isLoading = invoices === undefined || debtData === undefined;
 
+  const normalizedInvoices = (invoices ?? []).map((inv) => ({
+    ...inv,
+    payment_method: inv.payment_method ?? ("immediate" as const),
+  }));
+
   return (
     <VendorBillingTemplate
-      invoices={invoices ?? []}
+      invoices={normalizedInvoices}
       debtRecords={debtData?.debts ?? []}
       totalOutstanding={debtData?.totalOutstanding ?? 0}
       isLoading={isLoading}
