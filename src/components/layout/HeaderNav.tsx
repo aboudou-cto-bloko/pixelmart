@@ -118,7 +118,7 @@ export function HeaderNav() {
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-80 p-0 pr-0 flex flex-col bg-sidebar text-sidebar-foreground"
+            className="w-80 p-0 pr-12 flex flex-col bg-sidebar text-sidebar-foreground"
             preventFocusOnOpen
           >
             <SheetHeader className="sr-only">
