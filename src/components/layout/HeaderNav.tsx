@@ -118,20 +118,20 @@ export function HeaderNav() {
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-80 p-0 pr-12"
+            className="w-80 p-0 pr-0 flex flex-col bg-sidebar text-sidebar-foreground"
             preventFocusOnOpen
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Menu</SheetTitle>
             </SheetHeader>
-            <div className="p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Recherche mobile */}
               <form onSubmit={handleSearch} className="flex">
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Rechercher..."
-                  className="rounded-r-none"
+                  className="rounded-r-none bg-background"
                   autoComplete="off"
                 />
                 <Button type="submit" size="icon" className="rounded-l-none">
@@ -142,33 +142,33 @@ export function HeaderNav() {
                 categories={categories}
                 onClose={() => setMobileMenuOpen(false)}
               />
-              <div className="pt-2 px-6 border-t">
+              <div className="pt-2 px-3 border-t border-sidebar-border">
                 <Link
                   href={ROUTES.STORES}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-md px-3 pt-1 text-sm font-medium hover:bg-muted transition-colors"
+                  className="block rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                 >
                   Boutiques
                 </Link>
               </div>
               {!isAuthenticated && (
-                <div className="pt-3 border-t">
+                <div className="pt-3 border-t border-sidebar-border">
                   <Link
                     href={ROUTES.LOGIN}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-3 text-sm font-medium hover:bg-muted transition-colors"
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
                   >
-                    <LogIn className="size-4 " />
+                    <LogIn className="size-4" />
                     Se connecter
                   </Link>
                 </div>
               )}
               {/* Fixed bottom */}
-              <div className="mt-auto py-6 px-2 border-t">
+              <div className="mt-auto py-6 px-2 border-t border-sidebar-border">
                 <Link
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-sm text-sidebar-foreground/50 hover:text-sidebar-accent-foreground transition-colors"
                 >
                   Contactez-nous
                 </Link>
