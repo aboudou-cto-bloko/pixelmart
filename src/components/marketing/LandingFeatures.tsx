@@ -26,9 +26,9 @@ const FEATURES = [
   },
   {
     icon: Package,
-    title: "Physique & digital",
+    title: "Tout ce que vous vendez",
     description:
-      "Robes, sneakers, e-books — peu importe ce que vous vendez. Stock et variantes gérés automatiquement.",
+      "Robes, sneakers, bijoux, sacs — peu importe ce que vous vendez. Stock et variantes gérés automatiquement.",
   },
   {
     icon: ClipboardList,

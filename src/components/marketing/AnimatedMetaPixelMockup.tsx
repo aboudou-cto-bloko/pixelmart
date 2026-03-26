@@ -68,8 +68,6 @@ export function AnimatedMetaPixelMockup() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [typedChars, setTypedChars] = useState(0);
   const [visibleEvents, setVisibleEvents] = useState(0);
-  const [cycleId, setCycleId] = useState(0);
-
   // Effet de frappe du Pixel ID
   useEffect(() => {
     if (phase !== "typing") return;
@@ -78,18 +76,9 @@ export function AnimatedMetaPixelMockup() {
     return () => clearTimeout(t);
   }, [phase, typedChars]);
 
-  // Cycle animation principal
   useEffect(() => {
     if (!isInView) return;
     const t: ReturnType<typeof setTimeout>[] = [];
-
-    t.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setTypedChars(0);
-        setVisibleEvents(0);
-      }, 0),
-    );
 
     t.push(setTimeout(() => setPhase("typing"), 600));
     // Les événements apparaissent après la frappe (~960ms + 200ms)
@@ -101,17 +90,9 @@ export function AnimatedMetaPixelMockup() {
     t.push(setTimeout(() => setVisibleEvents(5), 3200));
     t.push(setTimeout(() => setPhase("saving"), 4200));
     t.push(setTimeout(() => setPhase("saved"), 5200));
-    t.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setTypedChars(0);
-        setVisibleEvents(0);
-        setCycleId((c) => c + 1);
-      }, 8000),
-    );
 
     return () => t.forEach(clearTimeout);
-  }, [cycleId, isInView]);
+  }, [isInView]);
 
   const show = (p: Phase) => {
     const order: Phase[] = ["idle", "typing", "events", "saving", "saved"];

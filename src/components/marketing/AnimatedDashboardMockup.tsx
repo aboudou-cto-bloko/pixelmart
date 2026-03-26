@@ -223,19 +223,10 @@ export function AnimatedDashboardMockup() {
   const isInView = useInView(ref, { once: true, margin: "-15%" });
   const [phase, setPhase] = useState<Phase>("idle");
   const [visibleOrders, setVisibleOrders] = useState(0);
-  const [cycleId, setCycleId] = useState(0);
-
   useEffect(() => {
     if (!isInView) return;
 
     const timers: ReturnType<typeof setTimeout>[] = [];
-
-    timers.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setVisibleOrders(0);
-      }, 0),
-    );
 
     timers.push(setTimeout(() => setPhase("kpi"), 400));
     timers.push(setTimeout(() => setPhase("chart"), 1900));
@@ -248,16 +239,9 @@ export function AnimatedDashboardMockup() {
     timers.push(setTimeout(() => setVisibleOrders(2), 3300));
     timers.push(setTimeout(() => setVisibleOrders(3), 3800));
     timers.push(setTimeout(() => setPhase("done"), 4200));
-    timers.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setVisibleOrders(0);
-        setCycleId((c) => c + 1);
-      }, 7500),
-    );
 
     return () => timers.forEach(clearTimeout);
-  }, [cycleId, isInView]);
+  }, [isInView]);
 
   const showKpi = phase !== "idle";
   const showChart = phase === "chart" || phase === "orders" || phase === "done";

@@ -99,20 +99,9 @@ export function AnimatedMarketplaceMockup() {
   const [highlighted, setHighlighted] = useState<number | null>(null);
   const [visibleProducts, setVisibleProducts] = useState(0);
   const [visibleStoreProducts, setVisibleStoreProducts] = useState(0);
-  const [cycleId, setCycleId] = useState(0);
-
   useEffect(() => {
     if (!isInView) return;
     const t: ReturnType<typeof setTimeout>[] = [];
-
-    t.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setHighlighted(null);
-        setVisibleProducts(0);
-        setVisibleStoreProducts(0);
-      }, 0),
-    );
 
     // Phase marketplace — produits apparaissent
     t.push(setTimeout(() => setPhase("marketplace"), 400));
@@ -142,19 +131,8 @@ export function AnimatedMarketplaceMockup() {
     t.push(setTimeout(() => setVisibleStoreProducts(3), 4900));
     t.push(setTimeout(() => setPhase("done"), 5400));
 
-    // Loop
-    t.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setHighlighted(null);
-        setVisibleProducts(0);
-        setVisibleStoreProducts(0);
-        setCycleId((c) => c + 1);
-      }, 9000),
-    );
-
     return () => t.forEach(clearTimeout);
-  }, [cycleId, isInView]);
+  }, [isInView]);
 
   const showMarketplace = phase === "marketplace" || phase === "highlight";
   const showStore = phase === "store" || phase === "done";

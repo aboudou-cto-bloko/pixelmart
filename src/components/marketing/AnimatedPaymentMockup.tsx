@@ -38,18 +38,9 @@ export function AnimatedPaymentMockup() {
   const isInView = useInView(ref, { once: true, margin: "-20%" });
   const [phase, setPhase] = useState<Phase>("idle");
   const [selectedOp, setSelectedOp] = useState<number | null>(null);
-  const [cycleId, setCycleId] = useState(0);
-
   useEffect(() => {
     if (!isInView) return;
     const t: ReturnType<typeof setTimeout>[] = [];
-
-    t.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setSelectedOp(null);
-      }, 0),
-    );
 
     t.push(setTimeout(() => setPhase("summary"), 500));
     t.push(setTimeout(() => setPhase("selecting"), 1200));
@@ -58,16 +49,9 @@ export function AnimatedPaymentMockup() {
     t.push(setTimeout(() => setPhase("moneroo"), 3700));
     t.push(setTimeout(() => setSelectedOp(0), 4400));
     t.push(setTimeout(() => setPhase("success"), 5400));
-    t.push(
-      setTimeout(() => {
-        setPhase("idle");
-        setSelectedOp(null);
-        setCycleId((c) => c + 1);
-      }, 8000),
-    );
 
     return () => t.forEach(clearTimeout);
-  }, [cycleId, isInView]);
+  }, [isInView]);
 
   const show = (p: Phase) => {
     const order: Phase[] = [
