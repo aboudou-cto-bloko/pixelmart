@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { Loader2 } from "lucide-react";
 
-type Role = "admin" | "vendor" | "customer";
+type Role = "admin" | "vendor" | "customer" | "agent";
 
 interface AuthGuardProps {
   children: React.ReactNode;
