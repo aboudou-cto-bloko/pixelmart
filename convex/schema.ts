@@ -847,6 +847,16 @@ export default defineSchema({
   // ============================================
   // DELIVERY RATES — Grille tarifaire (optionnel, peut être en constants)
   // ============================================
+  // ============================================
+  // WAITLIST — Captures des leads pré-lancement
+  // ============================================
+  waitlist: defineTable({
+    email: v.string(),
+    name: v.optional(v.string()),
+    role: v.union(v.literal("vendor"), v.literal("customer")),
+    created_at: v.number(),
+  }).index("by_email", ["email"]),
+
   delivery_rates: defineTable({
     // Type de course
     delivery_type: v.union(
