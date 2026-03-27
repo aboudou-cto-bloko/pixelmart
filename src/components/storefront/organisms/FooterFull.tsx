@@ -15,7 +15,7 @@ const FOOTER_LINKS = {
   marketplace: {
     title: "Pixel-Mart",
     links: [
-      { label: "À propos", href: "/about" },
+      { label: "À propos", href: "/landing" },
       { label: "Devenir vendeur", href: "/onboarding/vendor" },
       { label: "Contact", href: "/contact" },
     ],
@@ -78,10 +78,10 @@ export function FooterFull() {
       <div className="h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent" />
 
       {/* Main footer */}
-      <div className="container px-4 py-16">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
-          {/* Brand column */}
-          <div className="lg:col-span-1 space-y-5">
+      <div className="container px-4 py-14 md:py-16">
+        <div className="grid gap-10 grid-cols-2 sm:grid-cols-2 lg:grid-cols-5">
+          {/* Brand column — full width on mobile, centered */}
+          <div className="col-span-2 lg:col-span-1 flex flex-col items-center text-center lg:items-start lg:text-left space-y-5">
             <Link
               href="/"
               className="inline-block text-2xl font-bold tracking-tight"
@@ -90,48 +90,49 @@ export function FooterFull() {
               <span className="text-white">-Mart</span>
             </Link>
 
-            <p className="text-sm text-white/50 leading-relaxed">
+            <p className="text-sm text-white/50 leading-relaxed max-w-xs">
               La marketplace africaine pour les entrepreneurs. Vendez vos
               produits, acceptez Mobile Money.
             </p>
 
             <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-3 text-white/60 hover:text-white/90 transition-colors">
+              <div className="flex items-center justify-center lg:justify-start gap-3 text-white/60 hover:text-white/90 transition-colors">
                 <MapPin className="size-4 shrink-0 text-primary" />
                 <span>Cotonou, Bénin</span>
               </div>
-              <div className="flex items-center gap-3 text-white/60 hover:text-white/90 transition-colors">
+              <div className="flex items-center justify-center lg:justify-start gap-3 text-white/60 hover:text-white/90 transition-colors">
                 <Phone className="size-4 shrink-0 text-primary" />
                 <span>+229 XX XX XX XX</span>
               </div>
-              <div className="flex items-center gap-3 text-white/60 hover:text-white/90 transition-colors">
+              <div className="flex items-center justify-center lg:justify-start gap-3 text-white/60 hover:text-white/90 transition-colors">
                 <Mail className="size-4 shrink-0 text-primary" />
                 <span>contact@pixel-mart-bj.com</span>
               </div>
             </div>
 
             {/* Social */}
-            <div className="flex gap-2 pt-1">
-              {SOCIAL_LINKS.map(({ icon: Icon, href, label }) => {
-                return (
-                  <a
-                    key={label}
-                    href={href}
-                    aria-label={label}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex size-9 items-center justify-center rounded-full border border-white/10 text-white/50 hover:border-primary hover:text-primary transition-all duration-200"
-                  >
-                    <Icon className="size-4" />
-                  </a>
-                );
-              })}
+            <div className="flex gap-2 pt-1 justify-center lg:justify-start">
+              {SOCIAL_LINKS.map(({ icon: Icon, href, label }) => (
+                <a
+                  key={label}
+                  href={href}
+                  aria-label={label}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex size-9 items-center justify-center rounded-full border border-white/10 text-white/50 hover:border-primary hover:text-primary transition-all duration-200"
+                >
+                  <Icon className="size-4" />
+                </a>
+              ))}
             </div>
           </div>
 
-          {/* Link columns */}
+          {/* Link columns — 1 col each on mobile (2×2 grid), 1 col on desktop */}
           {Object.values(FOOTER_LINKS).map((section) => (
-            <div key={section.title} className="space-y-4">
+            <div
+              key={section.title}
+              className="col-span-1 flex flex-col items-center sm:items-start text-center sm:text-left space-y-4"
+            >
               <h3 className="text-xs font-semibold uppercase tracking-widest text-white/40">
                 {section.title}
               </h3>
@@ -156,19 +157,22 @@ export function FooterFull() {
 
       {/* Bottom bar */}
       <div className="container px-4 py-5">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-white/30">
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
+          <p className="text-xs text-white/30 text-center sm:text-left">
             © {new Date().getFullYear()} Pixel-Mart. Tous droits réservés.
           </p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <span className="text-xs text-white/30">Paiements acceptés :</span>
             <div className="flex items-center gap-2">
               {PAYMENT_METHODS.map((method) => (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={method.name}
                   src={method.src}
                   alt={method.name}
                   title={method.name}
+                  width={28}
+                  height={28}
                   className="h-7 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 />
               ))}
