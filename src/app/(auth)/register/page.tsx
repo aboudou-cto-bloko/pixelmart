@@ -15,9 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
-import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import {
   getPasswordStrength,
   getStrengthLabel,
@@ -35,7 +33,6 @@ import { z } from "zod";
 export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -118,20 +115,6 @@ export default function RegisterPage() {
     }
   }
 
-  async function handleGoogleSignIn() {
-    setIsGoogleLoading(true);
-    try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: "/dashboard",
-        newUserCallbackURL: "/dashboard",
-      });
-    } catch (error) {
-      setIsGoogleLoading(false);
-      setError("Erreur lors de la connexion avec Google. Veuillez réessayer.");
-    }
-  }
-
   if (success) {
     return (
       <Card>
@@ -162,30 +145,7 @@ export default function RegisterPage() {
           Rejoignez Pixel-Mart, la marketplace africaine
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={handleGoogleSignIn}
-          disabled={isGoogleLoading}
-        >
-          {isGoogleLoading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <GoogleIcon className="mr-2 h-4 w-4" />
-          )}
-          Continuer avec Google
-        </Button>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <Separator className="w-full" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">ou</span>
-          </div>
-        </div>
-
+      <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
