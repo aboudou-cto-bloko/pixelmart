@@ -26,8 +26,8 @@ const FOOTER_LINKS = {
     links: [
       { label: "Électronique", href: "/categories/electronique" },
       { label: "Mode", href: "/categories/mode" },
-      { label: "Maison", href: "/categories/maison" },
-      { label: "Beauté", href: "/categories/beaute" },
+      { label: "Maison & Déco", href: "/categories/maison-deco" },
+      { label: "Beauté & Santé", href: "/categories/beaute-sante" },
     ],
   },
   customer: {
@@ -35,6 +35,7 @@ const FOOTER_LINKS = {
     links: [
       { label: "FAQ", href: "/faq" },
       { label: "Conditions d'utilisation", href: "/terms" },
+      { label: "Confidentialité", href: "/privacy" },
     ],
   },
   partner: {
