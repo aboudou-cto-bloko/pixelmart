@@ -762,3 +762,66 @@ export const notifyNewReview = internalAction({
     }
   },
 });
+
+export const notifyNewQuestion = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    productTitle: v.string(),
+    customerName: v.string(),
+    body: v.string(),
+    productSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "question",
+      title: "Nouvelle question sur un produit",
+      body: `${args.customerName} a posé une question sur "${args.productTitle}" : "${args.body.slice(0, 80)}${args.body.length > 80 ? "…" : ""}"`,
+      link: `/vendor/products`,
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+    });
+  },
+});
+
+export const notifyQuestionAnswered = internalAction({
+  args: {
+    customerUserId: v.id("users"),
+    productTitle: v.string(),
+    vendorName: v.string(),
+    answer: v.string(),
+    productSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.customerUserId,
+      type: "question_answered",
+      title: "Votre question a reçu une réponse",
+      body: `${args.vendorName} a répondu à votre question sur "${args.productTitle}" : "${args.answer.slice(0, 80)}${args.answer.length > 80 ? "…" : ""}"`,
+      link: `/products/${args.productSlug}`,
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+    });
+  },
+});
+
+export const notifyReviewReplied = internalAction({
+  args: {
+    customerUserId: v.id("users"),
+    productTitle: v.string(),
+    vendorName: v.string(),
+    reply: v.string(),
+    productSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.customerUserId,
+      type: "review_replied",
+      title: "Le vendeur a répondu à votre avis",
+      body: `${args.vendorName} a répondu à votre avis sur "${args.productTitle}" : "${args.reply.slice(0, 80)}${args.reply.length > 80 ? "…" : ""}"`,
+      link: `/products/${args.productSlug}`,
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+    });
+  },
+});
