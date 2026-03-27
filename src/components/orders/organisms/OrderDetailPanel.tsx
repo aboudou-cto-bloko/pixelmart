@@ -242,7 +242,9 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
                 <Image
                   src={item.resolved_image_url}
                   alt={item.title}
-                  className="h-10 w-10 rounded-md object-cover bg-muted"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 rounded-md object-cover bg-muted shrink-0"
                 />
               ) : (
                 <div className="h-10 w-10 rounded-md bg-muted shrink-0" />
