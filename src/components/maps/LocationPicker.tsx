@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Loader2, X } from "lucide-react";
+import { Search, MapPin, Loader2, X, Navigation } from "lucide-react";
 import { searchAddress } from "@/lib/geocoding";
 import type { GeocodingResult } from "@/lib/geocoding";
 import { MAP_DEFAULT_ZOOM, MAP_COTONOU_CENTER } from "@/constants/pickup";
@@ -40,6 +40,7 @@ export function LocationPicker({
   const [results, setResults] = useState<GeocodingResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Initialise map once ──────────────────────────────────────────────────
@@ -188,6 +189,59 @@ export function LocationPicker({
     });
   }
 
+  function handleGeolocate() {
+    if (!navigator.geolocation || readOnly) return;
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        const { latitude: lat, longitude: lng } = coords;
+
+        // Update marker on map
+        if (mapRef.current) {
+          import("leaflet").then((L) => {
+            if (!mapRef.current) return;
+            if (markerRef.current) {
+              markerRef.current.setLatLng([lat, lng]);
+            } else {
+              markerRef.current = L.marker([lat, lng]).addTo(mapRef.current);
+            }
+            mapRef.current.setView([lat, lng], MAP_DEFAULT_ZOOM);
+          });
+        }
+
+        // Reverse geocode to get human-readable label
+        try {
+          const { reverseGeocode } = await import("@/lib/geocoding");
+          const result = await reverseGeocode(lat, lng);
+          const label =
+            result?.displayName ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+          setQuery(label);
+          onChange({
+            lat,
+            lon: lng,
+            label,
+          });
+        } catch {
+          const label = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          setQuery(label);
+          onChange({
+            lat,
+            lon: lng,
+            label,
+          });
+        }
+        setIsLocating(false);
+      },
+      () => {
+        setIsLocating(false);
+        // Could add error handling here if needed
+      },
+      { timeout: 10000, enableHighAccuracy: true },
+    );
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -219,6 +273,23 @@ export function LocationPicker({
                 </button>
               )}
             </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleGeolocate}
+              disabled={isLocating || !navigator.geolocation}
+              className="shrink-0"
+            >
+              {isLocating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Navigation className="h-4 w-4" />
+              )}
+              <span className="ml-1.5 hidden sm:inline">
+                {isLocating ? "Détection…" : "Ma position"}
+              </span>
+            </Button>
             {isSearching && (
               <Loader2 className="size-4 animate-spin self-center text-muted-foreground" />
             )}

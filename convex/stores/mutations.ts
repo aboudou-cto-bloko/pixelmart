@@ -294,22 +294,22 @@ export const updateDeliverySettings = mutation({
     }
 
     // ---- Derive has_storage_plan ----
-    // Mode A: use_pixelmart_service=true  + no custom pickup → true
-    // Mode B: use_pixelmart_service=true  + custom pickup    → false
-    // Mode C: use_pixelmart_service=false                    → false
-    const hasCustomPickup = args.custom_pickup_lat !== undefined;
-    const hasStoragePlan = args.use_pixelmart_service && !hasCustomPickup;
+    // Mode A: use_pixelmart_service=true  → uses warehouse (storage plan)
+    // Mode B: use_pixelmart_service=false → uses custom pickup (no storage plan)
+    const hasCustomPickup =
+      !args.use_pixelmart_service && args.custom_pickup_lat !== undefined;
+    const hasStoragePlan = args.use_pixelmart_service;
 
     await ctx.db.patch(store._id, {
       use_pixelmart_service: args.use_pixelmart_service,
-      // Mode C clears pickup; Mode A/B keeps or sets it
-      custom_pickup_lat: args.use_pixelmart_service
+      // Save custom pickup data only when NOT using Pixelmart service
+      custom_pickup_lat: !args.use_pixelmart_service
         ? args.custom_pickup_lat
         : undefined,
-      custom_pickup_lon: args.use_pixelmart_service
+      custom_pickup_lon: !args.use_pixelmart_service
         ? args.custom_pickup_lon
         : undefined,
-      custom_pickup_label: args.use_pixelmart_service
+      custom_pickup_label: !args.use_pixelmart_service
         ? args.custom_pickup_label?.trim()
         : undefined,
       has_storage_plan: hasStoragePlan,
@@ -467,13 +467,13 @@ export const createAdditionalStore = mutation({
       is_verified: false,
       country: args.country ?? "BJ",
       use_pixelmart_service: usePixelmartService,
-      custom_pickup_lat: usePixelmartService
+      custom_pickup_lat: !usePixelmartService
         ? args.custom_pickup_lat
         : undefined,
-      custom_pickup_lon: usePixelmartService
+      custom_pickup_lon: !usePixelmartService
         ? args.custom_pickup_lon
         : undefined,
-      custom_pickup_label: usePixelmartService
+      custom_pickup_label: !usePixelmartService
         ? args.custom_pickup_label
         : undefined,
       has_storage_plan: hasStoragePlan,

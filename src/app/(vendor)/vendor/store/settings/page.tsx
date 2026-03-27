@@ -202,9 +202,9 @@ export default function StoreSettingsPage() {
     try {
       await updateDeliverySettings({
         use_pixelmart_service: usePixelmartService,
-        custom_pickup_lat: usePixelmartService ? customPickup?.lat : undefined,
-        custom_pickup_lon: usePixelmartService ? customPickup?.lon : undefined,
-        custom_pickup_label: usePixelmartService
+        custom_pickup_lat: !usePixelmartService ? customPickup?.lat : undefined,
+        custom_pickup_lon: !usePixelmartService ? customPickup?.lon : undefined,
+        custom_pickup_label: !usePixelmartService
           ? customPickup?.label
           : undefined,
       });
@@ -446,92 +446,75 @@ export default function StoreSettingsPage() {
             className={`flex items-start justify-between gap-4 ${hasPendingOrders ? "opacity-50 pointer-events-none select-none" : ""}`}
           >
             <div className="space-y-1">
-              <p className="text-sm font-semibold">
-                Utiliser le service de livraison Pixel-Mart
+              <p className="text-sm font-medium">
+                Utiliser le service Pixel-Mart
               </p>
               <p className="text-xs text-muted-foreground">
-                {usePixelmartService
-                  ? "Pixel-Mart gère la livraison de vos commandes."
-                  : "Vous gérez vous-même la livraison. Pixel-Mart ne calcule aucun frais de livraison pour vos commandes."}
+                Activé : vos produits sont stockés et expédiés depuis notre
+                entrepôt ({PIXELMART_WAREHOUSE.label}).
+                <br />
+                Désactivé : vous gérez vous-même le stockage et définissez votre
+                propre point de retrait.
               </p>
             </div>
             <Switch
               checked={usePixelmartService}
               onCheckedChange={(val) => {
                 setUsePixelmartService(val);
-                if (!val) setCustomPickup(undefined);
+                if (val) setCustomPickup(undefined);
               }}
               disabled={!!hasPendingOrders}
             />
           </div>
 
-          {/* Service ON — optional pickup */}
-          {usePixelmartService && !hasPendingOrders && (
-            <div className="space-y-4">
-              {/* Info banner */}
-              <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
-                <Info className="size-4 shrink-0 mt-0.5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">
-                  {customPickup ? (
-                    <>
-                      Pixel-Mart collectera depuis votre point de retrait.{" "}
-                      <span className="font-medium text-foreground">
-                        Seule la livraison sera facturée
-                      </span>{" "}
-                      (pas de stockage).
-                    </>
-                  ) : (
-                    <>
-                      Par défaut, notre entrepôt{" "}
-                      <span className="font-medium text-foreground">
-                        {PIXELMART_WAREHOUSE.label}
-                      </span>{" "}
-                      sera utilisé.{" "}
-                      <span className="font-medium text-foreground">
-                        Le stockage et la livraison seront facturés.
-                      </span>{" "}
-                      Définissez un point de collecte ci-dessous pour
-                      n&apos;être facturé que pour la livraison.
-                    </>
-                  )}
+          {/* Custom pickup map — shown only when service is OFF */}
+          {!usePixelmartService && !hasPendingOrders && (
+            <div className="space-y-3 rounded-lg border p-4 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <MapPin className="size-4 text-primary" />
+                <p className="text-sm font-medium">
+                  Votre point de retrait{" "}
+                  <span className="text-destructive">*</span>
                 </p>
               </div>
-
-              {/* Optional pickup map */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <MapPin className="size-4 text-primary" />
-                  <p className="text-sm font-medium">
-                    Point de collecte{" "}
-                    <span className="text-muted-foreground font-normal">
-                      (optionnel)
-                    </span>
-                  </p>
-                  {customPickup && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomPickup(undefined)}
-                      className="ml-auto text-xs text-destructive hover:underline"
-                    >
-                      Retirer
-                    </button>
-                  )}
-                </div>
-                <LocationPicker
-                  value={customPickup}
-                  onChange={setCustomPickup}
-                  height={280}
-                />
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Cliquez sur la carte ou recherchez votre adresse pour définir
+                votre point de retrait.
+              </p>
+              <LocationPicker
+                value={customPickup}
+                onChange={setCustomPickup}
+                height={300}
+              />
+              {!customPickup && (
+                <p className="text-xs text-destructive font-medium">
+                  ⚠ Adresse obligatoire — vous ne pourrez pas sauvegarder sans
+                  définir votre point de retrait.
+                </p>
+              )}
             </div>
           )}
 
-          {/* Save */}
+          {/* Read-only display when service is ON */}
+          {usePixelmartService && (
+            <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
+              <MapPin className="size-4 shrink-0 mt-0.5 text-primary" />
+              <p className="text-xs text-muted-foreground">
+                {PIXELMART_WAREHOUSE.label}
+              </p>
+            </div>
+          )}
+
+          {/* Save delivery */}
           <div className="flex items-center gap-3 pt-1">
             <Button
               type="button"
               onClick={handleSaveDelivery}
-              disabled={isSavingDelivery || !!hasPendingOrders}
+              disabled={
+                isSavingDelivery ||
+                !!hasPendingOrders ||
+                (!usePixelmartService && !customPickup)
+              }
               size="sm"
             >
               {isSavingDelivery ? (

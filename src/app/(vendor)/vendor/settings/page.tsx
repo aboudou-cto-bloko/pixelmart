@@ -134,6 +134,8 @@ export default function StoreSettingsPage() {
           lon: store.custom_pickup_lon,
           label: store.custom_pickup_label,
         });
+      } else {
+        setCustomPickup(undefined);
       }
     }
   }, [store]);

@@ -79,10 +79,10 @@ export const becomeVendor = mutation({
     const hasCustomPickup = args.custom_pickup_lat !== undefined;
     const hasStoragePlan = usePixelmartService && !hasCustomPickup;
 
-    // Mode C enforces no pickup address
-    const pickupLat = usePixelmartService ? args.custom_pickup_lat : undefined;
-    const pickupLon = usePixelmartService ? args.custom_pickup_lon : undefined;
-    const pickupLabel = usePixelmartService
+    // Custom pickup only when NOT using Pixelmart service
+    const pickupLat = !usePixelmartService ? args.custom_pickup_lat : undefined;
+    const pickupLon = !usePixelmartService ? args.custom_pickup_lon : undefined;
+    const pickupLabel = !usePixelmartService
       ? args.custom_pickup_label
       : undefined;
 
