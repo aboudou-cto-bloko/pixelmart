@@ -49,4 +49,28 @@ crons.interval(
   internal.crons_handlers.processAdBookings,
 );
 
+// ─── Expire Pending Orders (toutes les 30min) ────────────────
+// Annule les commandes "pending" (online) de plus de 2h et restaure le stock
+crons.interval(
+  "expire-pending-orders",
+  { minutes: 30 },
+  internal.crons_handlers.expirePendingOrders,
+);
+
+// ─── Expire Stale Storage Requests (toutes les 6h) ───────────
+// Auto-rejette les demandes pending_drop_off de plus de 30 jours
+crons.interval(
+  "expire-stale-storage-requests",
+  { hours: 6 },
+  internal.crons_handlers.expireStaleStorageRequests,
+);
+
+// ─── Notify Overdue Storage Debts (toutes les 24h) ───────────
+// Notifie les vendeurs dont la facture de stockage est impayée > 30 jours
+crons.interval(
+  "notify-overdue-storage-debts",
+  { hours: 24 },
+  internal.crons_handlers.notifyOverdueStorageDebts,
+);
+
 export default crons;

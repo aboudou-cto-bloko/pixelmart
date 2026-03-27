@@ -3,10 +3,14 @@
 import { internalMutation } from "./_generated/server";
 import { promoteQueuedBookings } from "./ads/helpers";
 import { recalculateRatings } from "./reviews/helpers";
+import { restoreInventory } from "./orders/helpers";
 import { internal } from "./_generated/api";
 
 const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const FORTY_EIGHT_HOURS_NOTIF_MS = 48 * 60 * 60 * 1000;
 
 // ─── Balance Release ─────────────────────────────────────────
 
@@ -240,6 +244,183 @@ export const autoPublishReviews = internalMutation({
       await ctx.db.patch(review._id, { is_published: true });
       await recalculateRatings(ctx, review.product_id, review.store_id);
     }
+  },
+});
+
+// ─── Expire Pending Orders (toutes les 30min) ────────────────
+
+/**
+ * Annule les commandes en statut "pending" avec payment_mode "online"
+ * créées il y a plus de 2 heures. Restaure le stock pour chaque article.
+ */
+export const expirePendingOrders = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - TWO_HOURS_MS;
+
+    const pendingOrders = await ctx.db
+      .query("orders")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("payment_mode"), "online"),
+          q.lte(q.field("_creationTime"), cutoff),
+        ),
+      )
+      .collect();
+
+    let cancelledCount = 0;
+
+    for (const order of pendingOrders) {
+      const now = Date.now();
+
+      await ctx.db.patch(order._id, {
+        status: "cancelled",
+        updated_at: now,
+      });
+
+      await restoreInventory(ctx, order.items);
+
+      cancelledCount++;
+    }
+
+    return { cancelledCount };
+  },
+});
+
+// ─── Expire Stale Storage Requests (toutes les 6h) ───────────
+
+/**
+ * Auto-rejette les demandes de stockage en statut "pending_drop_off"
+ * créées il y a plus de 30 jours.
+ */
+export const expireStaleStorageRequests = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - THIRTY_DAYS_MS;
+
+    const staleRequests = await ctx.db
+      .query("storage_requests")
+      .withIndex("by_status", (q) => q.eq("status", "pending_drop_off"))
+      .filter((q) => q.lte(q.field("created_at"), cutoff))
+      .collect();
+
+    let rejectedCount = 0;
+
+    for (const request of staleRequests) {
+      const now = Date.now();
+
+      await ctx.db.patch(request._id, {
+        status: "rejected",
+        rejection_reason:
+          "Délai de dépôt dépassé (30 jours). Demande automatiquement annulée.",
+        validated_at: now,
+        updated_at: now,
+      });
+
+      // Notifier le vendeur (in-app uniquement)
+      const store = await ctx.db.get(request.store_id);
+      if (store) {
+        const vendor = await ctx.db.get(store.owner_id);
+        if (vendor) {
+          await ctx.db.insert("notifications", {
+            user_id: vendor._id,
+            type: "storage_rejected",
+            title: "Demande de stockage annulée",
+            body: `Votre demande ${request.storage_code} — "${request.product_name}" a été automatiquement annulée (délai de dépôt de 30 jours dépassé).`,
+            link: "/vendor/storage",
+            is_read: false,
+            channels: ["in_app"],
+            sent_via: ["in_app"],
+            metadata: {
+              request_id: request._id,
+              storage_code: request.storage_code,
+            },
+          });
+        }
+      }
+
+      rejectedCount++;
+    }
+
+    return { rejectedCount };
+  },
+});
+
+// ─── Notify Overdue Storage Debts (toutes les 24h) ───────────
+
+/**
+ * Notifie les vendeurs dont la facture de stockage est impayée
+ * depuis plus de 30 jours. Évite les doublons si une notification
+ * a déjà été envoyée dans les dernières 48h pour cette facture.
+ */
+export const notifyOverdueStorageDebts = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - THIRTY_DAYS_MS;
+    const recentNotifCutoff = Date.now() - FORTY_EIGHT_HOURS_NOTIF_MS;
+
+    // Chercher toutes les factures impayées créées il y a > 30 jours
+    const overdueInvoices = await ctx.db
+      .query("storage_invoices")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "unpaid"),
+          q.lte(q.field("created_at"), cutoff),
+        ),
+      )
+      .collect();
+
+    let notifiedCount = 0;
+
+    for (const invoice of overdueInvoices) {
+      const store = await ctx.db.get(invoice.store_id);
+      if (!store) continue;
+
+      const vendor = await ctx.db.get(store.owner_id);
+      if (!vendor) continue;
+
+      // Vérifier si une notification a déjà été envoyée dans les 48h pour cette facture
+      const recentNotifs = await ctx.db
+        .query("notifications")
+        .withIndex("by_user", (q) => q.eq("user_id", vendor._id))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("type"), "storage_invoice"),
+            q.gte(q.field("_creationTime"), recentNotifCutoff),
+          ),
+        )
+        .collect();
+
+      const alreadyNotified = recentNotifs.some(
+        (n) =>
+          n.metadata !== undefined &&
+          typeof n.metadata === "object" &&
+          n.metadata !== null &&
+          "invoice_id" in n.metadata &&
+          n.metadata.invoice_id === invoice._id,
+      );
+
+      if (alreadyNotified) continue;
+
+      await ctx.db.insert("notifications", {
+        user_id: vendor._id,
+        type: "storage_invoice",
+        title: "Facture de stockage en retard",
+        body: `Votre facture de stockage de ${invoice.amount} centimes est impayée depuis plus de 30 jours. Réglez-la depuis /vendor/billing.`,
+        link: "/vendor/billing",
+        is_read: false,
+        channels: ["in_app"],
+        sent_via: ["in_app"],
+        metadata: {
+          invoice_id: invoice._id,
+        },
+      });
+
+      notifiedCount++;
+    }
+
+    return { notifiedCount };
   },
 });
 

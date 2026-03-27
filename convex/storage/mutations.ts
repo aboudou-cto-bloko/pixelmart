@@ -3,7 +3,6 @@
 import { mutation, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v, ConvexError } from "convex/values";
-import type { Id } from "../_generated/dataModel";
 import { getVendorStore, requireAgent, requireAdmin } from "../users/helpers";
 import { DEFAULT_CURRENCY } from "../lib/constants";
 import { computeStorageFee, generateStorageCode } from "./helpers";
@@ -157,7 +156,7 @@ export const receiveRequest = mutation({
   },
 });
 
-// ─── Validate Request (Admin) ────────────────────────────────
+// ─── Validate Request (Admin or Agent) ──────────────────────
 
 export const validateRequest = mutation({
   args: {
@@ -171,7 +170,8 @@ export const validateRequest = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    // Allow both admins and agents to validate storage requests
+    const validator = await requireAgent(ctx);
 
     const request = await ctx.db.get(args.request_id);
     if (!request) throw new ConvexError("Demande introuvable");
@@ -243,7 +243,7 @@ export const validateRequest = mutation({
       status: "in_stock",
       storage_fee: storageFee,
       invoice_id: invoiceId,
-      admin_id: admin._id,
+      admin_id: validator._id,
       validated_at: now,
       updated_at: now,
     });
