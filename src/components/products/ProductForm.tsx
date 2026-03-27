@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -10,9 +10,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import {
   productFormSchema,
   validateConvexId,
-  sanitizeTags,
   formatValidationError,
-  type ProductFormData,
 } from "@/lib/validation/product";
 import { z } from "zod";
 
@@ -44,7 +42,7 @@ import { ProductImageUpload } from "./ProductImageUpload";
 import { VendorQAManager } from "@/components/questions";
 import { VariantEditor, type VariantFormData } from "./VariantEditor";
 import { PriceInput } from "./PriceInput";
-import { RichTextEditor } from "./RichTextEditor";
+import { ProductDescriptionEditor } from "./ProductDescriptionEditor";
 
 // ---- Types ----
 interface ProductFormProps {
@@ -396,15 +394,14 @@ function ProductFormInner({
                 <Label htmlFor="description">
                   Description <span className="text-destructive">*</span>
                 </Label>
-                <RichTextEditor
+                <ProductDescriptionEditor
                   value={form.description}
-                  onChange={(value) => {
-                    updateField("description", value);
+                  onChange={(html) => {
+                    updateField("description", html);
                     if (fieldErrors.description) {
                       setFieldErrors((prev) => ({ ...prev, description: "" }));
                     }
                   }}
-                  placeholder="Décrivez votre produit..."
                 />
                 {fieldErrors.description && (
                   <p className="text-sm text-destructive">
