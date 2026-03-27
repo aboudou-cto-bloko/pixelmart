@@ -1,6 +1,7 @@
 // filepath: src/components/storefront/organisms/FooterFull.tsx
 
 import Link from "next/link";
+import Image from "next/image";
 import { ROUTES } from "@/constants/routes";
 import { Phone, Mail, MapPin, Facebook, Instagram } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -82,12 +83,15 @@ export function FooterFull() {
         <div className="grid gap-10 grid-cols-2 sm:grid-cols-2 lg:grid-cols-5">
           {/* Brand column — full width on mobile, centered */}
           <div className="col-span-2 lg:col-span-1 flex flex-col items-center text-center lg:items-start lg:text-left space-y-5">
-            <Link
-              href="/"
-              className="inline-block text-2xl font-bold tracking-tight"
-            >
-              <span className="text-primary">Pixel</span>
-              <span className="text-white">-Mart</span>
+            <Link href="/" className="inline-block">
+              <Image
+                src="/Pixel-Mart-1.png"
+                alt="Pixel-Mart"
+                width={140}
+                height={40}
+                className="object-contain"
+                priority
+              />
             </Link>
 
             <p className="text-sm text-white/50 leading-relaxed max-w-xs">
