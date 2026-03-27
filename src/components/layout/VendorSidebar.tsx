@@ -3,7 +3,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Store,
@@ -228,7 +228,6 @@ function NavSection({ label, items }: { label: string; items: NavItem[] }) {
 // ---- User Footer ----
 function UserFooter() {
   const { user } = useCurrentUser();
-  const router = useRouter();
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   if (!user) return null;
@@ -241,13 +240,8 @@ function UserFooter() {
     .slice(0, 2);
 
   const handleLogout = async () => {
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          router.push("/login");
-        },
-      },
-    });
+    await authClient.signOut();
+    window.location.href = "/login";
   };
 
   return (

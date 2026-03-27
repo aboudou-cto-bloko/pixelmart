@@ -135,6 +135,22 @@ export const reply = mutation({
       replied_at: Date.now(),
     });
 
+    // Notifier le client que le vendor a répondu à son avis
+    const product = await ctx.db.get(review.product_id);
+    if (product) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.notifyReviewReplied,
+        {
+          customerUserId: review.customer_id,
+          productTitle: product.title,
+          vendorName: store.name,
+          reply: args.vendor_reply,
+          productSlug: product.slug,
+        },
+      );
+    }
+
     return { success: true };
   },
 });

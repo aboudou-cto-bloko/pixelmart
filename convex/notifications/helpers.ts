@@ -65,6 +65,21 @@ export const NOTIFICATION_TYPES = {
     icon: "minus-circle",
     defaultChannels: ["email", "in_app"],
   },
+  question: {
+    label: "Nouvelle question",
+    icon: "help-circle",
+    defaultChannels: ["in_app"],
+  },
+  question_answered: {
+    label: "Question répondue",
+    icon: "message-circle",
+    defaultChannels: ["in_app"],
+  },
+  review_replied: {
+    label: "Réponse à votre avis",
+    icon: "reply",
+    defaultChannels: ["in_app"],
+  },
 } as const;
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES;
@@ -126,6 +141,27 @@ export interface ReviewPayload {
   customerName: string;
   vendorEmail: string;
   storeName: string;
+}
+
+export interface QuestionPayload {
+  questionId: Id<"product_questions">;
+  productTitle: string;
+  customerName: string;
+  body: string;
+}
+
+export interface QuestionAnsweredPayload {
+  questionId: Id<"product_questions">;
+  productTitle: string;
+  vendorName: string;
+  answer: string;
+}
+
+export interface ReviewRepliedPayload {
+  reviewId: Id<"reviews">;
+  productTitle: string;
+  vendorName: string;
+  reply: string;
 }
 
 // ─── Status Labels ───────────────────────────────────────────

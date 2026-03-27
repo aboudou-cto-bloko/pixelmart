@@ -31,10 +31,10 @@ export const emailTheme = {
   },
   spacing: {
     containerWidth: "600px",
-    padding: "40px 24px",
-    sectionGap: "24px",
+    padding: "48px 32px",
+    sectionGap: "32px",
   },
-  borderRadius: "8px",
+  borderRadius: "12px",
 } as const;
 
 interface LayoutProps {
@@ -58,6 +58,14 @@ export function Layout({ preview, children }: LayoutProps) {
           padding: "0",
         }}
       >
+        {/* Top accent bar */}
+        <div
+          style={{
+            backgroundColor: emailTheme.colors.primary,
+            height: "4px",
+            width: "100%",
+          }}
+        />
         <Container
           style={{
             maxWidth: emailTheme.spacing.containerWidth,
@@ -75,11 +83,11 @@ export function Layout({ preview, children }: LayoutProps) {
             <Text
               style={{
                 fontFamily: emailTheme.fonts.heading,
-                fontSize: "28px",
+                fontSize: "26px",
                 fontWeight: "700",
                 color: emailTheme.colors.primary,
                 margin: "0",
-                letterSpacing: "-0.01em",
+                letterSpacing: "-0.02em",
               }}
             >
               Pixel-Mart
@@ -91,8 +99,11 @@ export function Layout({ preview, children }: LayoutProps) {
             style={{
               backgroundColor: emailTheme.colors.card,
               borderRadius: emailTheme.borderRadius,
-              padding: "32px 24px",
+              padding: "40px 32px",
               border: `1px solid ${emailTheme.colors.border}`,
+              boxShadow:
+                "0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)",
+              lineHeight: "1.7",
             }}
           >
             {children}
@@ -101,14 +112,14 @@ export function Layout({ preview, children }: LayoutProps) {
           {/* Footer */}
           <Section
             style={{
-              marginTop: emailTheme.spacing.sectionGap,
+              marginTop: "40px",
               textAlign: "center" as const,
             }}
           >
             <Hr
               style={{
-                borderColor: emailTheme.colors.border,
-                margin: "0 0 16px 0",
+                borderColor: "#e5e5e5",
+                margin: "0 0 24px 0",
               }}
             />
             <Text
@@ -117,7 +128,7 @@ export function Layout({ preview, children }: LayoutProps) {
                 fontSize: "12px",
                 color: emailTheme.colors.muted,
                 margin: "0",
-                lineHeight: "1.6",
+                lineHeight: "1.8",
               }}
             >
               © {new Date().getFullYear()} Pixel-Mart — La marketplace
