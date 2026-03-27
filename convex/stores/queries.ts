@@ -92,6 +92,11 @@ export const getBySlug = query({
       subscription_tier: store.subscription_tier,
       product_count: productCount,
       _creationTime: store._creationTime,
+      // Delivery & pickup fields (needed for two-segment distance calculation)
+      use_pixelmart_service: store.use_pixelmart_service,
+      has_storage_plan: store.has_storage_plan,
+      custom_pickup_lat: store.custom_pickup_lat,
+      custom_pickup_lon: store.custom_pickup_lon,
     };
   },
 });

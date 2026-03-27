@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES, ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
+import { calculateDistance, DEFAULT_COLLECTION_POINT } from "@/lib/geocoding";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 type AddressErrors = Partial<Record<keyof ShippingAddress, string>>;
@@ -77,6 +78,41 @@ export default function ShopCheckoutPage() {
     deliveryLat: undefined,
     deliveryLon: undefined,
   });
+
+  // Calcul des distances bi-segment (scénario collecte : PM collecte chez le vendeur)
+  // Scénario C : use_pixelmart_service = true + has_storage_plan = false + coordonnées pickup vendeur disponibles
+  const isPickupScenario =
+    store !== undefined &&
+    store !== null &&
+    store.use_pixelmart_service === true &&
+    !store.has_storage_plan &&
+    store.custom_pickup_lat !== undefined &&
+    store.custom_pickup_lon !== undefined;
+
+  const twoSegmentDistances = (() => {
+    if (
+      !isPickupScenario ||
+      !store ||
+      store.custom_pickup_lat === undefined ||
+      store.custom_pickup_lon === undefined ||
+      deliveryConfig.deliveryLat === undefined ||
+      deliveryConfig.deliveryLon === undefined
+    ) {
+      return undefined;
+    }
+    const hub = DEFAULT_COLLECTION_POINT;
+    const vendorPickup = {
+      lat: store.custom_pickup_lat,
+      lon: store.custom_pickup_lon,
+    };
+    const clientAddr = {
+      lat: deliveryConfig.deliveryLat,
+      lon: deliveryConfig.deliveryLon,
+    };
+    const d1 = calculateDistance(vendorPickup, hub);
+    const d2 = calculateDistance(hub, clientAddr);
+    return { vendorToHub: d1, hubToClient: d2 };
+  })();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,6 +171,10 @@ export default function ShopCheckoutPage() {
         quantity: item.quantity,
       }));
 
+      // Distances bi-segment pour le scénario collecte PM chez le vendeur
+      const vendorToHubKm = twoSegmentDistances?.vendorToHub;
+      const hubToClientKm = twoSegmentDistances?.hubToClient;
+
       const { orderId } = await createOrder({
         storeId: store._id as Id<"stores">,
         items: orderItems,
@@ -143,6 +183,8 @@ export default function ShopCheckoutPage() {
         couponCode: coupon?.code,
         deliveryFee: deliveryConfig.deliveryFee,
         deliveryDistanceKm: deliveryConfig.deliveryDistanceKm,
+        deliveryDistanceVendorToHubKm: vendorToHubKm,
+        deliveryDistanceHubToClientKm: hubToClientKm,
         deliveryLat: deliveryConfig.deliveryLat,
         deliveryLon: deliveryConfig.deliveryLon,
         deliveryType: deliveryConfig.deliveryType,

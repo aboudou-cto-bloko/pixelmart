@@ -417,8 +417,14 @@ export async function decrementInventory(
       const product = await ctx.db.get(item.product_id);
       if (product && product.track_inventory) {
         const newQty = product.quantity - item.quantity;
+        // Si l'article vient de l'entrepôt PM, décrémenter aussi le stock entrepôt
+        const newWarehouseQty =
+          item.storage_code !== undefined && product.warehouse_qty !== undefined
+            ? Math.max(0, product.warehouse_qty - item.quantity)
+            : product.warehouse_qty;
         await ctx.db.patch(product._id, {
           quantity: newQty,
+          warehouse_qty: newWarehouseQty,
           status: newQty <= 0 ? "out_of_stock" : product.status,
           updated_at: Date.now(),
         });

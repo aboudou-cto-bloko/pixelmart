@@ -75,6 +75,9 @@ export const createOrder = mutation({
     ),
     paymentMode: v.optional(v.union(v.literal("online"), v.literal("cod"))),
     estimatedWeightKg: v.optional(v.number()),
+    // Distances bi-segment (scénario collecte : vendeur → hub + hub → client)
+    deliveryDistanceVendorToHubKm: v.optional(v.number()),
+    deliveryDistanceHubToClientKm: v.optional(v.number()),
     source: v.optional(
       v.union(v.literal("marketplace"), v.literal("vendor_shop")),
     ),
@@ -127,6 +130,22 @@ export const createOrder = mutation({
         throw new ConvexError("Distance de livraison invalide");
       }
     }
+    if (args.deliveryDistanceVendorToHubKm !== undefined) {
+      if (
+        args.deliveryDistanceVendorToHubKm < 0 ||
+        args.deliveryDistanceVendorToHubKm > 500
+      ) {
+        throw new ConvexError("Distance vendeur→hub invalide");
+      }
+    }
+    if (args.deliveryDistanceHubToClientKm !== undefined) {
+      if (
+        args.deliveryDistanceHubToClientKm < 0 ||
+        args.deliveryDistanceHubToClientKm > 500
+      ) {
+        throw new ConvexError("Distance hub→client invalide");
+      }
+    }
 
     // 9. Vérifier que la boutique existe et est active
     const store = await ctx.db.get(args.storeId);
@@ -175,12 +194,22 @@ export const createOrder = mutation({
     const deliveryType = args.deliveryType ?? "standard";
     const paymentMode = args.paymentMode ?? "online";
 
+    // Distance effective pour le calcul des frais :
+    // - Si deux segments fournis (scénario collecte) → somme des deux
+    // - Sinon → distance unique (hub→client ou pickup vendeur→client)
+    const effectiveDistanceKm =
+      args.deliveryDistanceVendorToHubKm !== undefined &&
+      args.deliveryDistanceHubToClientKm !== undefined
+        ? args.deliveryDistanceVendorToHubKm +
+          args.deliveryDistanceHubToClientKm
+        : args.deliveryDistanceKm;
+
     // Utiliser le fee calculé côté client, ou recalculer si distance fournie
     let shippingAmount = args.deliveryFee ?? 0;
 
-    if (!shippingAmount && args.deliveryDistanceKm) {
+    if (!shippingAmount && effectiveDistanceKm) {
       shippingAmount = calculateDeliveryFee(
-        args.deliveryDistanceKm,
+        effectiveDistanceKm,
         deliveryType,
         args.estimatedWeightKg ?? 0,
       );
@@ -227,7 +256,9 @@ export const createOrder = mutation({
       // ── CHAMPS DELIVERY ──
       delivery_lat: args.deliveryLat,
       delivery_lon: args.deliveryLon,
-      delivery_distance_km: args.deliveryDistanceKm,
+      delivery_distance_km: effectiveDistanceKm,
+      delivery_distance_vendor_to_hub_km: args.deliveryDistanceVendorToHubKm,
+      delivery_distance_hub_to_client_km: args.deliveryDistanceHubToClientKm,
       delivery_type: deliveryType,
       payment_mode: paymentMode,
       delivery_fee: shippingAmount,
