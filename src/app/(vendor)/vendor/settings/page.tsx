@@ -208,20 +208,15 @@ export default function StoreSettingsPage() {
     try {
       // Validate delivery settings
       const deliveryData: DeliverySettingsData = {
-        usePixelmartService,
-        customPickupLat: customPickup?.lat,
-        customPickupLon: customPickup?.lon,
-        customPickupLabel: customPickup?.label,
+        use_pixelmart_service: usePixelmartService,
+        custom_pickup_lat: customPickup?.lat,
+        custom_pickup_lon: customPickup?.lon,
+        custom_pickup_label: customPickup?.label,
       };
 
       const validatedData = deliverySettingsSchema.parse(deliveryData);
 
-      await updateDeliverySettings({
-        use_pixelmart_service: validatedData.usePixelmartService,
-        custom_pickup_lat: validatedData.customPickupLat,
-        custom_pickup_lon: validatedData.customPickupLon,
-        custom_pickup_label: validatedData.customPickupLabel,
-      });
+      await updateDeliverySettings(validatedData);
 
       setDeliverySuccess(true);
       setTimeout(() => setDeliverySuccess(false), 3000);

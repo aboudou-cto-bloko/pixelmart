@@ -19,6 +19,7 @@ import {
 import { usePathname } from "next/navigation";
 import { VENDOR_NAV_MAIN, VENDOR_NAV_SETTINGS } from "@/constants/vendor-nav";
 import { NotificationDropdown } from "@/components/notifications/organisms/NotificationDropdown";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 // Fusionner tous les items de navigation (principaux + réglages)
 const ALL_NAV_ITEMS = [...VENDOR_NAV_MAIN, ...VENDOR_NAV_SETTINGS];
@@ -130,7 +131,8 @@ export default function VendorLayout({
                 className="mr-2 data-[orientation=vertical]:h-4"
               />
               <VendorBreadcrumb />
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
+                <ThemeToggle />
                 <NotificationDropdown notificationsPath="/vendor/notifications" />
               </div>
             </div>
