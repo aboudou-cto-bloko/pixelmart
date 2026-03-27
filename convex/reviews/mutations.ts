@@ -5,6 +5,7 @@ import { internal } from "../_generated/api";
 import { v, ConvexError } from "convex/values";
 import { validateReviewEligibility, recalculateRatings } from "./helpers";
 import { requireAppUser } from "../users/helpers";
+import { rateLimiter } from "../lib/ratelimits";
 
 /**
  * Poster un avis — uniquement pour les commandes livrées
@@ -24,6 +25,16 @@ export const create = mutation({
 
     if (user.role !== "customer") {
       throw new ConvexError("Seuls les clients peuvent poster des avis");
+    }
+
+    const { ok, retryAfter } = await rateLimiter.limit(ctx, "createReview", {
+      key: user._id,
+    });
+    if (!ok) {
+      const secs = retryAfter ? Math.ceil(retryAfter / 1000) : 3600;
+      throw new ConvexError(
+        `Trop d'avis. Réessayez dans ${secs} seconde${secs > 1 ? "s" : ""}.`,
+      );
     }
 
     // Validation

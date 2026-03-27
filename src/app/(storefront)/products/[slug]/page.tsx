@@ -18,22 +18,15 @@ import {
   Plus,
   Store,
   Check,
-  MapPin,
-  Weight,
-  Palette,
-  Layers,
-  Ruler,
-  Tag,
   Package,
-  Hash,
+  Share2,
+  BadgeCheck,
+  RotateCcw,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductReviewList } from "@/components/reviews";
 import { ProductQASection } from "@/components/questions";
-import { LocationPicker } from "@/components/maps/LocationPicker";
-import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
-
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -42,18 +35,53 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 
-// ─── Variant selector ────────────────────────────────────────
-interface Variant {
-  _id: string;
-  title: string;
-  options: { name: string; value: string }[];
-  price?: number;
-  compare_price?: number;
-  quantity: number;
-  image_url: string | null;
+// ─── Sub-components ──────────────────────────────────────────
+
+function StarRating({ rating, count }: { rating: number; count?: number }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => {
+          const fill = rating >= star ? 1 : rating >= star - 0.5 ? 0.5 : 0;
+          return (
+            <span key={star} className="relative inline-block size-4">
+              <Star className="size-4 text-muted-foreground/30 fill-muted-foreground/20" />
+              {fill > 0 && (
+                <span
+                  className="absolute inset-0 overflow-hidden"
+                  style={{ width: `${fill * 100}%` }}
+                >
+                  <Star className="size-4 text-amber-400 fill-amber-400" />
+                </span>
+              )}
+            </span>
+          );
+        })}
+      </div>
+      <span className="text-sm font-medium">{rating.toFixed(1)}</span>
+      {count !== undefined && count > 0 && (
+        <span className="text-sm text-muted-foreground">({count} avis)</span>
+      )}
+    </div>
+  );
 }
 
-// ─── Quantity selector ───────────────────────────────────────
+interface TrustBadgeProps {
+  icon: React.ReactNode;
+  label: string;
+  sublabel: string;
+}
+
+function TrustBadge({ icon, label, sublabel }: TrustBadgeProps) {
+  return (
+    <div className="flex flex-col items-center gap-1 text-center px-2">
+      <div className="text-muted-foreground">{icon}</div>
+      <p className="text-xs font-medium leading-tight">{label}</p>
+      <p className="text-xs text-muted-foreground leading-tight">{sublabel}</p>
+    </div>
+  );
+}
+
 function QuantitySelector({
   value,
   max,
@@ -64,31 +92,29 @@ function QuantitySelector({
   onChange: (qty: number) => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <p className="text-sm font-medium">Quantité</p>
-      <div className="flex items-center border rounded-md">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
+    <div className="flex items-center gap-3">
+      <span className="text-sm font-medium">Quantité</span>
+      <div className="flex items-center border rounded-lg overflow-hidden">
+        <button
+          type="button"
+          className="size-9 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40"
           onClick={() => onChange(Math.max(1, value - 1))}
           disabled={value <= 1}
         >
-          <Minus className="size-3" />
-        </Button>
-        <span className="w-10 text-center text-sm font-medium">{value}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
+          <Minus className="size-3.5" />
+        </button>
+        <span className="w-10 text-center text-sm font-semibold">{value}</span>
+        <button
+          type="button"
+          className="size-9 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40"
           onClick={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
         >
-          <Plus className="size-3" />
-        </Button>
+          <Plus className="size-3.5" />
+        </button>
       </div>
-      {max <= 5 && (
-        <span className="text-xs text-muted-foreground">
+      {max <= 5 && max > 0 && (
+        <span className="text-xs text-amber-600 font-medium">
           {max} disponible{max !== 1 ? "s" : ""}
         </span>
       )}
@@ -96,7 +122,6 @@ function QuantitySelector({
   );
 }
 
-// ─── Store info card ─────────────────────────────────────────
 function StoreInfoCard({
   store,
 }: {
@@ -121,12 +146,12 @@ function StoreInfoCard({
             <Image
               src={store.logo_url}
               alt={store.name}
-              width={40}
-              height={40}
-              className="size-10 rounded-full object-cover"
+              width={44}
+              height={44}
+              className="size-11 rounded-full object-cover ring-2 ring-muted"
             />
           ) : (
-            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+            <div className="size-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
               {store.name.charAt(0).toUpperCase()}
             </div>
           )}
@@ -136,22 +161,22 @@ function StoreInfoCard({
                 {store.name}
               </p>
               {store.is_verified && (
-                <ShieldCheck className="size-3.5 text-primary shrink-0" />
+                <BadgeCheck className="size-4 text-primary shrink-0" />
               )}
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
               {store.avg_rating > 0 && (
                 <span className="flex items-center gap-0.5">
-                  <Star className="size-3 fill-primary text-primary" />
+                  <Star className="size-3 fill-amber-400 text-amber-400" />
                   {store.avg_rating.toFixed(1)}
                 </span>
               )}
               <span>{store.country}</span>
             </div>
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="shrink-0">
             <Store className="size-3.5 mr-1.5" />
-            Voir
+            Voir la boutique
           </Button>
         </Link>
       </CardContent>
@@ -159,13 +184,12 @@ function StoreInfoCard({
   );
 }
 
-// ─── Loading ─────────────────────────────────────────────────
 function ProductDetailSkeleton() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <Skeleton className="h-4 w-48 mb-6" />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <Skeleton className="aspect-square rounded-lg" />
+        <Skeleton className="aspect-square rounded-xl" />
         <div className="space-y-4">
           <Skeleton className="h-8 w-3/4" />
           <Skeleton className="h-6 w-1/3" />
@@ -194,9 +218,18 @@ export default function ProductDetailPage() {
   const [isAdding, setIsAdding] = useState(false);
   const { addItem } = useCart();
 
-  const handleAddToCart = async () => {
-    if (!product || !product.store || isAdding) return;
+  const handleShare = async () => {
+    if (!product) return;
+    const url = window.location.href;
+    if (navigator.share) {
+      await navigator.share({ title: product.title, url });
+    } else {
+      await navigator.clipboard.writeText(url);
+    }
+  };
 
+  const handleAddToCart = async () => {
+    if (!product?.store || isAdding) return;
     setIsAdding(true);
     try {
       await addItem({
@@ -213,17 +246,15 @@ export default function ProductDetailPage() {
         maxQuantity,
         isDigital: product.is_digital,
       });
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      // TODO: Show user-friendly error message
+    } catch {
+      // silent
     } finally {
       setIsAdding(false);
     }
   };
 
   const handleBuyNow = async () => {
-    if (!product || !product.store || isAdding) return;
-
+    if (!product?.store || isAdding) return;
     setIsAdding(true);
     try {
       await addItem({
@@ -241,142 +272,175 @@ export default function ProductDetailPage() {
         isDigital: product.is_digital,
       });
       router.push(ROUTES.CART);
-    } catch (error) {
-      console.error("Error adding to cart:", error);
-      // TODO: Show user-friendly error message
+    } catch {
       setIsAdding(false);
     }
   };
 
-  // Loading
-  if (product === undefined) {
-    return <ProductDetailSkeleton />;
-  }
+  if (product === undefined) return <ProductDetailSkeleton />;
 
-  // 404
   if (product === null) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-16 text-center">
-        <h1>Produit introuvable</h1>
-        <p className="mt-2 text-muted-foreground">
+      <div className="mx-auto max-w-7xl px-4 py-16 text-center space-y-4">
+        <h1 className="text-2xl font-bold">Produit introuvable</h1>
+        <p className="text-muted-foreground">
           Ce produit n&apos;existe pas ou n&apos;est plus disponible.
         </p>
-        <Link
-          href={ROUTES.PRODUCTS}
-          className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
-        >
-          Retour au catalogue
-        </Link>
+        <Button asChild>
+          <Link href={ROUTES.PRODUCTS}>Retour au catalogue</Link>
+        </Button>
       </div>
     );
   }
 
   const activePrice = product.price;
   const activeComparePrice = product.compare_price;
+  const comparePrice = activeComparePrice ?? 0;
   const hasDiscount =
     activeComparePrice !== undefined && activeComparePrice > activePrice;
+  const discountPercent = hasDiscount
+    ? Math.round(((comparePrice - activePrice) / comparePrice) * 100)
+    : 0;
   const maxQuantity = product.quantity;
-  const isOutOfStock = maxQuantity <= 0;
+  const isOutOfStock = !product.is_digital && maxQuantity <= 0;
+  const isLowStock =
+    !product.is_digital && maxQuantity > 0 && maxQuantity <= 10;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 space-y-10">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1 text-sm text-muted-foreground mb-6 flex-wrap">
-        <Link href={ROUTES.HOME} className="hover:text-foreground">
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap">
+        <Link
+          href={ROUTES.HOME}
+          className="hover:text-foreground transition-colors"
+        >
           Accueil
         </Link>
-        <ChevronRight className="size-3.5" />
-        <Link href={ROUTES.PRODUCTS} className="hover:text-foreground">
+        <ChevronRight className="size-3.5 shrink-0" />
+        <Link
+          href={ROUTES.PRODUCTS}
+          className="hover:text-foreground transition-colors"
+        >
           Catalogue
         </Link>
         {product.category && (
           <>
-            <ChevronRight className="size-3.5" />
+            <ChevronRight className="size-3.5 shrink-0" />
             <Link
               href={ROUTES.CATEGORY(product.category.slug)}
-              className="hover:text-foreground"
+              className="hover:text-foreground transition-colors"
             >
               {product.category.name}
             </Link>
           </>
         )}
-        <ChevronRight className="size-3.5" />
-        <span className="text-foreground font-medium truncate max-w-48">
+        <ChevronRight className="size-3.5 shrink-0" />
+        <span className="text-foreground font-medium line-clamp-1 max-w-[200px]">
           {product.title}
         </span>
       </nav>
 
-      {/* Content */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        {/* Left — Gallery */}
-        <ProductGallery
-          images={product.images}
-          title={product.title}
-          imageRoles={product.image_roles}
-        />
+      {/* Main grid */}
+      <div className="grid gap-8 lg:gap-12 md:grid-cols-2">
+        {/* Gallery — sticky on desktop */}
+        <div className="md:sticky md:top-6 md:self-start">
+          <ProductGallery
+            images={product.images ?? []}
+            title={product.title}
+            imageRoles={product.image_roles}
+          />
+        </div>
 
-        {/* Right — Details */}
-        <div className="space-y-6">
-          {/* Title + badges */}
-          <div>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {product.is_digital && (
-                <Badge variant="secondary">Produit digital</Badge>
-              )}
-              {product.status === "out_of_stock" && (
-                <Badge variant="outline">Rupture de stock</Badge>
-              )}
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold leading-tight">
+        {/* Right column */}
+        <div className="space-y-5">
+          {/* Badges row */}
+          <div className="flex flex-wrap gap-2">
+            {hasDiscount && (
+              <Badge className="bg-red-500 hover:bg-red-500 text-white font-semibold">
+                -{discountPercent}%
+              </Badge>
+            )}
+            {product.is_digital && (
+              <Badge variant="secondary" className="gap-1">
+                <BadgeCheck className="size-3" />
+                Produit digital
+              </Badge>
+            )}
+            {isOutOfStock && (
+              <Badge variant="outline" className="text-muted-foreground">
+                Rupture de stock
+              </Badge>
+            )}
+            {isLowStock && (
+              <Badge className="bg-amber-500 hover:bg-amber-500 text-white animate-pulse">
+                Plus que {maxQuantity} !
+              </Badge>
+            )}
+          </div>
+
+          {/* Title + share */}
+          <div className="flex items-start gap-3">
+            <h1 className="flex-1 text-2xl sm:text-3xl font-bold leading-tight">
               {product.title}
             </h1>
-            {product.category && (
-              <Link
-                href={ROUTES.CATEGORY(product.category.slug)}
-                className="text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                {product.category.name}
-              </Link>
-            )}
+            <button
+              type="button"
+              onClick={handleShare}
+              className="shrink-0 p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              aria-label="Partager"
+            >
+              <Share2 className="size-4" />
+            </button>
           </div>
-          {/* Price */}
-          <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-primary">
-              {formatPrice(activePrice, "XOF")}
-            </span>
-            {hasDiscount && (
-              <>
+
+          {/* Rating */}
+          {(product.avg_rating ?? 0) > 0 && (
+            <StarRating
+              rating={product.avg_rating ?? 0}
+              count={product.review_count}
+            />
+          )}
+
+          {/* Category link */}
+          {product.category && (
+            <Link
+              href={ROUTES.CATEGORY(product.category.slug)}
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              <ChevronRight className="size-3.5 rotate-180" />
+              {product.category.name}
+            </Link>
+          )}
+
+          {/* Price block */}
+          <div className="space-y-1">
+            <div className="flex items-baseline gap-3 flex-wrap">
+              <span className="text-3xl font-bold text-primary">
+                {formatPrice(activePrice, "XOF")}
+              </span>
+              {hasDiscount && (
                 <span className="text-lg text-muted-foreground line-through">
-                  {formatPrice(activeComparePrice, "XOF")}
+                  {formatPrice(comparePrice, "XOF")}
                 </span>
-                <Badge className="bg-destructive text-white">
-                  -
-                  {Math.round(
-                    ((activeComparePrice - activePrice) / activeComparePrice) *
-                      100,
-                  )}
-                  %
-                </Badge>
-              </>
+              )}
+            </div>
+            {hasDiscount && (
+              <p className="text-sm text-green-600 font-medium">
+                Vous économisez {formatPrice(comparePrice - activePrice, "XOF")}
+              </p>
             )}
           </div>
+
           <Separator />
-          {/* Quantity + Add to cart */}
-          {!isOutOfStock && (
-            <div className="space-y-3">
+
+          {/* Buy section */}
+          {!isOutOfStock ? (
+            <div className="space-y-4">
               <QuantitySelector
                 value={quantity}
-                max={maxQuantity}
+                max={product.is_digital ? 99 : maxQuantity}
                 onChange={setQuantity}
               />
-              {/* Stock Urgency */}
-              {maxQuantity <= 10 && maxQuantity > 0 && (
-                <p className="text-sm text-orange-600 flex items-center gap-1.5">
-                  <span className="font-medium">
-                    ⚡ Plus que {maxQuantity} en stock
-                  </span>
-                </p>
-              )}
               <div className="flex gap-2">
                 <Button
                   size="lg"
@@ -400,24 +464,43 @@ export default function ProductDetailPage() {
                   onClick={handleBuyNow}
                   disabled={isAdding}
                 >
-                  {isAdding ? "Ajout..." : "Commander"}
+                  {isAdding ? "Ajout..." : "Commander maintenant"}
                 </Button>
               </div>
             </div>
-          )}
-          {isOutOfStock && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+          ) : (
+            <div className="rounded-lg border border-dashed border-destructive/30 bg-destructive/5 p-4 text-center">
               <p className="text-sm font-medium text-destructive">
                 Ce produit est actuellement en rupture de stock.
               </p>
             </div>
           )}
-          {/* Bullet Points - Key Benefits */}
+
+          {/* Trust badges */}
+          <div className="grid grid-cols-3 gap-2 py-3 border rounded-xl bg-muted/20">
+            <TrustBadge
+              icon={<ShieldCheck className="size-5" />}
+              label="Paiement sécurisé"
+              sublabel="Mobile Money & carte"
+            />
+            <TrustBadge
+              icon={<Truck className="size-5" />}
+              label="Livraison rapide"
+              sublabel="Cotonou & alentours"
+            />
+            <TrustBadge
+              icon={<RotateCcw className="size-5" />}
+              label="Retours gratuits"
+              sublabel="Sous 3 jours"
+            />
+          </div>
+
+          {/* Key tags as checkpoints */}
           {product.tags.length > 0 && (
-            <div className="bg-muted/30 rounded-lg p-4">
+            <div className="bg-muted/30 rounded-xl p-4">
               <h3 className="text-sm font-semibold mb-3">Points clés</h3>
               <ul className="grid gap-2 sm:grid-cols-2">
-                {product.tags.slice(0, 8).map((tag) => (
+                {product.tags.slice(0, 6).map((tag) => (
                   <li key={tag} className="flex items-start gap-2 text-sm">
                     <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
                     <span className="text-muted-foreground capitalize">
@@ -428,28 +511,7 @@ export default function ProductDetailPage() {
               </ul>
             </div>
           )}
-          {/* Trust Icons */}
-          <div className="flex flex-wrap items-center justify-center gap-4 py-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-              </svg>
-              <span>Paiement sécurisé</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
-              </svg>
-              <span>Protection acheteurs</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
-              </svg>
-              <span>Moov Money, Celtis, Mobile Money</span>
-            </div>
-          </div>
-          <Separator />
+
           {/* Description */}
           {product.description && (
             <div>
@@ -460,6 +522,7 @@ export default function ProductDetailPage() {
               />
             </div>
           )}
+
           {/* Tags */}
           {product.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -470,14 +533,16 @@ export default function ProductDetailPage() {
               ))}
             </div>
           )}
+
           {/* Technical Specs — Amazon-style table */}
           {(product.weight ||
             product.color ||
             product.material ||
             product.dimensions ||
             product.sku ||
-            product.category) && (
-            <div className="rounded-lg border overflow-hidden">
+            product.category ||
+            (specs && specs.length > 0)) && (
+            <div className="rounded-xl border overflow-hidden">
               <div className="bg-muted/60 px-4 py-2.5 border-b flex items-center gap-2">
                 <Package className="size-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold">Caractéristiques</h3>
@@ -489,10 +554,7 @@ export default function ProductDetailPage() {
                       label: "Catégorie",
                       value: product.category.name,
                     },
-                    product.color && {
-                      label: "Couleur",
-                      value: product.color,
-                    },
+                    product.color && { label: "Couleur", value: product.color },
                     product.material && {
                       label: "Matériau",
                       value: product.material,
@@ -527,10 +589,8 @@ export default function ProductDetailPage() {
                             i % 2 === 0 ? "bg-background" : "bg-muted/30"
                           }
                         >
-                          <td className="px-4 py-2.5 w-2/5">
-                            <div className="text-muted-foreground font-medium">
-                              {row.label}
-                            </div>
+                          <td className="px-4 py-2.5 w-2/5 text-muted-foreground font-medium">
+                            {row.label}
                           </td>
                           <td className="px-4 py-2.5 text-foreground">
                             {row.value}
@@ -542,38 +602,20 @@ export default function ProductDetailPage() {
               </table>
             </div>
           )}
-          {/* Returns Policy */}
-          <div className="flex items-start gap-2 text-sm">
-            <svg
-              className="size-5 text-blue-600 shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-              />
-            </svg>
-            <div>
-              <p className="font-medium">Retours gratuits</p>
-              <p className="text-xs text-muted-foreground">Sous 3 jours</p>
-            </div>
-          </div>
 
-          <Separator className="my-8" />
-          <ProductReviewList productId={product._id} />
-          <Separator className="my-8" />
-          <ProductQASection
-            productId={product._id}
-            storeOwnerId={product.store?.owner_id}
-          />
           {/* Store card */}
           {product.store && <StoreInfoCard store={product.store} />}
         </div>
       </div>
+
+      {/* Reviews + Q&A below the fold */}
+      <Separator />
+      <ProductReviewList productId={product._id} />
+      <Separator />
+      <ProductQASection
+        productId={product._id}
+        storeOwnerId={product.store?.owner_id}
+      />
     </div>
   );
 }
