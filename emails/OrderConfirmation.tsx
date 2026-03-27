@@ -133,14 +133,14 @@ const styles = {
     fontWeight: "700" as const,
     color: emailTheme.colors.foreground,
     textAlign: "center" as const,
-    margin: "0 0 24px 0",
+    margin: "0 0 16px 0",
   },
   paragraph: {
     fontFamily: emailTheme.fonts.body,
     fontSize: "15px",
     color: emailTheme.colors.foreground,
     lineHeight: "1.6",
-    margin: "0 0 12px 0",
+    margin: "0 0 24px 0",
   },
   table: {
     backgroundColor: emailTheme.colors.background,
