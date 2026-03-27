@@ -19,7 +19,7 @@ const siteUrl = process.env.SITE_URL!;
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Adresse expéditeur — modifier UNIQUEMENT ici pour changer
-const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
+const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
 // ---- Trigger functions reference ----
 const authFunctions: AuthFunctions = internal.auth;
