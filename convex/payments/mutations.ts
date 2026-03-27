@@ -3,7 +3,7 @@
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { assertValidTransition, OrderItemInput } from "../orders/helpers";
+import { assertValidTransition, OrderItemInput, restoreInventory } from "../orders/helpers";
 
 /**
  * Stocke la référence de paiement Moneroo dans la commande.
@@ -222,7 +222,6 @@ export const failPayment = internalMutation({
     });
 
     // Restaurer le stock
-    const { restoreInventory } = await import("../orders/helpers");
     await restoreInventory(ctx, order.items);
 
     return { success: true };
