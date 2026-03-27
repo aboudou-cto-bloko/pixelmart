@@ -180,6 +180,7 @@ export default defineSchema({
     // Inventory
     track_inventory: v.boolean(),
     quantity: v.number(),
+    warehouse_qty: v.optional(v.number()), // unités actuellement stockées en entrepôt Pixel-Mart
     low_stock_threshold: v.number(), // default: 5
 
     // Rating
@@ -370,7 +371,9 @@ export default defineSchema({
     commission_amount: v.optional(v.number()), // centimes — Pixel-Mart fee
     delivery_lat: v.optional(v.number()), // latitude client
     delivery_lon: v.optional(v.number()), // longitude client
-    delivery_distance_km: v.optional(v.number()), // distance calculée
+    delivery_distance_km: v.optional(v.number()), // distance calculée (hub→client ou distance unique)
+    delivery_distance_vendor_to_hub_km: v.optional(v.number()), // segment 1 : vendeur → entrepôt PM (scénario collecte)
+    delivery_distance_hub_to_client_km: v.optional(v.number()), // segment 2 : entrepôt PM → client (scénario collecte)
     delivery_type: v.optional(
       v.union(v.literal("standard"), v.literal("urgent"), v.literal("fragile")),
     ),

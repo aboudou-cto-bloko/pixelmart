@@ -248,12 +248,13 @@ export const validateRequest = mutation({
       updated_at: now,
     });
 
-    // Si le produit est lié → incrémenter le stock
+    // Si le produit est lié → incrémenter le stock total et le stock entrepôt
     if (request.product_id && request.actual_qty) {
       const product = await ctx.db.get(request.product_id);
       if (product) {
         await ctx.db.patch(request.product_id, {
           quantity: product.quantity + request.actual_qty,
+          warehouse_qty: (product.warehouse_qty ?? 0) + request.actual_qty,
           status: "active",
           updated_at: now,
         });

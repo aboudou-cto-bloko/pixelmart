@@ -30,7 +30,16 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Save } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Save, Warehouse } from "lucide-react";
+import { toast } from "sonner";
 import { ProductImageUpload } from "./ProductImageUpload";
 import { VendorQAManager } from "@/components/questions";
 import { VariantEditor, type VariantFormData } from "./VariantEditor";
@@ -106,10 +115,12 @@ function ProductFormInner({
   mode,
   productId,
   initialState,
+  warehouseQty,
 }: {
   mode: "create" | "edit";
   productId?: Id<"products">;
   initialState: FormState;
+  warehouseQty?: number;
 }) {
   const router = useRouter();
   const categories = useQuery(api.categories.queries.listActive);
@@ -123,6 +134,13 @@ function ProductFormInner({
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const lastSubmissionTime = useRef<number>(0);
+
+  // ── Storage request dialog ──
+  const [storageDialogOpen, setStorageDialogOpen] = useState(false);
+  const [storageQty, setStorageQty] = useState<number | undefined>(undefined);
+  const [storageNotes, setStorageNotes] = useState("");
+  const [isStorageSubmitting, setIsStorageSubmitting] = useState(false);
+  const createStorageRequest = useMutation(api.storage.mutations.createRequest);
 
   // ---- Updater typé ----
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -303,6 +321,28 @@ function ProductFormInner({
         setError("Une erreur inattendue est survenue. Veuillez réessayer.");
       }
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleStorageSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!productId || !form.title) return;
+    setIsStorageSubmitting(true);
+    try {
+      const { storageCode } = await createStorageRequest({
+        product_id: productId,
+        product_name: form.title,
+        estimated_qty: storageQty,
+        notes: storageNotes.trim() || undefined,
+      });
+      toast.success(`Demande créée — code ${storageCode}`);
+      setStorageDialogOpen(false);
+      setStorageQty(undefined);
+      setStorageNotes("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setIsStorageSubmitting(false);
     }
   }
 
@@ -555,6 +595,18 @@ function ProductFormInner({
                 </div>
               )}
 
+              {mode === "edit" &&
+                warehouseQty !== undefined &&
+                warehouseQty > 0 && (
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-4 py-2.5">
+                    <Warehouse className="size-4 text-primary shrink-0" />
+                    <span className="text-sm text-muted-foreground">
+                      Stock entrepôt Pixel-Mart :
+                    </span>
+                    <Badge variant="secondary">{warehouseQty} unités</Badge>
+                  </div>
+                )}
+
               <div className="space-y-2">
                 <Label htmlFor="weight">Poids (grammes)</Label>
                 <Input
@@ -735,28 +787,110 @@ function ProductFormInner({
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.push("/vendor/products")}
-        >
-          Annuler
-        </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Enregistrement...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              {mode === "create" ? "Créer le brouillon" : "Enregistrer"}
-            </>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          {mode === "edit" && productId && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStorageDialogOpen(true)}
+            >
+              <Warehouse className="mr-2 h-4 w-4" />
+              Envoyer en stockage
+            </Button>
           )}
-        </Button>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push("/vendor/products")}
+          >
+            Annuler
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Enregistrement...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                {mode === "create" ? "Créer le brouillon" : "Enregistrer"}
+              </>
+            )}
+          </Button>
+        </div>
       </div>
+
+      {/* Storage request dialog */}
+      {mode === "edit" && productId && (
+        <Dialog open={storageDialogOpen} onOpenChange={setStorageDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Warehouse className="size-5" />
+                Demande de stockage
+              </DialogTitle>
+              <DialogDescription>
+                Initiez un dépôt de &quot;{form.title}&quot; à l&apos;entrepôt
+                Pixel-Mart.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleStorageSubmit} className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="storage_qty">Quantité estimée</Label>
+                <Input
+                  id="storage_qty"
+                  type="number"
+                  min="1"
+                  placeholder="Ex : 50"
+                  value={storageQty ?? ""}
+                  onChange={(e) =>
+                    setStorageQty(
+                      e.target.value === ""
+                        ? undefined
+                        : parseInt(e.target.value),
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="storage_notes">Notes (optionnel)</Label>
+                <Textarea
+                  id="storage_notes"
+                  rows={2}
+                  placeholder="Instructions particulières pour l'entrepôt…"
+                  value={storageNotes}
+                  onChange={(e) => setStorageNotes(e.target.value)}
+                  className="resize-none"
+                  maxLength={500}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setStorageDialogOpen(false)}
+                >
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={isStorageSubmitting}>
+                  {isStorageSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Envoi…
+                    </>
+                  ) : (
+                    "Créer la demande"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </form>
   );
 }
@@ -827,6 +961,11 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
       mode={mode}
       productId={productId}
       initialState={initialState}
+      warehouseQty={
+        mode === "edit" && existingProduct
+          ? existingProduct.warehouse_qty
+          : undefined
+      }
     />
   );
 }
