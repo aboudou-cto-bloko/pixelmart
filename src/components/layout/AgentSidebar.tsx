@@ -124,7 +124,7 @@ export function AgentSidebar(props: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href={ROUTES.AGENT_HOME}>
+              <Link href={ROUTES.AGENT_HOME} prefetch={false}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Warehouse className="size-4" />
                 </div>
@@ -146,7 +146,7 @@ export function AgentSidebar(props: React.ComponentProps<typeof Sidebar>) {
             {AGENT_NAV.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link href={item.url}>
+                  <Link href={item.url} prefetch={false}>
                     <item.icon />
                     <span>{item.title}</span>
                   </Link>

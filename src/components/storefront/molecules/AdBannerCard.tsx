@@ -19,12 +19,15 @@ interface AdBannerCardProps {
   };
   aspectRatio?: string; // e.g. "16/9", "4/3"
   className?: string;
+  /** Set true for the first visible banner (improves LCP) */
+  priority?: boolean;
 }
 
 export function AdBannerCard({
   booking,
   aspectRatio = "16/9",
   className,
+  priority = false,
 }: AdBannerCardProps) {
   return (
     <AdSlotWrapper
@@ -44,6 +47,8 @@ export function AdBannerCard({
             src={booking.image_url}
             alt={booking.title || "Promotion"}
             fill
+            priority={priority}
+            sizes="(max-width: 768px) 100vw, (max-width: 1400px) 80vw, 1200px"
             className="object-cover"
           />
         )}

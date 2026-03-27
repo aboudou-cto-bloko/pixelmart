@@ -2,13 +2,26 @@
 
 "use client";
 
+import dynamic from "next/dynamic";
 import { SalesOverviewCards } from "../organisms/SalesOverviewCards";
-import { SalesChart } from "../organisms/SalesChart";
 import { TopProductsTable } from "../organisms/TopProductsTable";
-import { RevenueByCategoryChart } from "../organisms/RevenueByCategoryChart";
 import { CustomerInsightsPanel } from "../organisms/CustomerInsightsPanel";
 import { PeriodSelector } from "../molecules/PeriodSelector";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const SalesChart = dynamic(
+  () => import("../organisms/SalesChart").then((mod) => mod.SalesChart),
+  { loading: () => <Skeleton className="h-80 w-full rounded-md" />, ssr: false },
+);
+
+const RevenueByCategoryChart = dynamic(
+  () =>
+    import("../organisms/RevenueByCategoryChart").then(
+      (mod) => mod.RevenueByCategoryChart,
+    ),
+  { loading: () => <Skeleton className="h-64 w-full rounded-md" />, ssr: false },
+);
 
 type Period = "7d" | "30d" | "90d" | "12m";
 type Source = "all" | "marketplace" | "vendor_shop";
