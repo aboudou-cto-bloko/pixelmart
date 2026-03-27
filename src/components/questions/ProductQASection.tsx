@@ -7,7 +7,6 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  Reply,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -30,7 +30,7 @@ interface ProductQASectionProps {
   storeOwnerId?: Id<"users">;
 }
 
-// ─── Question Card ────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface QAItem {
   _id: string;
@@ -43,7 +43,116 @@ interface QAItem {
   answered_at?: number;
 }
 
-function QuestionCard({ item }: { item: QAItem }) {
+// ─── Vendor Answer Form (inline per question) ─────────────────────────────────
+
+function VendorAnswerForm({
+  questionId,
+  existingAnswer,
+}: {
+  questionId: Id<"product_questions">;
+  existingAnswer?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(existingAnswer ?? "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const answerMutation = useMutation(api.questions.mutations.answer);
+  const editMutation = useMutation(api.questions.mutations.editAnswer);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setIsSubmitting(true);
+    try {
+      if (existingAnswer) {
+        await editMutation({
+          question_id: questionId,
+          vendor_answer: text.trim(),
+        });
+        toast.success("Réponse mise à jour.");
+      } else {
+        await answerMutation({
+          question_id: questionId,
+          vendor_answer: text.trim(),
+        });
+        toast.success("Réponse publiée.");
+      }
+      setOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-xs h-7 px-2"
+        onClick={() => {
+          setText(existingAnswer ?? "");
+          setOpen(true);
+        }}
+      >
+        <Reply className="size-3.5" />
+        {existingAnswer ? "Modifier la réponse" : "Répondre"}
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mt-2 space-y-2 rounded-lg border p-3 bg-muted/20"
+    >
+      <p className="text-xs font-semibold flex items-center gap-1.5">
+        <Store className="size-3.5 text-primary" />
+        {existingAnswer ? "Modifier votre réponse" : "Votre réponse"}
+      </p>
+      <Textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Répondez à cette question…"
+        rows={3}
+        maxLength={1000}
+        className="resize-none text-sm"
+        autoFocus
+      />
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {text.length}/1000
+        </span>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setOpen(false)}
+          >
+            Annuler
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!text.trim() || isSubmitting}
+          >
+            {isSubmitting
+              ? "Envoi…"
+              : existingAnswer
+                ? "Mettre à jour"
+                : "Publier"}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+// ─── Question Card ─────────────────────────────────────────────────────────────
+
+function QuestionCard({ item, isVendor }: { item: QAItem; isVendor: boolean }) {
   const timeAgo = formatDistanceToNow(new Date(item._creationTime), {
     addSuffix: true,
     locale: fr,
@@ -61,20 +170,28 @@ function QuestionCard({ item }: { item: QAItem }) {
 
       {/* Vendor answer */}
       {item.vendor_answer ? (
-        <div className="ml-11 bg-muted/40 rounded-lg p-3 space-y-1 border-l-2 border-primary/40">
-          <div className="flex items-center gap-1.5">
-            <Store className="size-3.5 text-primary" />
-            <span className="text-xs font-semibold text-primary">
-              Réponse du vendeur
-            </span>
-            {item.answered_at && (
-              <span className="text-xs text-muted-foreground">
-                ·{" "}
-                {formatDistanceToNow(new Date(item.answered_at), {
-                  addSuffix: true,
-                  locale: fr,
-                })}
+        <div className="ml-4 bg-muted/40 rounded-lg p-3 space-y-1 border-l-2 border-primary/40">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Store className="size-3.5 text-primary" />
+              <span className="text-xs font-semibold text-primary">
+                Réponse du vendeur
               </span>
+              {item.answered_at && (
+                <span className="text-xs text-muted-foreground">
+                  ·{" "}
+                  {formatDistanceToNow(new Date(item.answered_at), {
+                    addSuffix: true,
+                    locale: fr,
+                  })}
+                </span>
+              )}
+            </div>
+            {isVendor && (
+              <VendorAnswerForm
+                questionId={item._id as Id<"product_questions">}
+                existingAnswer={item.vendor_answer}
+              />
             )}
           </div>
           <p className="text-sm text-foreground/80 leading-relaxed">
@@ -82,9 +199,16 @@ function QuestionCard({ item }: { item: QAItem }) {
           </p>
         </div>
       ) : (
-        <p className="ml-11 text-xs text-muted-foreground italic">
-          En attente de réponse du vendeur…
-        </p>
+        <div className="ml-4 flex items-center gap-3">
+          <p className="text-xs text-muted-foreground italic">
+            En attente de réponse du vendeur…
+          </p>
+          {isVendor && (
+            <VendorAnswerForm
+              questionId={item._id as Id<"product_questions">}
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -310,7 +434,6 @@ export function ProductQASection({
     );
   }
 
-  // Is the current user the actual owner of this product's store?
   const isVendor =
     isAuthenticated &&
     user?.role === "vendor" &&
@@ -365,7 +488,11 @@ export function ProductQASection({
       ) : (
         <div>
           {visible.map((item) => (
-            <QuestionCard key={item._id} item={item as QAItem} />
+            <QuestionCard
+              key={item._id}
+              item={item as QAItem}
+              isVendor={isVendor}
+            />
           ))}
 
           {hasMore && (
