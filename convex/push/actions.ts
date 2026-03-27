@@ -1,4 +1,5 @@
 // filepath: convex/push/actions.ts
+"use node";
 
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
