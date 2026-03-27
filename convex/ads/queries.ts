@@ -3,7 +3,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { resolveImageUrl } from "../products/helpers";
-import { getActiveBookingsForSlot } from "./helpers";
+import { getActiveBookingsForSlot, calculateBookingPrice } from "./helpers";
 
 /**
  * Récupérer les annonces actives pour un emplacement — PUBLIC
@@ -217,9 +217,7 @@ export const previewPrice = query({
     const adSpace = await ctx.db.get(args.ad_space_id);
     if (!adSpace) return null;
 
-    const { totalPrice, breakdown } = (
-      await import("./helpers")
-    ).calculateBookingPrice(adSpace, args.starts_at, args.ends_at);
+    const { totalPrice, breakdown } = calculateBookingPrice(adSpace, args.starts_at, args.ends_at);
 
     return { totalPrice, breakdown, currency: "XOF" };
   },
