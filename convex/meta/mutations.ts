@@ -89,7 +89,7 @@ export const trackPurchase = internalMutation({
       orderId: order.order_number,
     });
 
-    const appUrl = process.env.SITE_URL ?? "https://pixelmart.com";
+    const appUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
 
     await ctx.scheduler.runAfter(0, internal.meta.mutations.sendPurchaseEvent, {
       pixelId: store.meta_pixel_id,

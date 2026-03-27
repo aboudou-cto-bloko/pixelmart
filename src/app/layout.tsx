@@ -23,7 +23,7 @@ const montserrat = Montserrat({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pixel-mart.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

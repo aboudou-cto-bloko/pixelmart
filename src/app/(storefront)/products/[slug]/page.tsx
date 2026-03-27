@@ -5,7 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { MarketplaceProductPageClient } from "./MarketplaceProductPageClient";
 import type { Metadata } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pixel-mart.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
 
 interface Props {
   params: Promise<{ slug: string }>;

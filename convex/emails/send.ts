@@ -23,7 +23,7 @@ function getResend() {
 }
 
 function getSiteUrl(): string {
-  return process.env.SITE_URL ?? "http://localhost:3001";
+  return process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
 }
 
 // ─── Helper : formater un montant pour les emails ──────────
