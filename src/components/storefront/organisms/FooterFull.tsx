@@ -79,7 +79,7 @@ export function FooterFull() {
       <div className="h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent" />
 
       {/* Main footer */}
-      <div className="container px-4 py-14 md:py-16">
+      <div className="container mx-auto px-4 py-14 md:py-16">
         <div className="grid gap-10 grid-cols-2 sm:grid-cols-2 lg:grid-cols-5">
           {/* Brand column — full width on mobile, centered */}
           <div className="col-span-2 lg:col-span-1 flex flex-col items-center text-center lg:items-start lg:text-left space-y-5">
@@ -160,7 +160,7 @@ export function FooterFull() {
       <Separator className="bg-white/5" />
 
       {/* Bottom bar */}
-      <div className="container px-4 py-5">
+      <div className="container mx-auto px-4 py-5">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
           <p className="text-xs text-white/30 text-center sm:text-left">
             © {new Date().getFullYear()} Pixel-Mart. Tous droits réservés.

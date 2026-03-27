@@ -34,7 +34,7 @@ export function WeeklyDeals() {
   }
 
   return (
-    <section className="py-8">
+    <section className="container mx-auto px-4 py-8">
       <div className="rounded-xl border bg-card p-6 dark:!bg-[#111111] dark:!border-[#1a1a1a]">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
