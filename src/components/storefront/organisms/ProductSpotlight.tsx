@@ -21,7 +21,7 @@ export function ProductSpotlight() {
 
   return (
     <section className="bg-muted/50 py-8">
-      <div className="container">
+      <div className="container mx-auto px-4">
         <div className="grid lg:grid-cols-[1fr_2fr] gap-8 items-center">
           {/* Left: Featured product info */}
           <AdSlotWrapper

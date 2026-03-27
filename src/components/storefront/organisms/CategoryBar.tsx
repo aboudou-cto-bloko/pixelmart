@@ -15,7 +15,7 @@ export function CategoryBar() {
 
   return (
     <section className="border-b">
-      <div className="container py-4 flex items-center justify-between gap-2 overflow-x-hidden">
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2 overflow-x-hidden">
         {/* Le ScrollArea occupe l'espace restant et gère le défilement interne */}
         <ScrollArea className="flex-1 min-w-0">
           <div className="flex gap-1">

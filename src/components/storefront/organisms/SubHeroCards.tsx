@@ -23,7 +23,7 @@ export function SubHeroCards() {
   }));
 
   return (
-    <section className="container pb-4">
+    <section className="container mx-auto px-4 pb-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {ads.map((ad) => (
           <AdBannerCard key={ad._id} booking={ad} aspectRatio="16/10" />
