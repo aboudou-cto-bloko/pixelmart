@@ -27,6 +27,7 @@ import {
   type OrderItemInput,
 } from "./helpers";
 import { calculateDeliveryFee } from "../delivery/constants";
+import { rateLimiter } from "../lib/ratelimits";
 
 // ─── Create Order ────────────────────────────────────────────
 
@@ -85,8 +86,16 @@ export const createOrder = mutation({
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
 
-    // 1. Rate limiting check
-    await checkOrderRateLimit(ctx, user._id);
+    // 1. Rate limiting — token bucket 5 commandes/minute via @convex-dev/ratelimiter
+    const { ok, retryAfter } = await rateLimiter.limit(ctx, "createOrder", {
+      key: user._id,
+    });
+    if (!ok) {
+      const secs = retryAfter ? Math.ceil(retryAfter / 1000) : 60;
+      throw new ConvexError(
+        `Trop de commandes. Réessayez dans ${secs} seconde${secs > 1 ? "s" : ""}.`,
+      );
+    }
 
     // 2. Validate input data
     if (args.items.length === 0) {
@@ -195,14 +204,27 @@ export const createOrder = mutation({
     const paymentMode = args.paymentMode ?? "online";
 
     // Distance effective pour le calcul des frais :
-    // - Si deux segments fournis (scénario collecte) → somme des deux
-    // - Sinon → distance unique (hub→client ou pickup vendeur→client)
-    const effectiveDistanceKm =
+    // - Scénario A (has_storage_plan) : goods déjà à PM → hub→client seulement, pas de segment collecte
+    // - Scénario C (collecte PM, !has_storage_plan) : vendeur→hub + hub→client
+    // - Scénario B (pickup propre, !use_pixelmart_service) : distance unique
+    let effectiveDistanceKm: number | undefined;
+    if (
+      store.has_storage_plan &&
+      args.deliveryDistanceHubToClientKm !== undefined
+    ) {
+      // Scénario A : ignorer le segment vendeur→hub (goods déjà en entrepôt)
+      effectiveDistanceKm = args.deliveryDistanceHubToClientKm;
+    } else if (
       args.deliveryDistanceVendorToHubKm !== undefined &&
       args.deliveryDistanceHubToClientKm !== undefined
-        ? args.deliveryDistanceVendorToHubKm +
-          args.deliveryDistanceHubToClientKm
-        : args.deliveryDistanceKm;
+    ) {
+      // Scénario C : cumul des deux segments
+      effectiveDistanceKm =
+        args.deliveryDistanceVendorToHubKm + args.deliveryDistanceHubToClientKm;
+    } else {
+      // Scénario B ou distance unique
+      effectiveDistanceKm = args.deliveryDistanceKm;
+    }
 
     // Utiliser le fee calculé côté client, ou recalculer si distance fournie
     let shippingAmount = args.deliveryFee ?? 0;

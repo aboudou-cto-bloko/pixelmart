@@ -3,6 +3,7 @@
 import { mutation } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { getVendorStore, requireVendor } from "../users/helpers";
+import { rateLimiter } from "../lib/ratelimits";
 import { STORE_THEMES } from "./themes";
 
 /**
@@ -329,20 +330,10 @@ export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     const { store } = await getVendorStore(ctx);
 
-    // Basic rate limiting check - allow max 10 uploads per hour per store
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    const recentUploads = await ctx.db
-      .query("stores")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("_id"), store._id),
-          q.gt(q.field("updated_at"), oneHourAgo),
-        ),
-      )
-      .collect();
-
-    // This is a simple check - in production you might want more sophisticated rate limiting
-    if (recentUploads.length > 10) {
+    const { ok } = await rateLimiter.limit(ctx, "generateUploadUrl", {
+      key: store._id,
+    });
+    if (!ok) {
       throw new ConvexError(
         "Trop d'uploads récents. Veuillez patienter avant de réessayer.",
       );
