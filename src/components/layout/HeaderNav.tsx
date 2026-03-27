@@ -182,9 +182,9 @@ export function HeaderNav() {
         <div className="shrink-0">
           <DynamicLogo
             href={ROUTES.HOME}
-            size="lg"
+            size="md"
             darkModeStyle={{
-              className: "pt-4", // 16px padding + 110% scale for dark mode
+              className: "pt-3",
             }}
           />
         </div>
