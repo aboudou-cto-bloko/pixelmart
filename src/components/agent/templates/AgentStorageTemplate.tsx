@@ -11,14 +11,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { formatDate } from "@/lib/format";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { formatDate, formatPrice } from "@/lib/format";
 import {
   Search,
   Package,
   CheckCircle2,
   AlertCircle,
   Store,
+  FileText,
 } from "lucide-react";
+import type { Id } from "../../../../convex/_generated/dataModel";
+
+type PaymentMethod = "deferred" | "immediate";
 
 type MeasurementType = "units" | "weight";
 
@@ -28,9 +39,17 @@ interface FoundRequest {
   product_name: string;
   status: string;
   estimated_qty?: number;
+  actual_qty?: number;
+  actual_weight_kg?: number;
+  measurement_type?: MeasurementType;
   notes?: string;
   created_at: number;
   store_name: string;
+}
+
+interface ValidationResult {
+  invoiceId: Id<"storage_invoices">;
+  storageFee: number;
 }
 
 function CodeLookup({ onFound }: { onFound: (code: string) => void }) {
@@ -75,7 +94,13 @@ function RequestCard({ request }: { request: FoundRequest }) {
           <Badge variant="outline" className="shrink-0">
             {request.status === "pending_drop_off"
               ? "À réceptionner"
-              : request.status}
+              : request.status === "received"
+                ? "Réceptionné"
+                : request.status === "in_stock"
+                  ? "En stock"
+                  : request.status === "rejected"
+                    ? "Rejeté"
+                    : request.status}
           </Badge>
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -234,6 +259,119 @@ function ReceptionForm({
   );
 }
 
+function ValidationSection({
+  requestId,
+  storageCode,
+  onSuccess,
+}: {
+  requestId: Id<"storage_requests">;
+  storageCode: string;
+  onSuccess: (result: ValidationResult) => void;
+}) {
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("deferred");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validateRequest = useMutation(api.storage.mutations.validateRequest);
+
+  async function handleValidate() {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const result = await validateRequest({
+        request_id: requestId,
+        payment_method: paymentMethod,
+      });
+      onSuccess(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+      <p className="text-sm font-semibold">Valider la réception</p>
+      <p className="text-xs text-muted-foreground">
+        Colis <span className="font-mono font-bold">{storageCode}</span> reçu et
+        mesuré. Choisissez le mode de paiement pour la facture de stockage.
+      </p>
+      <div className="space-y-2">
+        <Label htmlFor="payment_method">Mode de paiement</Label>
+        <Select
+          value={paymentMethod}
+          onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
+        >
+          <SelectTrigger id="payment_method">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="deferred">
+              Différé (dette mensuelle)
+            </SelectItem>
+            <SelectItem value="immediate">
+              Immédiat (paiement direct)
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      )}
+      <Button
+        className="w-full"
+        onClick={handleValidate}
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? "Validation en cours…" : "Valider"}
+      </Button>
+    </div>
+  );
+}
+
+function ValidationSuccessBanner({
+  storageCode,
+  result,
+  onReset,
+}: {
+  storageCode: string;
+  result: ValidationResult;
+  onReset: () => void;
+}) {
+  return (
+    <div className="space-y-4 text-center py-4">
+      <CheckCircle2 className="mx-auto h-14 w-14 text-green-500" />
+      <div>
+        <p className="font-semibold text-lg">Stockage validé</p>
+        <p className="text-sm text-muted-foreground">
+          {storageCode} — Produit mis en stock
+        </p>
+      </div>
+      <div className="rounded-lg border bg-muted/50 p-4 text-sm space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <FileText className="h-4 w-4" />
+            Frais de stockage
+          </span>
+          <span className="font-semibold">
+            {formatPrice(result.storageFee)}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Facture #{result.invoiceId.slice(-8).toUpperCase()} créée
+        </p>
+      </div>
+      <Button className="w-full" onClick={onReset}>
+        Scanner un autre colis
+      </Button>
+    </div>
+  );
+}
+
 function CodeResult({
   storageCode,
   onReset,
@@ -242,6 +380,8 @@ function CodeResult({
   onReset: () => void;
 }) {
   const [received, setReceived] = useState(false);
+  const [validationResult, setValidationResult] =
+    useState<ValidationResult | null>(null);
   const result = useQuery(api.storage.queries.getByCode, {
     storage_code: storageCode,
   });
@@ -269,6 +409,32 @@ function CodeResult({
     );
   }
 
+  if (validationResult) {
+    return (
+      <ValidationSuccessBanner
+        storageCode={storageCode}
+        result={validationResult}
+        onReset={onReset}
+      />
+    );
+  }
+
+  if (result.status === "received") {
+    return (
+      <div className="space-y-4">
+        <RequestCard request={result as FoundRequest} />
+        <ValidationSection
+          requestId={result._id as Id<"storage_requests">}
+          storageCode={storageCode}
+          onSuccess={(r) => setValidationResult(r)}
+        />
+        <Button variant="ghost" size="sm" className="w-full" onClick={onReset}>
+          Annuler
+        </Button>
+      </div>
+    );
+  }
+
   if (result.status !== "pending_drop_off") {
     return (
       <div className="space-y-4">
@@ -291,7 +457,7 @@ function CodeResult({
         <div>
           <p className="font-semibold text-lg">Colis réceptionné</p>
           <p className="text-sm text-muted-foreground">
-            {storageCode} — En attente de validation admin
+            {storageCode} — En attente de validation
           </p>
         </div>
         <Button className="w-full" onClick={onReset}>
