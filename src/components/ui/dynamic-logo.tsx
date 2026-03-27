@@ -11,6 +11,17 @@ interface DynamicLogoProps {
   href?: string;
   size?: "sm" | "md" | "lg";
   showText?: boolean;
+  // Independent styling for each theme
+  lightModeStyle?: {
+    height?: number;
+    width?: number;
+    className?: string;
+  };
+  darkModeStyle?: {
+    height?: number;
+    width?: number;
+    className?: string;
+  };
 }
 
 export function DynamicLogo({
@@ -18,6 +29,8 @@ export function DynamicLogo({
   href = "/",
   size = "md",
   showText = false,
+  lightModeStyle,
+  darkModeStyle,
 }: DynamicLogoProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -27,20 +40,24 @@ export function DynamicLogo({
     setMounted(true);
   }, []);
 
-  // Size configurations
+  // Default size configurations
   const sizeConfig = {
     sm: { height: 24, width: 120 },
     md: { height: 32, width: 160 },
     lg: { height: 40, width: 200 },
   };
 
-  const { height, width } = sizeConfig[size];
+  const defaultSize = sizeConfig[size];
 
-  // Use light theme logo as fallback during hydration
-  const logoSrc =
-    mounted && resolvedTheme === "dark"
-      ? "/Pixel-Mart-1.png"
-      : "/Pixel-Mart.png";
+  // Determine current theme and styles
+  const isDarkMode = mounted && resolvedTheme === "dark";
+  const logoSrc = isDarkMode ? "/Pixel-Mart-1.png" : "/Pixel-Mart.png";
+
+  // Get dimensions and styling for current theme
+  const currentStyle = isDarkMode ? darkModeStyle : lightModeStyle;
+  const height = currentStyle?.height || defaultSize.height;
+  const width = currentStyle?.width || defaultSize.width;
+  const logoClassName = currentStyle?.className || "";
 
   const LogoImage = (
     <div className={cn("flex items-center gap-2", className)}>
@@ -49,7 +66,7 @@ export function DynamicLogo({
         alt="Pixel-Mart"
         height={height}
         width={width}
-        className="object-contain"
+        className={cn("object-contain", logoClassName)}
         priority
       />
       {showText && mounted && (

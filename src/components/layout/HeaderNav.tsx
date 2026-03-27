@@ -180,7 +180,13 @@ export function HeaderNav() {
 
         {/* Logo */}
         <div className="shrink-0">
-          <DynamicLogo href={ROUTES.HOME} size="lg" />
+          <DynamicLogo
+            href={ROUTES.HOME}
+            size="lg"
+            darkModeStyle={{
+              className: "pt-4", // 16px padding + 110% scale for dark mode
+            }}
+          />
         </div>
 
         {/* Search Desktop */}
