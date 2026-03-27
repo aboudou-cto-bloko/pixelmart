@@ -5,6 +5,7 @@ import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
+import webpush from "web-push";
 
 /**
  * Envoie une notification push à un utilisateur sur tous ses appareils.
@@ -46,7 +47,6 @@ export const sendToUser = internalAction({
     );
     if (!pushEnabled) return;
 
-    const webpush = await import("web-push");
     webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
     const payload = JSON.stringify({
