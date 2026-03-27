@@ -154,21 +154,21 @@ export const storeSettingsSchema = z.object({
  */
 export const deliverySettingsSchema = z
   .object({
-    usePixelmartService: z.boolean(),
+    use_pixelmart_service: z.boolean(),
 
-    customPickupLat: z
+    custom_pickup_lat: z
       .number()
       .min(-90, "Latitude invalide")
       .max(90, "Latitude invalide")
       .optional(),
 
-    customPickupLon: z
+    custom_pickup_lon: z
       .number()
       .min(-180, "Longitude invalide")
       .max(180, "Longitude invalide")
       .optional(),
 
-    customPickupLabel: z
+    custom_pickup_label: z
       .string()
       .min(5, "L'adresse doit contenir au moins 5 caractères")
       .max(200, "L'adresse ne peut pas dépasser 200 caractères")
@@ -177,18 +177,18 @@ export const deliverySettingsSchema = z
   .refine(
     (data) => {
       // If not using Pixelmart service, custom pickup is required
-      if (!data.usePixelmartService) {
+      if (!data.use_pixelmart_service) {
         return (
-          data.customPickupLat !== undefined &&
-          data.customPickupLon !== undefined &&
-          data.customPickupLabel !== undefined
+          data.custom_pickup_lat !== undefined &&
+          data.custom_pickup_lon !== undefined &&
+          data.custom_pickup_label !== undefined
         );
       }
       return true;
     },
     {
       message: "L'adresse de retrait personnalisée est requise",
-      path: ["customPickupLabel"],
+      path: ["custom_pickup_label"],
     },
   );
 
