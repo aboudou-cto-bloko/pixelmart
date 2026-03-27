@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/sheet";
 import { MobileCategoryAccordion } from "@/components/ui/mobile-category-accordion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { DynamicLogo } from "@/components/ui/dynamic-logo";
 
 // Type attendu pour l'arbre des catégories
 type CategoryNode = {
@@ -178,9 +179,9 @@ export function HeaderNav() {
         </Sheet>
 
         {/* Logo */}
-        <Link href={ROUTES.HOME} className="shrink-0">
-          <img src="/Pixel-Mart.png" alt="Pixel-Mart" className="h-34 w-auto" />
-        </Link>
+        <div className="shrink-0">
+          <DynamicLogo href={ROUTES.HOME} size="lg" />
+        </div>
 
         {/* Search Desktop */}
         <form

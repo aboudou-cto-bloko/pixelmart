@@ -54,7 +54,6 @@ import {
 import { VENDOR_NAV_MAIN, VENDOR_NAV_SETTINGS } from "@/constants/vendor-nav";
 import { ROUTES } from "@/constants/routes";
 import type { NavItem } from "@/constants/vendor-nav";
-import { DynamicLogo } from "@/components/ui/dynamic-logo";
 
 // Hook personnalisé pour détecter les écrans mobiles
 function useMediaQuery(query: string) {
@@ -306,9 +305,6 @@ export function VendorSidebar(props: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="mb-2 p-2">
-          <DynamicLogo size="sm" href="/vendor/dashboard" />
-        </div>
         <StoreSwitcher />
       </SidebarHeader>
       <SidebarContent>
