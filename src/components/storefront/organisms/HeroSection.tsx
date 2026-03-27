@@ -72,6 +72,7 @@ export function HeroSection() {
                 booking={ad}
                 aspectRatio="auto"
                 className="h-full"
+                priority={i === 0}
               />
             </div>
           ))}

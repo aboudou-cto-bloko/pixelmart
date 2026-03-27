@@ -3,6 +3,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -42,7 +43,18 @@ import { ProductImageUpload } from "./ProductImageUpload";
 import { VendorQAManager } from "@/components/questions";
 import { VariantEditor, type VariantFormData } from "./VariantEditor";
 import { PriceInput } from "./PriceInput";
-import { ProductDescriptionEditor } from "./ProductDescriptionEditor";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const ProductDescriptionEditor = dynamic(
+  () =>
+    import("./ProductDescriptionEditor").then(
+      (mod) => mod.ProductDescriptionEditor,
+    ),
+  {
+    loading: () => <Skeleton className="h-64 w-full rounded-md" />,
+    ssr: false,
+  },
+);
 
 // ---- Types ----
 interface ProductFormProps {

@@ -52,7 +52,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { VENDOR_NAV_MAIN, VENDOR_NAV_SETTINGS } from "@/constants/vendor-nav";
-import { ROUTES } from "@/constants/routes";
 import type { NavItem } from "@/constants/vendor-nav";
 
 // Hook personnalisé pour détecter les écrans mobiles
@@ -137,7 +136,7 @@ function StoreSwitcher() {
             ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/vendor/store/new" className="gap-2">
+              <Link href="/vendor/store/new" prefetch={false} className="gap-2">
                 <div className="flex size-6 items-center justify-center rounded-sm border border-dashed shrink-0">
                   <Plus className="size-3.5" />
                 </div>
@@ -191,6 +190,7 @@ function NavSection({ label, items }: { label: string; items: NavItem[] }) {
                           >
                             <Link
                               href={subItem.url}
+                              prefetch={false}
                               onClick={() => closeMobileSidebar(false)}
                             >
                               <span>{subItem.title}</span>
@@ -212,7 +212,7 @@ function NavSection({ label, items }: { label: string; items: NavItem[] }) {
                 tooltip={item.title}
                 isActive={pathname === item.url}
               >
-                <Link href={item.url} onClick={() => closeMobileSidebar(false)}>
+                <Link href={item.url} prefetch={false} onClick={() => closeMobileSidebar(false)}>
                   <item.icon />
                   <span>{item.title}</span>
                 </Link>
@@ -282,7 +282,7 @@ function UserFooter() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/vendor/settings">
+                <Link href="/vendor/settings" prefetch={false}>
                   <BadgeCheck className="mr-2 h-4 w-4" />
                   Compte
                 </Link>
