@@ -2,8 +2,8 @@
 
 // filepath: src/app/shop/[storeSlug]/products/[slug]/page.tsx
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import Link from "next/link";
 import {
@@ -16,19 +16,21 @@ import {
   Check,
   Package,
   RotateCcw,
-  Lock,
+  Truck,
+  Share2,
+  BadgeCheck,
 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductReviewList } from "@/components/reviews";
 import { ProductQASection } from "@/components/questions";
+import { QuickOrderSheet } from "@/components/vendor-shop/organisms/QuickOrderSheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
-import { useShopCart } from "@/components/vendor-shop/providers";
 import { useMetaPixel } from "@/components/vendor-shop/providers";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 
@@ -45,28 +47,84 @@ function QuantitySelector({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm font-medium">Quantité</span>
-      <div className="flex items-center border rounded-md">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 rounded-r-none"
+      <span className="text-sm font-medium text-muted-foreground">
+        Quantité
+      </span>
+      <div className="flex items-center border rounded-lg overflow-hidden">
+        <button
+          type="button"
+          className="h-10 w-10 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40"
           onClick={() => onChange(Math.max(1, value - 1))}
           disabled={value <= 1}
         >
           <Minus className="size-3.5" />
-        </Button>
-        <span className="w-10 text-center text-sm font-medium">{value}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 rounded-l-none"
+        </button>
+        <span className="w-12 text-center text-sm font-semibold border-x">
+          {value}
+        </span>
+        <button
+          type="button"
+          className="h-10 w-10 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40"
           onClick={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
         >
           <Plus className="size-3.5" />
-        </Button>
+        </button>
       </div>
+    </div>
+  );
+}
+
+// ─── Star Rating ──────────────────────────────────────────────
+
+function StarRating({ rating, count }: { rating: number; count: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-0.5">
+        {Array.from({ length: 5 }).map((_, i) => {
+          const filled = i < Math.floor(rating);
+          const halfFilled = !filled && i < rating;
+          return (
+            <Star
+              key={i}
+              className={`size-4 ${
+                filled
+                  ? "fill-yellow-400 text-yellow-400"
+                  : halfFilled
+                    ? "fill-yellow-200 text-yellow-400"
+                    : "text-muted-foreground/30"
+              }`}
+            />
+          );
+        })}
+      </div>
+      <span className="text-sm font-medium">{rating.toFixed(1)}</span>
+      <span className="text-sm text-muted-foreground">({count} avis)</span>
+    </div>
+  );
+}
+
+// ─── Trust Badge ──────────────────────────────────────────────
+
+function TrustBadge({
+  icon: Icon,
+  label,
+  color,
+}: {
+  icon: React.FC<{ className?: string }>;
+  label: string;
+  color: string;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-1 text-center min-w-0">
+      <div
+        className={`size-9 rounded-full flex items-center justify-center ${color}`}
+      >
+        <Icon className="size-4" />
+      </div>
+      <span className="text-xs text-muted-foreground leading-tight">
+        {label}
+      </span>
     </div>
   );
 }
@@ -78,12 +136,10 @@ export default function ShopProductDetailPage() {
     storeSlug: string;
     slug: string;
   }>();
-  const router = useRouter();
-  const { addItem } = useShopCart();
   const { trackEvent, generateEventId } = useMetaPixel();
 
   const [quantity, setQuantity] = useState(1);
-  const [isOrdering, setIsOrdering] = useState(false);
+  const [quickOrderOpen, setQuickOrderOpen] = useState(false);
 
   const product = useQuery(api.products.queries.getBySlug, { slug });
   const store = useQuery(api.stores.queries.getBySlug, { slug: storeSlug });
@@ -92,7 +148,7 @@ export default function ShopProductDetailPage() {
     product ? { product_id: product._id } : "skip",
   );
 
-  // Track ViewContent quand le produit est chargé
+  // Track ViewContent
   useEffect(() => {
     if (!product) return;
     const eventId = generateEventId();
@@ -108,76 +164,41 @@ export default function ShopProductDetailPage() {
     );
   }, [product?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleOrder = useCallback(async () => {
-    if (!product || !store || isOrdering) return;
-
-    setIsOrdering(true);
-    const eventId = generateEventId();
-
-    try {
-      await addItem({
-        productId: product._id as Id<"products">,
-        title: product.title,
-        variantTitle: undefined,
-        slug: product.slug,
-        image: product.images?.[0] ?? "",
-        price: product.price,
-        comparePrice: product.compare_price,
-        storeId: store._id,
-        storeName: store.name,
-        storeSlug: store.slug,
-        quantity,
-        maxQuantity: product.quantity ?? 99,
-        isDigital: product.is_digital,
-      });
-
-      trackEvent(
-        "InitiateCheckout",
-        {
-          content_ids: [product._id],
-          content_type: "product",
-          value: (product.price * quantity) / 100,
-          currency: store.currency ?? "XOF",
-          num_items: quantity,
-        },
-        eventId,
-      );
-
-      router.push(SHOP_ROUTES.CHECKOUT(storeSlug));
-    } catch (error) {
-      console.error("Erreur lors de la commande:", error);
-      setIsOrdering(false);
-    }
-  }, [
-    product,
-    store,
-    quantity,
-    addItem,
-    trackEvent,
-    generateEventId,
-    isOrdering,
-    router,
-    storeSlug,
-  ]);
-
+  // ── Loading state ──
   if (product === undefined) {
     return (
-      <div className="grid gap-8 md:grid-cols-2">
-        <Skeleton className="aspect-square rounded-xl" />
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-3/4" />
-          <Skeleton className="h-6 w-1/4" />
-          <Skeleton className="h-20 w-full" />
+      <div className="space-y-8">
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="grid gap-8 md:grid-cols-2">
+          <Skeleton className="aspect-square rounded-xl" />
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-10 w-1/2" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
         </div>
       </div>
     );
   }
 
+  // ── Not found ──
   if (!product) {
     return (
-      <div className="text-center py-20">
-        <Package className="size-12 mx-auto text-muted-foreground/40 mb-4" />
+      <div className="text-center py-24">
+        <Package className="size-16 mx-auto text-muted-foreground/30 mb-4" />
         <h1 className="text-xl font-semibold mb-2">Produit introuvable</h1>
+        <p className="text-sm text-muted-foreground mb-6">
+          Ce produit n&apos;est plus disponible ou a été retiré.
+        </p>
         <Button asChild>
           <Link href={SHOP_ROUTES.PRODUCTS(storeSlug)}>
             Voir tous les produits
@@ -190,282 +211,342 @@ export default function ShopProductDetailPage() {
   const hasDiscount =
     product.compare_price !== undefined &&
     product.compare_price > product.price;
+  const comparePrice = product.compare_price ?? 0;
   const discountPercent = hasDiscount
-    ? Math.round(
-        ((product.compare_price! - product.price) / product.compare_price!) *
-          100,
-      )
+    ? Math.round(((comparePrice - product.price) / comparePrice) * 100)
     : 0;
   const isOutOfStock =
     !product.is_digital &&
     product.quantity !== undefined &&
     product.quantity <= 0;
   const currency = store?.currency ?? "XOF";
+  const maxQty = product.is_digital ? 99 : (product.quantity ?? 99);
 
   return (
-    <div className="space-y-10">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link
-          href={SHOP_ROUTES.HOME(storeSlug)}
-          className="hover:text-foreground transition-colors"
-        >
-          Accueil
-        </Link>
-        <ChevronRight className="size-3.5" />
-        <Link
-          href={SHOP_ROUTES.PRODUCTS(storeSlug)}
-          className="hover:text-foreground transition-colors"
-        >
-          Produits
-        </Link>
-        <ChevronRight className="size-3.5" />
-        <span className="text-foreground font-medium line-clamp-1">
-          {product.title}
-        </span>
-      </nav>
+    <>
+      <div className="space-y-10">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap">
+          <Link
+            href={SHOP_ROUTES.HOME(storeSlug)}
+            className="hover:text-foreground transition-colors"
+          >
+            Accueil
+          </Link>
+          <ChevronRight className="size-3.5 shrink-0" />
+          <Link
+            href={SHOP_ROUTES.PRODUCTS(storeSlug)}
+            className="hover:text-foreground transition-colors"
+          >
+            Produits
+          </Link>
+          <ChevronRight className="size-3.5 shrink-0" />
+          <span className="text-foreground font-medium line-clamp-1 max-w-[200px]">
+            {product.title}
+          </span>
+        </nav>
 
-      {/* Main product area */}
-      <div className="grid gap-8 md:grid-cols-2">
-        {/* Gallery */}
-        <ProductGallery
-          images={product.images ?? []}
-          title={product.title}
-          imageRoles={product.image_roles}
-        />
-
-        {/* Info */}
-        <div className="space-y-5">
-          {/* Badges */}
-          <div className="flex flex-wrap gap-2">
-            {hasDiscount && (
-              <Badge className="bg-red-500 text-white">
-                -{discountPercent}%
-              </Badge>
-            )}
-            {product.is_digital && (
-              <Badge variant="secondary">Produit digital</Badge>
-            )}
-            {isOutOfStock && <Badge variant="outline">Rupture de stock</Badge>}
+        {/* Main grid */}
+        <div className="grid gap-8 lg:gap-12 md:grid-cols-2">
+          {/* Gallery — sticky on desktop */}
+          <div className="md:sticky md:top-6 md:self-start">
+            <ProductGallery
+              images={product.images ?? []}
+              title={product.title}
+              imageRoles={product.image_roles}
+            />
           </div>
 
-          {/* Title */}
-          <h1 className="text-2xl font-bold leading-tight">{product.title}</h1>
-
-          {/* Rating */}
-          {product.avg_rating !== undefined && product.avg_rating > 0 && (
-            <div className="flex items-center gap-2">
-              <div className="flex">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`size-4 ${
-                      i < Math.round(product.avg_rating ?? 0)
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "text-muted-foreground/30"
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-sm text-muted-foreground">
-                ({product.review_count ?? 0} avis)
-              </span>
+          {/* Info panel */}
+          <div className="space-y-6">
+            {/* Badges row */}
+            <div className="flex flex-wrap gap-2">
+              {hasDiscount && (
+                <Badge className="bg-red-500 hover:bg-red-500 text-white font-semibold">
+                  -{discountPercent}%
+                </Badge>
+              )}
+              {product.is_digital && (
+                <Badge variant="secondary" className="gap-1">
+                  <BadgeCheck className="size-3" />
+                  Produit digital
+                </Badge>
+              )}
+              {isOutOfStock && (
+                <Badge variant="outline" className="text-muted-foreground">
+                  Rupture de stock
+                </Badge>
+              )}
+              {!isOutOfStock && !product.is_digital && (maxQty ?? 99) <= 5 && (
+                <Badge className="bg-orange-500 hover:bg-orange-500 text-white animate-pulse">
+                  Plus que {maxQty} !
+                </Badge>
+              )}
             </div>
-          )}
 
-          {/* Price */}
-          <div className="space-y-1">
-            <div
-              className="text-3xl font-bold"
-              style={{ color: "var(--shop-primary, #6366f1)" }}
-            >
-              {formatPrice(product.price, currency)}
+            {/* Title */}
+            <div className="space-y-1">
+              <h1 className="text-2xl md:text-3xl font-bold leading-tight tracking-tight">
+                {product.title}
+              </h1>
+              {product.short_description && (
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {product.short_description}
+                </p>
+              )}
             </div>
-            {hasDiscount && (
-              <div className="text-sm text-muted-foreground line-through">
-                {formatPrice(product.compare_price!, currency)}
-              </div>
+
+            {/* Rating */}
+            {product.avg_rating !== undefined && product.avg_rating > 0 && (
+              <StarRating
+                rating={product.avg_rating}
+                count={product.review_count ?? 0}
+              />
             )}
-          </div>
 
-          <Separator />
+            {/* Price block */}
+            <div className="space-y-1">
+              <div className="flex items-baseline gap-3">
+                <span
+                  className="text-3xl font-extrabold"
+                  style={{ color: "var(--shop-primary, #6366f1)" }}
+                >
+                  {formatPrice(product.price, currency)}
+                </span>
+                {hasDiscount && (
+                  <span className="text-lg text-muted-foreground line-through">
+                    {formatPrice(comparePrice, currency)}
+                  </span>
+                )}
+              </div>
+              {hasDiscount && (
+                <p className="text-sm text-green-600 font-medium">
+                  Vous économisez{" "}
+                  {formatPrice(comparePrice - product.price, currency)}
+                </p>
+              )}
+            </div>
 
-          {/* Quantity + Actions */}
-          {!isOutOfStock ? (
-            <div className="space-y-3">
-              {!product.is_digital && (
-                <>
+            <Separator />
+
+            {/* Buy section */}
+            {!isOutOfStock ? (
+              <div className="space-y-4">
+                {/* Quantity selector */}
+                {!product.is_digital && (
                   <QuantitySelector
                     value={quantity}
-                    max={product.quantity ?? 99}
+                    max={maxQty}
                     onChange={setQuantity}
                   />
-                  {(product.quantity ?? 99) <= 10 &&
-                    (product.quantity ?? 99) > 0 && (
-                      <p className="text-sm text-orange-600 font-medium">
-                        ⚡ Plus que {product.quantity} en stock
-                      </p>
-                    )}
-                </>
-              )}
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={handleOrder}
-                disabled={isOrdering}
-                style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
-              >
-                {isOrdering ? (
-                  "Redirection..."
-                ) : (
-                  <>
-                    <ShoppingCart className="size-4 mr-2" />
-                    Commander
-                  </>
                 )}
-              </Button>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-              <p className="text-sm font-medium text-destructive">
-                Ce produit est actuellement en rupture de stock.
-              </p>
-            </div>
-          )}
 
-          {/* Tags — key points */}
-          {product.tags && product.tags.length > 0 && (
-            <div className="bg-muted/30 rounded-lg p-4">
-              <h3 className="text-sm font-semibold mb-3">Points clés</h3>
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {product.tags.slice(0, 8).map((tag) => (
-                  <li key={tag} className="flex items-start gap-2 text-sm">
-                    <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground capitalize">
-                      {tag.toLowerCase()}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                {/* CTA buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    size="lg"
+                    className="flex-1 h-12 text-base font-semibold gap-2"
+                    onClick={() => setQuickOrderOpen(true)}
+                    style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
+                  >
+                    <ShoppingCart className="size-5" />
+                    Commander
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="sm:w-12 h-12"
+                    title="Partager"
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({
+                          title: product.title,
+                          url: window.location.href,
+                        });
+                      } else {
+                        navigator.clipboard.writeText(window.location.href);
+                      }
+                    }}
+                  >
+                    <Share2 className="size-5" />
+                    <span className="sm:hidden ml-2">Partager</span>
+                  </Button>
+                </div>
 
-          {/* Trust icons */}
-          <div className="flex flex-wrap items-center justify-center gap-4 py-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="size-4 text-green-500" />
-              <span>Paiement sécurisé</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Lock className="size-4" />
-              <span>Protection acheteurs</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <RotateCcw className="size-4 text-blue-500" />
-              <span>Retours sous 3 jours</span>
-            </div>
-          </div>
+                {/* Low stock warning */}
+                {!product.is_digital && maxQty <= 10 && maxQty > 0 && (
+                  <p className="flex items-center gap-1.5 text-sm text-orange-600 font-medium">
+                    <span className="inline-block size-2 rounded-full bg-orange-500 animate-pulse" />
+                    Plus que {maxQty} unité{maxQty > 1 ? "s" : ""} disponible
+                    {maxQty > 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border-2 border-dashed border-muted p-6 text-center space-y-3">
+                <Package className="size-8 mx-auto text-muted-foreground/40" />
+                <div>
+                  <p className="font-semibold">Rupture de stock</p>
+                  <p className="text-sm text-muted-foreground">
+                    Ce produit est temporairement indisponible.
+                  </p>
+                </div>
+              </div>
+            )}
 
-          <Separator />
-
-          {/* Description */}
-          {product.description && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Description</h3>
-              <div
-                className="prose prose-sm max-w-none text-muted-foreground"
-                dangerouslySetInnerHTML={{ __html: product.description }}
+            {/* Trust badges */}
+            <div className="grid grid-cols-3 gap-3 py-1">
+              <TrustBadge
+                icon={ShieldCheck}
+                label="Paiement sécurisé"
+                color="bg-green-50 text-green-600"
+              />
+              <TrustBadge
+                icon={Truck}
+                label="Livraison rapide"
+                color="bg-blue-50 text-blue-600"
+              />
+              <TrustBadge
+                icon={RotateCcw}
+                label="Retours 3 jours"
+                color="bg-purple-50 text-purple-600"
               />
             </div>
-          )}
 
-          {/* Tags as badges */}
-          {product.tags && product.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {product.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Specs table */}
-          {(product.weight ||
-            product.color ||
-            product.material ||
-            product.dimensions ||
-            product.sku ||
-            (specs && specs.length > 0)) && (
-            <div className="rounded-lg border overflow-hidden">
-              <div className="bg-muted/60 px-4 py-2.5 border-b flex items-center gap-2">
-                <Package className="size-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold">Caractéristiques</h3>
+            {/* Key points from tags */}
+            {product.tags && product.tags.length > 0 && (
+              <div className="rounded-xl bg-muted/30 border p-4 space-y-3">
+                <h3 className="text-sm font-semibold">Points clés</h3>
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {product.tags.slice(0, 8).map((tag) => (
+                    <li key={tag} className="flex items-start gap-2 text-sm">
+                      <Check className="size-4 text-green-600 shrink-0 mt-0.5" />
+                      <span className="text-muted-foreground capitalize">
+                        {tag.toLowerCase()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <table className="w-full text-sm">
-                <tbody>
-                  {[
-                    product.color && { label: "Couleur", value: product.color },
-                    product.material && {
-                      label: "Matériau",
-                      value: product.material,
-                    },
-                    product.weight && {
-                      label: "Poids",
-                      value:
-                        product.weight >= 1000
-                          ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
-                          : `${product.weight} g`,
-                    },
-                    product.dimensions && {
-                      label: "Dimensions",
-                      value: product.dimensions,
-                    },
-                    product.sku && {
-                      label: "Référence (SKU)",
-                      value: product.sku,
-                    },
-                    ...(specs ?? []).map((spec) => ({
-                      label: spec.spec_key,
-                      value: spec.spec_value,
-                    })),
-                  ]
-                    .filter(Boolean)
-                    .map((row, i) => {
-                      if (!row) return null;
-                      return (
-                        <tr
-                          key={row.label}
-                          className={
-                            i % 2 === 0 ? "bg-background" : "bg-muted/30"
-                          }
-                        >
-                          <td className="px-4 py-2.5 w-2/5 text-muted-foreground font-medium">
-                            {row.label}
-                          </td>
-                          <td className="px-4 py-2.5 text-foreground">
-                            {row.value}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
+            )}
+
+            {/* Description */}
+            {product.description && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Description</h3>
+                  <div
+                    className="prose prose-sm max-w-none text-muted-foreground prose-p:leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: product.description }}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Tags as badges */}
+            {product.tags && product.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {product.tags.map((tag) => (
+                  <Badge key={tag} variant="outline" className="text-xs">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {/* Specs table */}
+            {(product.weight ||
+              product.color ||
+              product.material ||
+              product.dimensions ||
+              product.sku ||
+              (specs && specs.length > 0)) && (
+              <div className="rounded-xl border overflow-hidden">
+                <div className="bg-muted/60 px-4 py-3 border-b flex items-center gap-2">
+                  <Package className="size-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold">Caractéristiques</h3>
+                </div>
+                <table className="w-full text-sm">
+                  <tbody>
+                    {[
+                      product.color && {
+                        label: "Couleur",
+                        value: product.color,
+                      },
+                      product.material && {
+                        label: "Matériau",
+                        value: product.material,
+                      },
+                      product.weight && {
+                        label: "Poids",
+                        value:
+                          product.weight >= 1000
+                            ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
+                            : `${product.weight} g`,
+                      },
+                      product.dimensions && {
+                        label: "Dimensions",
+                        value: product.dimensions,
+                      },
+                      product.sku && {
+                        label: "Référence (SKU)",
+                        value: product.sku,
+                      },
+                      ...(specs ?? []).map((spec) => ({
+                        label: spec.spec_key,
+                        value: spec.spec_value,
+                      })),
+                    ]
+                      .filter(Boolean)
+                      .map((row, i) => {
+                        if (!row) return null;
+                        return (
+                          <tr
+                            key={row.label}
+                            className={
+                              i % 2 === 0 ? "bg-background" : "bg-muted/30"
+                            }
+                          >
+                            <td className="px-4 py-2.5 w-2/5 text-muted-foreground font-medium">
+                              {row.label}
+                            </td>
+                            <td className="px-4 py-2.5 text-foreground">
+                              {row.value}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Reviews */}
+        <ProductReviewList productId={product._id as Id<"products">} />
+
+        <Separator />
+
+        {/* Q&A */}
+        <ProductQASection
+          productId={product._id as Id<"products">}
+          storeOwnerId={product.store?.owner_id as Id<"users"> | undefined}
+        />
       </div>
 
-      {/* Reviews */}
-      <ProductReviewList productId={product._id as Id<"products">} />
-
-      <Separator />
-
-      {/* Q&A */}
-      <ProductQASection
-        productId={product._id as Id<"products">}
-        storeOwnerId={product.store?.owner_id as Id<"users"> | undefined}
-      />
-    </div>
+      {/* Quick Order Sheet */}
+      {store && !isOutOfStock && (
+        <QuickOrderSheet
+          open={quickOrderOpen}
+          onOpenChange={setQuickOrderOpen}
+          product={product}
+          store={store}
+          storeSlug={storeSlug}
+          quantity={quantity}
+        />
+      )}
+    </>
   );
 }
