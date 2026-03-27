@@ -247,6 +247,14 @@ export const notifyNewOrderInApp = internalAction({
       sentVia: ["in_app", "email"], // email envoyé par emails/send.ts
       metadata: undefined,
     });
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Nouvelle commande",
+      body: `${args.customerName} — ${args.orderNumber} (${formatted})`,
+      url: "/vendor/orders",
+    });
   },
 });
 
@@ -290,6 +298,14 @@ export const notifyOrderStatusInApp = internalAction({
       channels: ["email", "in_app"],
       sentVia: ["in_app", "email"], // email envoyé par emails/send.ts
       metadata: undefined,
+    });
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.customerUserId,
+      title: `Commande ${args.orderNumber} — ${label}`,
+      body: `${args.storeName} — Statut : ${label}`,
+      url: "/orders",
     });
   },
 });

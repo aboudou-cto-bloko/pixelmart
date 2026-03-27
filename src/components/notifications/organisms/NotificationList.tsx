@@ -4,8 +4,10 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { NotificationItem } from "../molecules/NotificationItem";
 import { NotificationEmptyState } from "../molecules/NotificationEmptyState";
+import { PushNotificationsSettings } from "../PushNotificationsSettings";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useRouter } from "next/navigation";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -76,6 +78,10 @@ export function NotificationList() {
           ))}
         </div>
       )}
+
+      <Separator />
+
+      <PushNotificationsSettings />
     </div>
   );
 }
