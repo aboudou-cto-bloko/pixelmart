@@ -5,6 +5,7 @@ import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
+import { centimesToMonerooAmount } from "../payments/helpers";
 
 const MONEROO_API_URL = "https://api.moneroo.io/v1";
 
@@ -31,9 +32,7 @@ export const initializeStoragePayment = internalAction({
     const apiKey = getMonerooKey();
     const siteUrl = getSiteUrl();
 
-    // Moneroo XOF : pas de sous-unités → convertir centimes → FCFA
-    const monerooAmount =
-      args.currency === "XOF" ? Math.round(args.amount / 100) : args.amount;
+    const monerooAmount = centimesToMonerooAmount(args.amount, args.currency);
 
     const body = {
       amount: monerooAmount,

@@ -62,7 +62,7 @@ export const initializePayment = action({
     }
 
     // 2. Préparer le payload Moneroo
-    const monerooAmount = centimesToMonerooAmount(order.total_amount);
+    const monerooAmount = centimesToMonerooAmount(order.total_amount, order.currency);
 
     const payload = {
       amount: monerooAmount,
@@ -144,7 +144,7 @@ export const initializeShopPayment = action({
     if (order.payment_status === "paid")
       throw new Error("Cette commande est déjà payée");
 
-    const monerooAmount = centimesToMonerooAmount(order.total_amount);
+    const monerooAmount = centimesToMonerooAmount(order.total_amount, order.currency);
 
     const payload = {
       amount: monerooAmount,
