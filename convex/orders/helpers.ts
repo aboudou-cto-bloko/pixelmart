@@ -94,41 +94,15 @@ export function validateAddress(address: {
 }
 
 /**
- * Rate limiting for order creation
+ * @deprecated Ne plus appeler directement.
+ * Le rate limiting des commandes est géré via rateLimiter.limit() dans createOrder.
+ * Cette fonction est conservée pour référence uniquement.
  */
 export async function checkOrderRateLimit(
-  ctx: MutationCtx,
-  userId: Id<"users">,
+  _ctx: MutationCtx,
+  _userId: Id<"users">,
 ): Promise<void> {
-  const now = Date.now();
-  const oneMinuteAgo = now - 60 * 1000;
-  const tenSecondsAgo = now - 10 * 1000;
-
-  // Check for orders in the last minute (max 5)
-  const recentOrders = await ctx.db
-    .query("orders")
-    .withIndex("by_customer", (q) => q.eq("customer_id", userId))
-    .filter((q) => q.gt(q.field("_creationTime"), oneMinuteAgo))
-    .collect();
-
-  if (recentOrders.length >= 5) {
-    throw new ConvexError(
-      "Trop de commandes récentes. Veuillez patienter quelques minutes.",
-    );
-  }
-
-  // Check for orders in the last 10 seconds (cooldown)
-  const veryRecentOrders = await ctx.db
-    .query("orders")
-    .withIndex("by_customer", (q) => q.eq("customer_id", userId))
-    .filter((q) => q.gt(q.field("_creationTime"), tenSecondsAgo))
-    .collect();
-
-  if (veryRecentOrders.length > 0) {
-    throw new ConvexError(
-      "Veuillez attendre quelques secondes avant de passer une nouvelle commande.",
-    );
-  }
+  // Migré vers @convex-dev/ratelimiter — voir convex/lib/ratelimits.ts
 }
 
 /**
