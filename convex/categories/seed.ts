@@ -8,8 +8,6 @@ const SEED_CATEGORIES = [
   { name: "Beauté & Santé", slug: "beaute-sante", sort_order: 4 },
   { name: "Alimentation", slug: "alimentation", sort_order: 5 },
   { name: "Sport & Loisirs", slug: "sport-loisirs", sort_order: 6 },
-  { name: "Digital", slug: "digital", sort_order: 7 },
-  { name: "Services", slug: "services", sort_order: 8 },
 ] as const;
 
 export const seedCategories = mutation({
@@ -38,5 +36,29 @@ export const seedCategories = mutation({
     }
 
     return { inserted: ids.length };
+  },
+});
+
+/**
+ * Migration one-shot : supprime les catégories "Digital" et "Services".
+ * À exécuter une fois : npx convex run categories/seed:removeDigitalAndServices
+ */
+export const removeDigitalAndServices = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const slugsToRemove = ["digital", "services"];
+    let removed = 0;
+    for (const slug of slugsToRemove) {
+      const cat = await ctx.db
+        .query("categories")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+      if (cat) {
+        await ctx.db.delete(cat._id);
+        removed++;
+      }
+    }
+    return { removed };
   },
 });
