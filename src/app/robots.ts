@@ -2,7 +2,7 @@
 
 import type { MetadataRoute } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pixel-mart.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
 
 export default function robots(): MetadataRoute.Robots {
   return {

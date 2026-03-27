@@ -84,7 +84,7 @@ export const initiateAdPayment = action({
     const user = await ctx.runQuery(api.users.queries.getMe, {});
     if (!user) throw new ConvexError("Utilisateur introuvable");
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.pixel-mart-bj.com";
 
     const paymentData = await initializeMonerooPayment({
       booking: {

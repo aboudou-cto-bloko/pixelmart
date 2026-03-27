@@ -17,7 +17,7 @@ import StorageRejected from "../../emails/StorageRejected";
 import StorageInvoiceCreated from "../../emails/StorageInvoiceCreated";
 import StorageDebtDeducted from "../../emails/StorageDebtDeducted";
 
-const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
+const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -391,7 +391,7 @@ export const notifyReturnStatus = internalAction({
           await import("../../emails/ReturnStatusUpdate");
 
         await resend.emails.send({
-          from: EMAIL_FROM ?? "Pixel-Mart <dev@aboudouzinsou.site>",
+          from: EMAIL_FROM ?? "Pixel-Mart <noreply@pixel-mart-bj.com>",
           to: args.recipientEmail,
           subject: `${titleMap[args.returnStatus]} — Commande ${args.orderNumber}`,
           react: ReturnStatusUpdate({

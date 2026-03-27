@@ -1,4 +1,5 @@
 // filepath: convex/push/actions.ts
+"use node";
 
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -19,7 +20,7 @@ export const sendToUser = internalAction({
   handler: async (ctx, args) => {
     const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-    const vapidSubject = process.env.VAPID_SUBJECT ?? "mailto:dev@aboudouzinsou.site";
+    const vapidSubject = process.env.VAPID_SUBJECT ?? "mailto:noreply@pixel-mart-bj.com";
 
     if (!vapidPublicKey || !vapidPrivateKey) {
       console.warn("[push] VAPID keys not configured — skipping push notification");

@@ -44,7 +44,7 @@ interface NominatimResult {
 // ─── Nominatim API ───────────────────────────────────────────
 
 const NOMINATIM_BASE = "https://nominatim.openstreetmap.org";
-const USER_AGENT = "PixelMart/1.0 (contact@pixelmart.com)";
+const USER_AGENT = "PixelMart/1.0 (contact@pixel-mart-bj.com)";
 
 /**
  * Search for addresses using Nominatim.

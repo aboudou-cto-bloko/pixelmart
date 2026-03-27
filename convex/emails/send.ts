@@ -14,7 +14,7 @@ import OrderShipped from "../../emails/OrderShipped";
 import OrderDelivered from "../../emails/OrderDelivered";
 import OrderCancelled from "../../emails/OrderCancelled";
 
-const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
+const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -23,7 +23,7 @@ function getResend() {
 }
 
 function getSiteUrl(): string {
-  return process.env.SITE_URL ?? "http://localhost:3001";
+  return process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
 }
 
 // ─── Helper : formater un montant pour les emails ──────────
