@@ -2,7 +2,7 @@
 
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { verifyMonerooSignature } from "./helpers";
+import { verifyMonerooSignature, monerooAmountToCentimes } from "./helpers";
 import type { Id } from "../_generated/dataModel";
 
 export const handleMonerooWebhook = httpAction(async (ctx, request) => {
@@ -153,9 +153,7 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
           await ctx.runMutation(internal.payments.mutations.confirmPayment, {
             orderId,
             paymentReference: data.id,
-            // Moneroo envoie le montant en FCFA — convertir en centimes pour stockage
-            amountPaid:
-              data.currency === "XOF" ? data.amount * 100 : data.amount,
+            amountPaid: monerooAmountToCentimes(data.amount, data.currency),
             currency: data.currency,
           });
           // Track Purchase Meta CAPI (seulement si source = vendor_shop et pixel configuré)
