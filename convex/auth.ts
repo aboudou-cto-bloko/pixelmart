@@ -94,7 +94,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     // ---- Email + Password ----
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      requireEmailVerification: process.env.SEED_MODE !== "true",
       minPasswordLength: 12, // Increased from 8 to 12
       maxPasswordLength: 128,
       autoSignIn: false,
