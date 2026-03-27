@@ -1,9 +1,11 @@
 // filepath: src/app/shop/[storeSlug]/layout.tsx
 
-import { preloadQuery } from "convex/nextjs";
+import { preloadQuery, fetchQuery } from "convex/nextjs";
 import { api } from "../../../../convex/_generated/api";
 import { ShopLayoutClient } from "./ShopLayoutClient";
 import type { Metadata } from "next";
+
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pixel-mart.app";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,15 +17,48 @@ export async function generateMetadata({
 }: LayoutProps): Promise<Metadata> {
   const { storeSlug } = await params;
 
-  // Tenter de récupérer le nom de la boutique pour les meta tags
   try {
-    const config = await preloadQuery(api.meta.queries.getPublicConfig, {
+    const config = await fetchQuery(api.meta.queries.getPublicConfig, {
       storeSlug,
     });
-    // preloadQuery ne retourne pas directement la data, on met un titre générique
-    void config;
+
+    if (config) {
+      const storeName = config.storeName;
+      const description =
+        config.storeDescription ??
+        `Découvrez les produits de ${storeName} sur Pixel-Mart`;
+      const storeUrl = `${siteUrl}/shop/${storeSlug}`;
+
+      return {
+        title: {
+          template: `%s | ${storeName}`,
+          default: storeName,
+        },
+        description,
+        openGraph: {
+          type: "website",
+          locale: "fr_FR",
+          url: storeUrl,
+          siteName: "Pixel-Mart",
+          title: storeName,
+          description,
+          images: config.logoUrl
+            ? [{ url: config.logoUrl, alt: storeName }]
+            : [{ url: "/og-image.png", alt: "Pixel-Mart" }],
+        },
+        twitter: {
+          card: "summary",
+          title: storeName,
+          description,
+          images: config.logoUrl ? [config.logoUrl] : ["/og-image.png"],
+        },
+        alternates: {
+          canonical: storeUrl,
+        },
+      };
+    }
   } catch {
-    // Silencieux si le store n'existe pas
+    // Fallback si le store n'existe pas
   }
 
   return {
