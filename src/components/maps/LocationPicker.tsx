@@ -238,7 +238,11 @@ export function LocationPicker({
         setIsLocating(false);
         // Could add error handling here if needed
       },
-      { timeout: 10000, enableHighAccuracy: true },
+      {
+        timeout: 10000,
+        enableHighAccuracy: true,
+        maximumAge: 0, // Force fresh location, no cache
+      },
     );
   }
 
