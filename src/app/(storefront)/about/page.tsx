@@ -2,26 +2,8 @@
 
 import { Users, Target, Heart, TrendingUp } from "lucide-react";
 
-const TEAM = [
-  {
-    name: "Junior Cakpo",
-    role: "CEO & Co-fondateur",
-    bio: "Entrepreneur passionné par l'e-commerce africain. 10 ans d'expérience dans le digital.",
-    avatar: "JC",
-  },
-  {
-    name: "Kurt l'internatonal",
-    role: "CTO & Co-fondatrice",
-    bio: "Ingénieure logiciel avec une expertise en systèmes de paiement mobile en Afrique de l'Ouest.",
-    avatar: "KM",
-  },
-  {
-    name: "Dodds TOUGAN",
-    role: "Directeur Marketing",
-    bio: "Spécialiste en growth marketing avec une connaissance approfondie des marchés ouest-africains.",
-    avatar: "DT",
-  },
-];
+const TEAM: { name: string; role: string; bio: string; avatar: string }[] =
+  [];
 
 const VALUES = [
   {
@@ -153,32 +135,34 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team */}
-      <section className="container px-4 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold">L'équipe</h2>
-          <p className="mt-3 text-muted-foreground">
-            Les personnes derrière Pixel-Mart
-          </p>
-        </div>
-        <div className="grid gap-8 sm:grid-cols-3 max-w-3xl mx-auto">
-          {TEAM.map((member) => (
-            <div
-              key={member.name}
-              className="text-center rounded-xl border bg-card p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg mx-auto mb-4">
-                {member.avatar}
+      {/* Team — populated when available */}
+      {TEAM.length > 0 && (
+        <section className="container px-4 py-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold">L'équipe</h2>
+            <p className="mt-3 text-muted-foreground">
+              Les personnes derrière Pixel-Mart
+            </p>
+          </div>
+          <div className="grid gap-8 sm:grid-cols-3 max-w-3xl mx-auto">
+            {TEAM.map((member) => (
+              <div
+                key={member.name}
+                className="text-center rounded-xl border bg-card p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg mx-auto mb-4">
+                  {member.avatar}
+                </div>
+                <h3 className="font-semibold">{member.name}</h3>
+                <p className="text-sm text-primary mb-2">{member.role}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {member.bio}
+                </p>
               </div>
-              <h3 className="font-semibold">{member.name}</h3>
-              <p className="text-sm text-primary mb-2">{member.role}</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {member.bio}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="bg-primary/5 border-t py-16">
