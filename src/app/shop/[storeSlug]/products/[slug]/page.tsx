@@ -457,15 +457,15 @@ export default function ShopProductDetailPage() {
       </div>
 
       {/* Reviews */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Avis clients</h2>
-        <ProductReviewList productId={product._id as Id<"products">} />
-      </div>
+      <ProductReviewList productId={product._id as Id<"products">} />
 
       <Separator />
 
       {/* Q&A */}
-      <ProductQASection productId={product._id as Id<"products">} />
+      <ProductQASection
+        productId={product._id as Id<"products">}
+        storeOwnerId={product.store?.owner_id as Id<"users"> | undefined}
+      />
     </div>
   );
 }
