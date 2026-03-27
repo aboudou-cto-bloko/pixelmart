@@ -97,47 +97,81 @@ export async function generateProductSlug(
 
 /**
  * Server-side HTML sanitization to prevent XSS attacks.
- * Basic implementation that strips dangerous tags and attributes.
+ * Allows TipTap-generated tags with safe attributes only.
  */
 export function sanitizeHTML(html: string): string {
   if (!html) return "";
 
-  // Remove script tags and their content
-  let sanitized = html.replace(/<script[^>]*>.*?<\/script>/gi, "");
+  // Remove script/style tags and their content
+  let sanitized = html.replace(
+    /<(script|style)[^>]*>[\s\S]*?<\/\1>/gi,
+    "",
+  );
 
   // Remove dangerous event handlers
-  sanitized = sanitized.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "");
+  sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*')/gi, "");
 
-  // Remove javascript: protocols
-  sanitized = sanitized.replace(/javascript:/gi, "");
+  // Remove javascript: and data: protocols globally
+  sanitized = sanitized.replace(/(?:javascript|data|vbscript):/gi, "");
 
-  // Allow only safe HTML tags
-  const allowedTags = [
-    "p",
-    "br",
-    "strong",
-    "b",
-    "em",
-    "i",
-    "u",
-    "ul",
-    "ol",
-    "li",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-  ];
+  const allowedTags = new Set([
+    "p", "br",
+    "strong", "b", "em", "i", "u", "s",
+    "ul", "ol", "li",
+    "h2", "h3", "h4", "h5", "h6",
+    "blockquote",
+    "a",
+    "span",
+    "mark",
+  ]);
 
-  // Remove any tag not in the allowed list (basic implementation)
-  const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g;
-  sanitized = sanitized.replace(tagRegex, (match, tagName) => {
-    if (allowedTags.includes(tagName.toLowerCase())) {
-      // Remove dangerous attributes but keep the tag
-      return match.replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "");
-    }
-    return ""; // Remove disallowed tags completely
-  });
+  // Safe style properties allowed on any element (TipTap text-align + color)
+  const safeStyleProps = /^(color|text-align)\s*:/i;
+
+  function sanitizeStyleAttr(style: string): string {
+    return style
+      .split(";")
+      .map((s) => s.trim())
+      .filter((s) => s && safeStyleProps.test(s))
+      // Disallow color values that could embed urls or expressions
+      .filter((s) => !/url\s*\(|expression\s*\(/i.test(s))
+      .join("; ");
+  }
+
+  const tagRegex =
+    /<(\/?)([a-zA-Z][a-zA-Z0-9]*)(\s[^>]*)?\s*\/?>/g;
+
+  sanitized = sanitized.replace(
+    tagRegex,
+    (match, closing, tagName, attrs) => {
+      const tag = tagName.toLowerCase();
+      if (!allowedTags.has(tag)) return "";
+      if (closing) return `</${tag}>`;
+
+      let safeAttrs = "";
+
+      if (attrs) {
+        // href on <a> — allow http/https only
+        if (tag === "a") {
+          const hrefMatch = attrs.match(/href\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+          const href = hrefMatch?.[1] ?? hrefMatch?.[2] ?? "";
+          if (/^https?:\/\//i.test(href)) {
+            safeAttrs += ` href="${href}" target="_blank" rel="noopener noreferrer"`;
+          }
+        }
+
+        // style attribute — allowed on all tags, restricted to safe props
+        const styleMatch = attrs.match(/style\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+        const rawStyle = styleMatch?.[1] ?? styleMatch?.[2] ?? "";
+        if (rawStyle) {
+          const cleaned = sanitizeStyleAttr(rawStyle);
+          if (cleaned) safeAttrs += ` style="${cleaned}"`;
+        }
+      }
+
+      return `<${tag}${safeAttrs}>`;
+    },
+  );
 
   return sanitized.trim();
 }

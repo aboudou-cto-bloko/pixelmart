@@ -484,7 +484,7 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
             <div>
               <h3 className="text-sm font-semibold mb-2">Description</h3>
               <div
-                className="prose prose-sm max-w-none text-muted-foreground"
+                className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: product.description }}
               />
             </div>
