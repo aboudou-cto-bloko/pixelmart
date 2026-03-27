@@ -276,19 +276,20 @@ export const notifyXxx = internalAction({
 |------|----------|-------|------|-----------|
 | `order_new` | Vendor | ✅ | ✅ | `notifyNewOrderInApp` |
 | `order_status` | Customer | ✅ | ✅ | `notifyOrderStatusInApp` |
-| `low_stock` | Vendor | ✅ | ❌ | `notifyLowStock` |
-| `payment` | Vendor | ✅ | ❌ | `notifyPayoutCompleted` |
-| `new_review` | Vendor | ✅ | ❌ | `notifyNewReview` |
-| `return_status` | Vendor + Customer | ✅ | ❌ | `notifyReturnStatus` |
+| `low_stock` | Vendor | ✅ | ✅ | `notifyLowStock` |
+| `payment` | Vendor | ✅ | ✅ | `notifyPayoutCompleted` |
+| `new_review` | Vendor | ✅ | ✅ | `notifyNewReview` |
+| `return_status` | Vendor + Customer | ✅ | ✅ | `notifyReturnStatus` |
 | `question` | Vendor | ❌ | ✅ | `notifyNewQuestion` |
 | `question_answered` | Customer | ❌ | ✅ | `notifyQuestionAnswered` |
 | `review_replied` | Customer | ❌ | ✅ | `notifyReviewReplied` |
 | `system` | Any | ❌ | ❌ | `createInAppNotification` |
 | `promo` | Any | ❌ | ❌ | `createInAppNotification` |
-| `storage_validated` | Vendor | ✅ | ❌ | `notifyStorageValidated` |
-| `storage_rejected` | Vendor | ✅ | ❌ | `notifyStorageRejected` |
-| `storage_invoice` | Vendor | ✅ | ❌ | `notifyStorageInvoiceCreated` |
-| `storage_debt_deducted` | Vendor | ✅ | ❌ | `notifyStorageDebtDeducted` |
+| `storage_received` | Vendor | ✅ | ✅ | `notifyStorageRequestReceived` |
+| `storage_validated` | Vendor | ✅ | ✅ | `notifyStorageValidated` |
+| `storage_rejected` | Vendor | ✅ | ✅ | `notifyStorageRejected` |
+| `storage_invoice` | Vendor | ✅ | ✅ | `notifyStorageInvoiceCreated` / `notifyStorageInvoicePaid` |
+| `storage_debt_deducted` | Vendor | ✅ | ✅ | `notifyStorageDebtDeducted` |
 
 **Web Push settings**:
 - `push_notifications_enabled` field on `users` table (default: true)

@@ -102,6 +102,14 @@ export const notifyLowStock = internalAction({
     } catch (error) {
       console.error("[Notification] Low stock email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Alerte stock faible",
+      body: `${args.productTitle} — ${args.currentQuantity} restant(s)`,
+      url: "/vendor/products",
+    });
   },
 });
 
@@ -152,6 +160,14 @@ export const notifyPayoutCompleted = internalAction({
     } catch (error) {
       console.error("[Notification] Payout email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Retrait effectué",
+      body: `${formatted} envoyé via ${args.method}`,
+      url: "/vendor/finance",
+    });
   },
 });
 
@@ -221,6 +237,14 @@ export const notifyOrderStatusGeneric = internalAction({
     } catch (error) {
       console.error("[Notification] Status email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.customerUserId,
+      title,
+      body: `${args.storeName} — Statut : ${label}`,
+      url: "/orders",
+    });
   },
 });
 
@@ -409,6 +433,14 @@ export const notifyReturnStatus = internalAction({
         console.error("Failed to send return status email:", error);
       }
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.recipientUserId,
+      title: titleMap[args.returnStatus] ?? "Mise à jour retour",
+      body: bodyMap[args.returnStatus] ?? `Retour commande ${args.orderNumber} mis à jour`,
+      url: link,
+    });
   },
 });
 
@@ -462,6 +494,14 @@ export const notifyStorageRequestReceived = internalAction({
         error,
       );
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Demande de stockage créée",
+      body: `Code : ${args.storageCode} — Écrivez ce code sur votre colis`,
+      url: "/vendor/storage",
+    });
   },
 });
 
@@ -528,6 +568,14 @@ export const notifyStorageValidated = internalAction({
     } catch (error) {
       console.error("[Notification] StorageValidated email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Produit mis en stock",
+      body: `${args.storageCode} — "${args.productName}" est maintenant en stock. Frais : ${fmtFee}.`,
+      url: "/vendor/storage",
+    });
   },
 });
 
@@ -576,6 +624,14 @@ export const notifyStorageRejected = internalAction({
     } catch (error) {
       console.error("[Notification] StorageRejected email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Demande de stockage rejetée",
+      body: `${args.storageCode} — "${args.productName}" a été rejeté`,
+      url: "/vendor/storage",
+    });
   },
 });
 
@@ -639,6 +695,14 @@ export const notifyStorageInvoiceCreated = internalAction({
         error,
       );
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Facture de stockage",
+      body: `${args.storageCode} — Montant : ${fmtAmt}`,
+      url: "/vendor/billing",
+    });
   },
 });
 
@@ -662,6 +726,14 @@ export const notifyStorageInvoicePaid = internalAction({
       channels: ["in_app"],
       sentVia: ["in_app"],
       metadata: undefined,
+    });
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Facture de stockage réglée",
+      body: `Votre facture de ${fmtAmt} a été confirmée`,
+      url: "/vendor/billing",
     });
   },
 });
@@ -717,6 +789,14 @@ export const notifyStorageDebtDeducted = internalAction({
     } catch (error) {
       console.error("[Notification] StorageDebtDeducted email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Dette de stockage déduite",
+      body: `${fmtAmt} déduit de votre retrait (${args.period})`,
+      url: "/vendor/billing",
+    });
   },
 });
 
@@ -776,6 +856,14 @@ export const notifyNewReview = internalAction({
     } catch (error) {
       console.error("[Notification] Review email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: `Nouvel avis ${args.rating}★ sur ${args.productTitle}`,
+      body: `${args.customerName} a donné ${args.rating}/5 étoiles`,
+      url: "/vendor/reviews",
+    });
   },
 });
 
