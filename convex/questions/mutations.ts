@@ -3,6 +3,7 @@
 import { mutation } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireAppUser, getVendorStore } from "../users/helpers";
+import { rateLimiter } from "../lib/ratelimits";
 
 /**
  * Poser une question sur un produit — tout utilisateur authentifié.
@@ -15,6 +16,16 @@ export const ask = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
+
+    const { ok, retryAfter } = await rateLimiter.limit(ctx, "askQuestion", {
+      key: user._id,
+    });
+    if (!ok) {
+      const secs = retryAfter ? Math.ceil(retryAfter / 1000) : 3600;
+      throw new ConvexError(
+        `Trop de questions. Réessayez dans ${secs} seconde${secs > 1 ? "s" : ""}.`,
+      );
+    }
 
     const trimmed = args.body.trim();
     if (trimmed.length === 0) {

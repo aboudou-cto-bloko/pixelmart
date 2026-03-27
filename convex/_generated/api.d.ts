@@ -38,6 +38,7 @@ import type * as finance_helpers from "../finance/helpers.js";
 import type * as finance_queries from "../finance/queries.js";
 import type * as http from "../http.js";
 import type * as lib_constants from "../lib/constants.js";
+import type * as lib_ratelimits from "../lib/ratelimits.js";
 import type * as meta_helpers from "../meta/helpers.js";
 import type * as meta_index from "../meta/index.js";
 import type * as meta_mutations from "../meta/mutations.js";
@@ -126,6 +127,7 @@ declare const fullApi: ApiFromModules<{
   "finance/queries": typeof finance_queries;
   http: typeof http;
   "lib/constants": typeof lib_constants;
+  "lib/ratelimits": typeof lib_ratelimits;
   "meta/helpers": typeof meta_helpers;
   "meta/index": typeof meta_index;
   "meta/mutations": typeof meta_mutations;
@@ -2180,6 +2182,76 @@ export declare const components: {
     adapterTest: {
       runCustomTests: FunctionReference<"action", "internal", any, any>;
       runTests: FunctionReference<"action", "internal", any, any>;
+    };
+  };
+  ratelimiter: {
+    public: {
+      checkRateLimit: FunctionReference<
+        "query",
+        "internal",
+        {
+          config:
+            | {
+                capacity?: number;
+                kind: "token bucket";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+              }
+            | {
+                capacity?: number;
+                kind: "fixed window";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: number;
+              };
+          count?: number;
+          key?: string;
+          name: string;
+          reserve?: boolean;
+          throws?: boolean;
+        },
+        { ok: true; retryAfter?: number } | { ok: false; retryAfter: number }
+      >;
+      rateLimit: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config:
+            | {
+                capacity?: number;
+                kind: "token bucket";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+              }
+            | {
+                capacity?: number;
+                kind: "fixed window";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: number;
+              };
+          count?: number;
+          key?: string;
+          name: string;
+          reserve?: boolean;
+          throws?: boolean;
+        },
+        { ok: true; retryAfter?: number } | { ok: false; retryAfter: number }
+      >;
+      resetRateLimit: FunctionReference<
+        "mutation",
+        "internal",
+        { key?: string; name: string },
+        null
+      >;
     };
   };
 };
