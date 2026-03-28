@@ -541,24 +541,48 @@ Le client peut confirmer la réception depuis `/orders/[id]`. Si non fait :
 
 Permet de rassembler plusieurs commandes en un **lot** transmis à l'équipe logistique.
 
+Il existe deux types de lots :
+
+| Type | `is_warehouse_batch` | Qui prépare les colis | Départ depuis |
+|------|---------------------|----------------------|---------------|
+| **Lot standard** | `false` | Le vendeur lui-même | Ses propres locaux |
+| **Lot entrepôt** | `true` | L'agent Pixel-Mart | L'entrepôt Pixel-Mart |
+
+**Lot standard :**
 ```
 [Vendor] sélectionne des commandes "ready_for_delivery"
     │
     ▼
-delivery.mutations.createBatch({orderIds})
+delivery.mutations.createBatch({orderIds, isWarehouseBatch: false})
     ├── Génère batch_number "LOT-2026-0001"
-    ├── Insert delivery_batch {status: "pending"}
-    └── Patch orders {batch_id: newBatchId}
+    ├── Insert delivery_batch {status: "pending", is_warehouse_batch: false}
+    └── Patch orders {batch_id, status: "shipped"}
+```
 
+**Lot entrepôt** (vendeur utilisant le service de stockage Pixel-Mart) :
+```
+[Vendor] voit colonne "Cmdes en attente" sur ses articles in_stock
+    │   (nombre de commandes éligibles dont le produit est en stock)
+    │
+    ▼
+delivery.mutations.createBatch({orderIds, isWarehouseBatch: true})
+    ├── Vérifie qu'au moins un article est in_stock
+    ├── Peuple items[].storage_code via product_id → PM-NNN
+    ├── Insert delivery_batch {status: "pending", is_warehouse_batch: true}
+    └── Patch orders {batch_id, status: "shipped", items avec storage_code}
+
+[Agent voit le lot dans l'onglet "Expéditions"]
+    └── Prélève les articles au code PM-NNN
+```
+
+**Flux commun (après création) :**
+```
 [Vendor télécharge le PDF bon de livraison]
     └── useDeliveryBatchPDF() → @react-pdf/renderer
-            └── delivery.queries.getBatch → données enrichies
 
-[Vendor transmet] transmitBatch
-    ├── batch.status → "transmitted"
-    └── orders liées → status: "ready_for_delivery"
-
-[Admin assigne un livreur] → "assigned" → "in_progress" → "completed"
+[Vendor transmet] transmitBatch → batch.status: "transmitted"
+[Admin] assigned → in_progress → completed
+    └── Si lot entrepôt complété : warehouse_qty + actual_qty décrémentés
 ```
 
 > **Dépendance :** Seules les commandes sans `batch_id` et avec `status ∈ [processing, ready_for_delivery]` apparaissent dans `listReadyForDelivery`. Une commande incluse dans un lot ne peut pas être incluse dans un autre.
