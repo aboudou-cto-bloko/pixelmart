@@ -125,6 +125,24 @@ export const confirmPayment = internalMutation({
     // ── Emails + In-app ──
     const customer = await ctx.db.get(order.customer_id);
 
+    // In-app confirmation au client
+    if (customer) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.createInAppNotification,
+        {
+          userId: customer._id,
+          type: "order_status",
+          title: `Commande ${order.order_number} confirmée`,
+          body: `Votre paiement a été confirmé. ${store.name} prépare votre commande.`,
+          link: `/orders`,
+          channels: ["in_app"],
+          sentVia: ["in_app"],
+          metadata: undefined,
+        },
+      );
+    }
+
     // Email confirmation au client
     if (customer?.email) {
       const shippingAddr = order.shipping_address;
@@ -231,6 +249,25 @@ export const failPayment = internalMutation({
 
     // Restaurer le stock
     await restoreInventory(ctx, order.items);
+
+    // Notifier le client
+    const customer = await ctx.db.get(order.customer_id);
+    if (customer) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.createInAppNotification,
+        {
+          userId: customer._id,
+          type: "order_status",
+          title: `Paiement échoué — Commande ${order.order_number}`,
+          body: "Votre paiement n'a pas pu être traité. La commande a été annulée et votre stock restauré.",
+          link: "/orders",
+          channels: ["in_app"],
+          sentVia: ["in_app"],
+          metadata: undefined,
+        },
+      );
+    }
 
     return { success: true };
   },

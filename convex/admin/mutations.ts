@@ -57,6 +57,24 @@ export const verifyStore = mutation({
       target_label: store.name,
     });
 
+    // Notify vendor
+    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
+      userId: store.owner_id,
+      type: "system",
+      title: "Boutique vérifiée ✓",
+      body: `Votre boutique "${store.name}" a été vérifiée et est maintenant active.`,
+      link: "/vendor/store/settings",
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: store.owner_id,
+      title: "Boutique vérifiée",
+      body: `"${store.name}" est maintenant vérifiée.`,
+      url: "/vendor/store/settings",
+    });
+
     return { success: true };
   },
 });
@@ -86,6 +104,24 @@ export const suspendStore = mutation({
       metadata: { reason: args.reason },
     });
 
+    // Notify vendor
+    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
+      userId: store.owner_id,
+      type: "system",
+      title: "Boutique suspendue",
+      body: `Votre boutique "${store.name}" a été suspendue. Motif : ${args.reason}`,
+      link: "/vendor/store/settings",
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: store.owner_id,
+      title: "Boutique suspendue",
+      body: `"${store.name}" a été suspendue. Motif : ${args.reason}`,
+      url: "/vendor/store/settings",
+    });
+
     return { success: true };
   },
 });
@@ -111,6 +147,24 @@ export const reactivateStore = mutation({
       target_type: "store",
       target_id: args.storeId,
       target_label: store.name,
+    });
+
+    // Notify vendor
+    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
+      userId: store.owner_id,
+      type: "system",
+      title: "Boutique réactivée ✓",
+      body: `Votre boutique "${store.name}" est à nouveau active.`,
+      link: "/vendor/store/settings",
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: store.owner_id,
+      title: "Boutique réactivée",
+      body: `"${store.name}" est à nouveau active.`,
+      url: "/vendor/store/settings",
     });
 
     return { success: true };
@@ -186,6 +240,17 @@ export const banUser = mutation({
       target_label: user.email,
     });
 
+    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
+      userId: args.userId,
+      type: "system",
+      title: "Compte suspendu",
+      body: "Votre compte a été suspendu. Contactez le support pour plus d'informations.",
+      link: "/",
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
     return { success: true };
   },
 });
@@ -206,6 +271,17 @@ export const unbanUser = mutation({
       target_type: "user",
       target_id: args.userId,
       target_label: user.email,
+    });
+
+    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
+      userId: args.userId,
+      type: "system",
+      title: "Compte réactivé ✓",
+      body: "Votre compte a été réactivé. Vous pouvez maintenant utiliser Pixel-Mart normalement.",
+      link: "/",
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+      metadata: undefined,
     });
 
     return { success: true };
@@ -238,6 +314,23 @@ export const changeUserRole = mutation({
       target_id: args.userId,
       target_label: user.email,
       metadata: { from: previousRole, to: args.role },
+    });
+
+    const ROLE_LABELS: Record<string, string> = {
+      admin: "Administrateur",
+      vendor: "Vendeur",
+      customer: "Client",
+      agent: "Agent",
+    };
+    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
+      userId: args.userId,
+      type: "system",
+      title: "Rôle mis à jour",
+      body: `Votre rôle a été changé de ${ROLE_LABELS[previousRole] ?? previousRole} à ${ROLE_LABELS[args.role] ?? args.role}.`,
+      link: "/",
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+      metadata: undefined,
     });
 
     return { success: true };

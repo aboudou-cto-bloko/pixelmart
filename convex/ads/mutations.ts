@@ -2,9 +2,11 @@
 
 import { mutation, internalMutation } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
+import { internal } from "../_generated/api";
 import { requireAdmin, getVendorStore } from "../users/helpers";
 import { calculateBookingPrice } from "./helpers";
 import { AD_PRIORITY } from "./constants";
+import { formatAmountText } from "../lib/format";
 
 /**
  * Vendor réserve un espace pub
@@ -437,6 +439,28 @@ export const confirmAdPayment = internalMutation({
       metadata: JSON.stringify({ booking_id: bookingId }),
       processed_at: Date.now(),
     });
+
+    // Notifier le vendeur
+    const vendor = await ctx.db.get(store.owner_id);
+    if (vendor) {
+      const fmtAmt = formatAmountText(booking.total_price, booking.currency);
+      await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
+        userId: vendor._id,
+        type: "payment",
+        title: "Publicité activée ✓",
+        body: `Votre annonce "${booking.title ?? booking.slot_id}" est confirmée (${fmtAmt}). Elle sera diffusée selon la file de priorité.`,
+        link: "/vendor/ads",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      });
+      await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+        userId: vendor._id,
+        title: "Publicité confirmée",
+        body: `Annonce confirmée — ${fmtAmt}`,
+        url: "/vendor/ads",
+      });
+    }
   },
 });
 
@@ -459,5 +483,28 @@ export const failAdPayment = internalMutation({
       admin_notes: `Paiement échoué: ${reason}`,
       updated_at: Date.now(),
     });
+
+    if (!booking.store_id) return;
+    const store = await ctx.db.get(booking.store_id);
+    if (!store) return;
+    const vendor = await ctx.db.get(store.owner_id);
+    if (vendor) {
+      await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
+        userId: vendor._id,
+        type: "payment",
+        title: "Paiement publicitaire échoué",
+        body: `Le paiement pour votre annonce "${booking.title ?? booking.slot_id}" a échoué. Veuillez réessayer.`,
+        link: "/vendor/ads",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      });
+      await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+        userId: vendor._id,
+        title: "Paiement publicitaire échoué",
+        body: "Votre paiement n'a pas pu être traité. Réessayez depuis votre espace Publicités.",
+        url: "/vendor/ads",
+      });
+    }
   },
 });

@@ -70,6 +70,28 @@ export const createRequest = mutation({
       },
     );
 
+    // Notifier les admins — nouvelle demande de dépôt
+    const admins = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "admin"))
+      .collect();
+    for (const admin of admins) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.createInAppNotification,
+        {
+          userId: admin._id,
+          type: "storage_received",
+          title: "Nouvelle demande de stockage",
+          body: `${store.name} a soumis une demande pour "${args.product_name.trim()}" (${storageCode}).`,
+          link: "/admin/storage",
+          channels: ["in_app"],
+          sentVia: ["in_app"],
+          metadata: { request_id: requestId, storage_code: storageCode },
+        },
+      );
+    }
+
     return { requestId, storageCode };
   },
 });
@@ -151,6 +173,31 @@ export const receiveRequest = mutation({
           },
         },
       );
+    }
+
+    // Notifier le vendeur (in-app) que son colis a été réceptionné
+    const storeForVendor = await ctx.db.get(request.store_id);
+    if (storeForVendor) {
+      const vendorUser = await ctx.db.get(storeForVendor.owner_id);
+      if (vendorUser) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.createInAppNotification,
+          {
+            userId: vendorUser._id,
+            type: "storage_received",
+            title: "Colis réceptionné en entrepôt",
+            body: `Votre colis ${request.storage_code} — "${request.product_name}" a bien été réceptionné. Une validation suivra sous peu.`,
+            link: "/vendor/storage",
+            channels: ["in_app"],
+            sentVia: ["in_app"],
+            metadata: {
+              request_id: request._id,
+              storage_code: request.storage_code,
+            },
+          },
+        );
+      }
     }
 
     return { success: true };
