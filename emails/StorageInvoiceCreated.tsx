@@ -5,6 +5,7 @@ import { Section, Text } from "@react-email/components";
 import * as React from "react";
 import { Layout, emailTheme } from "./components/Layout";
 import { CTAButton } from "./components/CTAButton";
+import { formatPrice } from "../src/lib/format";
 
 interface StorageInvoiceCreatedProps {
   vendorName: string;
@@ -14,12 +15,6 @@ interface StorageInvoiceCreatedProps {
   currency: string;
   paymentMethod: "immediate" | "auto_debit" | "deferred";
   dueDate?: string; // ex: "31 mars 2026" — pour le mode différé
-}
-
-function fmt(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") return `${value.toLocaleString("fr-FR")} FCFA`;
-  return `${value.toFixed(2)} ${currency}`;
 }
 
 const PAYMENT_DESCRIPTIONS: Record<string, string> = {
@@ -41,7 +36,7 @@ export function StorageInvoiceCreated({
   dueDate,
 }: StorageInvoiceCreatedProps) {
   return (
-    <Layout preview={`Facture de stockage — ${fmt(amount, currency)}`}>
+    <Layout preview={`Facture de stockage — ${formatPrice(amount, currency)}`}>
       <Text
         style={{
           fontFamily: emailTheme.fonts.heading,
@@ -99,7 +94,7 @@ export function StorageInvoiceCreated({
             margin: "0 0 4px 0",
           }}
         >
-          {fmt(amount, currency)}
+          {formatPrice(amount, currency)}
         </Text>
         <Text
           style={{

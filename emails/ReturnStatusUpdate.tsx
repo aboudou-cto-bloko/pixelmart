@@ -12,6 +12,7 @@ import {
   Text,
 } from "@react-email/components";
 import * as React from "react";
+import { formatPrice } from "../src/lib/format";
 
 interface ReturnStatusUpdateProps {
   recipientName: string;
@@ -67,17 +68,6 @@ const STATUS_CONFIG = {
     color: "#10B981",
   },
 };
-
-function formatPrice(centimes: number, currency: string): string {
-  const amount = centimes / 100;
-  const noDecimal = ["XOF", "XAF", "GNF", "CDF"];
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: noDecimal.includes(currency) ? 0 : 2,
-    maximumFractionDigits: noDecimal.includes(currency) ? 0 : 2,
-  }).format(amount);
-}
 
 export default function ReturnStatusUpdate({
   recipientName = "Client",

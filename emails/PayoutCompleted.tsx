@@ -4,18 +4,13 @@ import { Section, Text } from "@react-email/components";
 import * as React from "react";
 import { Layout, emailTheme } from "./components/Layout";
 import { CTAButton } from "./components/CTAButton";
+import { formatPrice } from "../src/lib/format";
 
 interface PayoutCompletedProps {
   amount: number;
   currency: string;
   method: string;
   storeName: string;
-}
-
-function fmt(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") return `${value.toLocaleString("fr-FR")} FCFA`;
-  return `${value.toFixed(2)} ${currency}`;
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -31,7 +26,7 @@ export function PayoutCompleted({
   storeName,
 }: PayoutCompletedProps) {
   return (
-    <Layout preview={`Retrait effectué — ${fmt(amount, currency)}`}>
+    <Layout preview={`Retrait effectué — ${formatPrice(amount, currency)}`}>
       <Text
         style={{
           fontFamily: emailTheme.fonts.heading,
@@ -75,7 +70,7 @@ export function PayoutCompleted({
             margin: "0 0 4px 0",
           }}
         >
-          {fmt(amount, currency)}
+          {formatPrice(amount, currency)}
         </Text>
         <Text
           style={{

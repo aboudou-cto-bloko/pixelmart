@@ -2,6 +2,7 @@
 
 import { type QueryCtx, type MutationCtx } from "../_generated/server";
 import { type Id } from "../_generated/dataModel";
+import { formatAmountText } from "../lib/format";
 
 /**
  * Calculer le prix d'une réservation selon la durée et la demande.
@@ -32,14 +33,14 @@ export function calculateBookingPrice(
   if (durationDays >= 28) {
     const months = Math.ceil(durationDays / 30);
     basePrice = months * adSpace.base_price_monthly;
-    breakdown = `${months} mois × ${Math.round(adSpace.base_price_monthly / 100)} FCFA`;
+    breakdown = `${months} mois × ${formatAmountText(adSpace.base_price_monthly, "XOF")}`;
   } else if (durationDays >= 7) {
     const weeks = Math.ceil(durationDays / 7);
     basePrice = weeks * adSpace.base_price_weekly;
-    breakdown = `${weeks} semaine(s) × ${Math.round(adSpace.base_price_weekly / 100)} FCFA`;
+    breakdown = `${weeks} semaine(s) × ${formatAmountText(adSpace.base_price_weekly, "XOF")}`;
   } else {
     basePrice = durationDays * adSpace.base_price_daily;
-    breakdown = `${durationDays} jour(s) × ${Math.round(adSpace.base_price_daily / 100)} FCFA`;
+    breakdown = `${durationDays} jour(s) × ${formatAmountText(adSpace.base_price_daily, "XOF")}`;
   }
 
   // Appliquer le multiplicateur de demande
@@ -56,7 +57,7 @@ export function calculateBookingPrice(
   }
 
   const totalPrice = Math.round(basePrice * multiplier);
-  breakdown += ` → Total: ${Math.round(totalPrice / 100)} FCFA`;
+  breakdown += ` → Total: ${formatAmountText(totalPrice, "XOF")}`;
 
   return { totalPrice, breakdown };
 }
