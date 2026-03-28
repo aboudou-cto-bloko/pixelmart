@@ -3,6 +3,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/format";
 
 interface MarginBarProps {
   title: string;
@@ -15,14 +16,6 @@ interface MarginBarProps {
   quantity: number;
 }
 
-function fmt(centimes: number, currency: string): string {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: currency === "XOF" ? 0 : 2,
-    maximumFractionDigits: currency === "XOF" ? 0 : 2,
-  }).format(centimes / 100);
-}
 
 export function MarginBar({
   title,
@@ -51,7 +44,7 @@ export function MarginBar({
         </div>
         <div className="text-right shrink-0 ml-4">
           <p className="text-sm font-medium tabular-nums">
-            {fmt(net, currency)}
+            {formatPrice(net, currency)}
           </p>
           <p
             className={cn(
@@ -74,27 +67,27 @@ export function MarginBar({
           <div
             className="bg-red-400 h-full"
             style={{ width: `${costWidth}%` }}
-            title={`Coût : ${fmt(cost, currency)}`}
+            title={`Coût : ${formatPrice(cost, currency)}`}
           />
         )}
         {commissionWidth > 0 && (
           <div
             className="bg-yellow-400 h-full"
             style={{ width: `${commissionWidth}%` }}
-            title={`Commission : ${fmt(commission, currency)}`}
+            title={`Commission : ${formatPrice(commission, currency)}`}
           />
         )}
         {netWidth > 0 && (
           <div
             className="bg-emerald-500 h-full"
             style={{ width: `${netWidth}%` }}
-            title={`Net : ${fmt(net, currency)}`}
+            title={`Net : ${formatPrice(net, currency)}`}
           />
         )}
       </div>
 
       <div className="flex justify-between text-[10px] text-muted-foreground">
-        <span>Revenu : {fmt(revenue, currency)}</span>
+        <span>Revenu : {formatPrice(revenue, currency)}</span>
         <div className="flex gap-3">
           {cost > 0 && (
             <span className="flex items-center gap-1">

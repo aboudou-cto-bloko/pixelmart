@@ -185,10 +185,13 @@ interface InvoiceData {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
+const NO_DECIMAL = ["XOF", "XAF", "GNF", "CDF"];
 function fmt(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") return `${value.toLocaleString("fr-FR")} FCFA`;
-  return `${value.toFixed(2)} ${currency}`;
+  if (NO_DECIMAL.includes(currency)) {
+    const label = currency === "XOF" ? "FCFA" : currency;
+    return `${centimes.toLocaleString("fr-FR")} ${label}`;
+  }
+  return `${(centimes / 100).toFixed(2)} ${currency}`;
 }
 
 function formatDate(timestamp: number): string {
