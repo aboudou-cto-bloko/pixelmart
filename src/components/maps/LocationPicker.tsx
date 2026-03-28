@@ -301,7 +301,7 @@ export function LocationPicker({
 
           {/* Suggestions dropdown */}
           {showResults && results.length > 0 && (
-            <div className="absolute z-[1000] mt-1 w-full rounded-md border bg-popover shadow-md">
+            <div className="absolute z-[1000] bottom-full mb-1 w-full rounded-md border bg-popover shadow-md">
               {results.map((r) => (
                 <button
                   key={r.placeId}
