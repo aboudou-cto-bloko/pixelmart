@@ -46,6 +46,7 @@ interface StorageRequest {
   created_at: number;
   updated_at: number;
   rejection_reason?: string;
+  pending_orders_count?: number; // nb commandes éligibles pour expédition entrepôt
 }
 
 interface StorageStats {
@@ -269,6 +270,9 @@ function StorageRequestsTable({
           <TableHead className="hidden sm:table-cell">Quantité</TableHead>
           <TableHead className="hidden md:table-cell">Frais</TableHead>
           <TableHead>Statut</TableHead>
+          <TableHead className="hidden md:table-cell text-center">
+            Cmdes en attente
+          </TableHead>
           <TableHead className="hidden lg:table-cell text-right">
             Date
           </TableHead>
@@ -306,6 +310,19 @@ function StorageRequestsTable({
               </TableCell>
               <TableCell>
                 <Badge variant={badge.variant}>{badge.label}</Badge>
+              </TableCell>
+              <TableCell className="hidden md:table-cell text-center">
+                {req.status === "in_stock" ? (
+                  req.pending_orders_count != null && req.pending_orders_count > 0 ? (
+                    <Badge className="bg-teal-100 text-teal-700 border-teal-300">
+                      {req.pending_orders_count} cmd
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
               </TableCell>
               <TableCell className="hidden lg:table-cell text-right text-xs text-muted-foreground">
                 {formatDate(req.created_at, {

@@ -2,7 +2,7 @@
 
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getVendorStore } from "../users/helpers";
+import { getVendorStore, requireAgent } from "../users/helpers";
 
 /**
  * Liste les commandes prêtes pour livraison (vendeur).
@@ -29,13 +29,32 @@ export const listReadyForDelivery = query({
       return eligibleStatus && notInBatch && paymentOk;
     });
 
+    // Récupérer les articles en stock à l'entrepôt pour cette boutique
+    const inStockRequests = await ctx.db
+      .query("storage_requests")
+      .withIndex("by_store_status", (q) =>
+        q.eq("store_id", store._id).eq("status", "in_stock"),
+      )
+      .collect();
+
+    const inStockByProductId = new Map(
+      inStockRequests
+        .filter((r) => r.product_id != null)
+        .map((r) => [r.product_id!.toString(), r.storage_code]),
+    );
+
     // Enrichir avec les infos client
     return Promise.all(
       eligibleOrders.map(async (order) => {
         const customer = await ctx.db.get(order.customer_id);
-
-        // Déterminer la zone approximative basée sur la ville
         const zoneName = order.shipping_address.city || "Zone non définie";
+
+        // Détecter les items dont le produit est en stock à l'entrepôt
+        const warehouseCodes: string[] = [];
+        for (const item of order.items) {
+          const code = inStockByProductId.get(item.product_id.toString());
+          if (code) warehouseCodes.push(code);
+        }
 
         return {
           ...order,
@@ -43,6 +62,8 @@ export const listReadyForDelivery = query({
           customer_phone: customer?.phone ?? order.shipping_address.phone,
           zone_name: zoneName,
           distance_km: order.delivery_distance_km ?? 0,
+          has_warehouse_items: warehouseCodes.length > 0,
+          warehouse_storage_codes: warehouseCodes,
         };
       }),
     );
@@ -243,5 +264,63 @@ export const getOrderCountByZone = query({
       .sort((a, b) => b.count - a.count); // Trier par nombre décroissant
 
     return result;
+  },
+});
+
+/**
+ * Lots entrepôt à préparer — pour l'agent.
+ * Retourne les lots is_warehouse_batch=true en statut assigned ou in_progress.
+ */
+export const listWarehouseBatchesForAgent = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAgent(ctx);
+
+    const allBatches = await ctx.db
+      .query("delivery_batches")
+      .filter((q) => q.eq(q.field("is_warehouse_batch"), true))
+      .collect();
+
+    const active = allBatches.filter(
+      (b) =>
+        b.status === "transmitted" ||
+        b.status === "assigned" ||
+        b.status === "in_progress",
+    );
+
+    return Promise.all(
+      active.map(async (batch) => {
+        const store = await ctx.db.get(batch.store_id);
+
+        // Récupérer les commandes et leurs codes de stockage
+        const orders = await Promise.all(
+          batch.order_ids.map((id) => ctx.db.get(id)),
+        );
+        const validOrders = orders.filter(Boolean);
+
+        // Collecter les codes de stockage de tous les items
+        const storageCodes = new Set<string>();
+        for (const order of validOrders) {
+          if (!order) continue;
+          for (const item of order.items) {
+            if (item.storage_code) storageCodes.add(item.storage_code);
+          }
+        }
+
+        return {
+          ...batch,
+          store_name: store?.name ?? "—",
+          storage_codes: [...storageCodes],
+          orders: validOrders.map((o) => ({
+            _id: o!._id,
+            order_number: o!.order_number,
+            customer_name: o!.shipping_address.full_name,
+            items: o!.items,
+            total_amount: o!.total_amount,
+            payment_mode: o!.payment_mode,
+          })),
+        };
+      }),
+    );
   },
 });

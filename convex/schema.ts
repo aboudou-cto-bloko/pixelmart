@@ -914,6 +914,9 @@ export default defineSchema({
     total_delivery_fee: v.number(), // somme des frais de livraison (centimes)
     currency: v.string(), // XOF
 
+    // Source — true si le lot part depuis l'entrepôt Pixel-Mart
+    is_warehouse_batch: v.optional(v.boolean()),
+
     // Metadata
     updated_at: v.number(),
   })

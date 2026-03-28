@@ -14,6 +14,7 @@ import {
   ChevronRight,
   X,
   ChevronDown,
+  Warehouse,
 } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { formatRelativeTime } from "@/lib/format";
@@ -71,6 +72,7 @@ type Batch = {
   order_count: number;
   status: BatchStatus;
   grouping_type: "zone" | "manual";
+  is_warehouse_batch?: boolean;
   total_delivery_fee: number;
   total_to_collect: number;
   zone_name?: string;
@@ -251,9 +253,15 @@ function BatchDetailSheet({
     <Sheet open onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
+          <SheetTitle className="flex items-center gap-2 flex-wrap">
             <span className="font-mono text-sm">{batch.batch_number}</span>
             <StatusBadge status={batch.status} />
+            {batch.is_warehouse_batch && (
+              <Badge className="bg-teal-100 text-teal-700 border-teal-300 gap-1 text-xs">
+                <Warehouse className="size-3" />
+                Entrepôt
+              </Badge>
+            )}
           </SheetTitle>
         </SheetHeader>
 
@@ -328,19 +336,20 @@ function BatchDetailSheet({
 
 // ─── Filter Tabs ──────────────────────────────────────────────
 
-const FILTERS: { label: string; value: BatchStatus | "all" }[] = [
+const FILTERS: { label: string; value: BatchStatus | "all" | "warehouse" }[] = [
   { label: "Tous", value: "all" },
   { label: "Transmis", value: "transmitted" },
   { label: "Assignés", value: "assigned" },
   { label: "En cours", value: "in_progress" },
   { label: "Livrés", value: "completed" },
   { label: "Annulés", value: "cancelled" },
+  { label: "Entrepôt", value: "warehouse" },
 ];
 
 // ─── Main Template ────────────────────────────────────────────
 
 export function AdminDeliveryBatchesTemplate({ batches, stats }: Props) {
-  const [filter, setFilter] = useState<BatchStatus | "all">("all");
+  const [filter, setFilter] = useState<BatchStatus | "all" | "warehouse">("all");
   const [detailBatch, setDetailBatch] = useState<Batch | null>(null);
   const [transitionBatch, setTransitionBatch] = useState<Batch | null>(null);
   const [transitionTarget, setTransitionTarget] = useState<
@@ -348,7 +357,11 @@ export function AdminDeliveryBatchesTemplate({ batches, stats }: Props) {
   >(null);
 
   const filtered =
-    filter === "all" ? batches : batches.filter((b) => b.status === filter);
+    filter === "all"
+      ? batches
+      : filter === "warehouse"
+        ? batches.filter((b) => b.is_warehouse_batch)
+        : batches.filter((b) => b.status === filter);
 
   const openTransition = (
     batch: Batch,
@@ -396,7 +409,9 @@ export function AdminDeliveryBatchesTemplate({ batches, stats }: Props) {
           const count =
             f.value === "all"
               ? batches.length
-              : batches.filter((b) => b.status === f.value).length;
+              : f.value === "warehouse"
+                ? batches.filter((b) => b.is_warehouse_batch).length
+                : batches.filter((b) => b.status === f.value).length;
           return (
             <button
               key={f.value}
@@ -445,8 +460,18 @@ export function AdminDeliveryBatchesTemplate({ batches, stats }: Props) {
                   className="cursor-pointer hover:bg-muted/40"
                   onClick={() => setDetailBatch(batch)}
                 >
-                  <TableCell className="font-mono text-sm font-medium">
-                    {batch.batch_number}
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-sm font-medium">
+                        {batch.batch_number}
+                      </span>
+                      {batch.is_warehouse_batch && (
+                        <Badge className="bg-teal-100 text-teal-700 border-teal-300 gap-1 text-xs py-0">
+                          <Warehouse className="size-3" />
+                          Entrepôt
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm">{batch.store_name}</TableCell>
                   <TableCell className="text-center text-sm">
