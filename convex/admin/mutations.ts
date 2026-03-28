@@ -1,9 +1,38 @@
 // filepath: convex/admin/mutations.ts
 
 import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { requireAdmin } from "../users/helpers";
+
+// ─── Audit log helper ─────────────────────────────────────────
+
+async function logEvent(
+  ctx: MutationCtx,
+  actorId: Id<"users">,
+  actorName: string | undefined,
+  type: string,
+  opts?: {
+    target_type?: string;
+    target_id?: string;
+    target_label?: string;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  await ctx.db.insert("platform_events", {
+    type,
+    actor_id: actorId,
+    actor_name: actorName,
+    target_type: opts?.target_type,
+    target_id: opts?.target_id,
+    target_label: opts?.target_label,
+    metadata: opts?.metadata ? JSON.stringify(opts.metadata) : undefined,
+    created_at: Date.now(),
+  });
+}
 
 // ─── verifyStore ─────────────────────────────────────────────
 
@@ -12,7 +41,7 @@ export const verifyStore = mutation({
     storeId: v.id("stores"),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const store = await ctx.db.get(args.storeId);
     if (!store) throw new Error("Boutique introuvable");
@@ -20,6 +49,12 @@ export const verifyStore = mutation({
     await ctx.db.patch(args.storeId, {
       is_verified: true,
       updated_at: Date.now(),
+    });
+
+    await logEvent(ctx, admin._id, admin.name, "store_verified", {
+      target_type: "store",
+      target_id: args.storeId,
+      target_label: store.name,
     });
 
     return { success: true };
@@ -34,7 +69,7 @@ export const suspendStore = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const store = await ctx.db.get(args.storeId);
     if (!store) throw new Error("Boutique introuvable");
@@ -42,6 +77,13 @@ export const suspendStore = mutation({
     await ctx.db.patch(args.storeId, {
       status: "suspended",
       updated_at: Date.now(),
+    });
+
+    await logEvent(ctx, admin._id, admin.name, "store_suspended", {
+      target_type: "store",
+      target_id: args.storeId,
+      target_label: store.name,
+      metadata: { reason: args.reason },
     });
 
     return { success: true };
@@ -55,7 +97,7 @@ export const reactivateStore = mutation({
     storeId: v.id("stores"),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const store = await ctx.db.get(args.storeId);
     if (!store) throw new Error("Boutique introuvable");
@@ -63,6 +105,12 @@ export const reactivateStore = mutation({
     await ctx.db.patch(args.storeId, {
       status: "active",
       updated_at: Date.now(),
+    });
+
+    await logEvent(ctx, admin._id, admin.name, "store_reactivated", {
+      target_type: "store",
+      target_id: args.storeId,
+      target_label: store.name,
     });
 
     return { success: true };
@@ -76,7 +124,7 @@ export const approvePayout = mutation({
     payoutId: v.id("payouts"),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const payout = await ctx.db.get(args.payoutId);
     if (!payout) throw new Error("Virement introuvable");
@@ -90,10 +138,8 @@ export const approvePayout = mutation({
     const owner = await ctx.db.get(store.owner_id);
     if (!owner) throw new Error("Propriétaire introuvable");
 
-    // Net amount = amount - fee
     const netAmount = payout.amount - payout.fee;
 
-    // Schedule Moneroo payout
     await ctx.scheduler.runAfter(
       0,
       internal.payouts.actions.initializePayoutViaMoneroo,
@@ -110,6 +156,13 @@ export const approvePayout = mutation({
       },
     );
 
+    await logEvent(ctx, admin._id, admin.name, "payout_approved", {
+      target_type: "payout",
+      target_id: args.payoutId,
+      target_label: store.name,
+      metadata: { amount: payout.amount, currency: payout.currency },
+    });
+
     return { success: true };
   },
 });
@@ -119,13 +172,20 @@ export const approvePayout = mutation({
 export const banUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("Utilisateur introuvable");
     if (user.role === "admin") throw new Error("Impossible de bannir un admin");
 
     await ctx.db.patch(args.userId, { is_banned: true, updated_at: Date.now() });
+
+    await logEvent(ctx, admin._id, admin.name, "user_banned", {
+      target_type: "user",
+      target_id: args.userId,
+      target_label: user.email,
+    });
+
     return { success: true };
   },
 });
@@ -135,12 +195,19 @@ export const banUser = mutation({
 export const unbanUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("Utilisateur introuvable");
 
     await ctx.db.patch(args.userId, { is_banned: false, updated_at: Date.now() });
+
+    await logEvent(ctx, admin._id, admin.name, "user_unbanned", {
+      target_type: "user",
+      target_id: args.userId,
+      target_label: user.email,
+    });
+
     return { success: true };
   },
 });
@@ -158,12 +225,21 @@ export const changeUserRole = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("Utilisateur introuvable");
 
+    const previousRole = user.role;
     await ctx.db.patch(args.userId, { role: args.role, updated_at: Date.now() });
+
+    await logEvent(ctx, admin._id, admin.name, "user_role_changed", {
+      target_type: "user",
+      target_id: args.userId,
+      target_label: user.email,
+      metadata: { from: previousRole, to: args.role },
+    });
+
     return { success: true };
   },
 });
@@ -416,6 +492,8 @@ export const upsertPlatformConfig = mutation({
       .withIndex("by_key", (q) => q.eq("key", args.key))
       .unique();
 
+    const previousValue = existing?.value;
+
     if (existing) {
       await ctx.db.patch(existing._id, {
         value: args.value,
@@ -432,6 +510,13 @@ export const upsertPlatformConfig = mutation({
       });
     }
 
+    await logEvent(ctx, user._id, user.name, "config_changed", {
+      target_type: "config",
+      target_id: args.key,
+      target_label: args.label,
+      metadata: { key: args.key, from: previousValue, to: args.value },
+    });
+
     return { success: true };
   },
 });
@@ -444,7 +529,7 @@ export const rejectPayout = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const payout = await ctx.db.get(args.payoutId);
     if (!payout) throw new Error("Virement introuvable");
@@ -452,7 +537,8 @@ export const rejectPayout = mutation({
       throw new Error("Ce virement n'est pas en attente");
     }
 
-    // Use internal failPayout which handles reversal + notifications
+    const store = await ctx.db.get(payout.store_id);
+
     await ctx.scheduler.runAfter(
       0,
       internal.payouts.mutations.failPayout,
@@ -461,6 +547,40 @@ export const rejectPayout = mutation({
         reason: args.reason,
       },
     );
+
+    await logEvent(ctx, admin._id, admin.name, "payout_rejected", {
+      target_type: "payout",
+      target_id: args.payoutId,
+      target_label: store?.name ?? "Boutique inconnue",
+      metadata: { amount: payout.amount, currency: payout.currency, reason: args.reason },
+    });
+
+    return { success: true };
+  },
+});
+
+// ─── deletePlatformConfig ─────────────────────────────────────
+
+export const deletePlatformConfig = mutation({
+  args: { key: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireAdmin(ctx);
+
+    const existing = await ctx.db
+      .query("platform_config")
+      .withIndex("by_key", (q) => q.eq("key", args.key))
+      .unique();
+
+    if (!existing) return { success: true };
+
+    await ctx.db.delete(existing._id);
+
+    await logEvent(ctx, user._id, user.name, "config_reset", {
+      target_type: "config",
+      target_id: args.key,
+      target_label: existing.label,
+      metadata: { key: args.key, resetFrom: existing.value },
+    });
 
     return { success: true };
   },

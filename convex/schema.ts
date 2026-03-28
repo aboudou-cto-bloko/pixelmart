@@ -1124,4 +1124,21 @@ export default defineSchema({
     updated_by: v.optional(v.id("users")),
   })
     .index("by_key", ["key"]),
+
+  // ============================================
+  // PLATFORM EVENTS — journal d'audit admin
+  // ============================================
+  platform_events: defineTable({
+    type: v.string(),                      // "user_banned" | "config_changed" | "payout_approved" | …
+    actor_id: v.id("users"),
+    actor_name: v.optional(v.string()),
+    target_type: v.optional(v.string()),   // "user" | "store" | "payout" | "config" | "category" | …
+    target_id: v.optional(v.string()),     // ID Convex de l'entité cible
+    target_label: v.optional(v.string()),  // libellé lisible
+    metadata: v.optional(v.string()),      // JSON sérialisé (context additionnel)
+    created_at: v.number(),
+  })
+    .index("by_type", ["type", "created_at"])
+    .index("by_actor", ["actor_id", "created_at"])
+    .index("by_created_at", ["created_at"]),
 });
