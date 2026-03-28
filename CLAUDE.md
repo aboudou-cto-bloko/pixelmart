@@ -227,7 +227,7 @@ Moneroo send     → centimesToMonerooAmount(centimes, currency)   // XOF: no co
 Moneroo receive  → monerooAmountToCentimes(amount, currency)     // XOF: no conversion; EUR: ×100
 Display          → formatPrice(centimes, "XOF") → "1 500 FCFA"  (NO division for XOF)
 Email templates  → import { formatPrice } from "@/lib/format" — format inside template
-Commission       → total_amount × commission_rate / 10_000
+Commission       → (subtotal - discount) × commission_rate / 10_000  // excludes delivery fee
 ```
 
 **XOF special case**: `formatPrice` does NOT divide by 100 for XOF/XAF/GNF/CDF. The raw centimes value IS the FCFA display value (5000 centimes = 5 000 FCFA, not 50 FCFA).
@@ -329,7 +329,8 @@ Balance credited only when `order.status === "delivered"` AND `delivered_at` old
 
 ### F-04: Commission Calculation
 ```typescript
-commission_amount = Math.round(total_amount * commission_rate / 10_000)
+// Base = subtotal minus coupon discount — delivery fee is NOT included
+commission_amount = Math.round((subtotal - discount_amount) * commission_rate / 10_000)
 ```
 
 ### F-05: Storage Debt Priority
@@ -440,11 +441,14 @@ Sender: `Pixel-Mart <noreply@pixel-mart-bj.com>` — defined as `EMAIL_FROM` in 
 
 | Route | Purpose | Status |
 |-------|---------|--------|
-| `/admin/dashboard` | Platform overview | 🔲 Pending |
-| `/admin/users` | User management | 🔲 Pending |
-| `/admin/stores` | Store verification | 🔲 Pending |
-| `/admin/categories` | Category management | 🔲 Pending |
-| `/admin/payouts` | Payout approvals | 🔲 Pending |
+| `/admin/dashboard` | Platform overview | ✅ |
+| `/admin/users` | User management | ✅ |
+| `/admin/stores` | Store verification | ✅ |
+| `/admin/categories` | Category management | ✅ |
+| `/admin/payouts` | Payout approvals | ✅ |
+| `/admin/orders` | Order management | ✅ |
+| `/admin/storage` | Storage management | ✅ |
+| `/admin/delivery` | Delivery batches | ✅ |
 
 See `docs/ADMIN_DASHBOARD_GUIDE.md` for full specification.
 
