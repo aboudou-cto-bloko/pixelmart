@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { ErrorView } from "@/components/atoms/ErrorView";
 
-export default function RootError({
+export default function AgentError({
   error,
   reset,
 }: {
@@ -14,8 +14,15 @@ export default function RootError({
     const isUnauth =
       error.message === "Unauthenticated" ||
       error.message?.includes("Unauthenticated");
-    if (!isUnauth) console.error("[RootError]", error);
+    if (!isUnauth) console.error("[AgentError]", error);
   }, [error]);
 
-  return <ErrorView error={error} reset={reset} />;
+  return (
+    <ErrorView
+      error={error}
+      reset={reset}
+      backHref="/agent"
+      backLabel="Interface agent"
+    />
+  );
 }
