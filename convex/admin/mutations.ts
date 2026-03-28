@@ -4,7 +4,7 @@ import { mutation } from "../_generated/server";
 import { internalMutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import { v } from "convex/values";
 import { requireAdmin, requireSuperAdmin, requireRoles, ADMIN_ROLES } from "../users/helpers";
 
@@ -686,5 +686,190 @@ export const deletePlatformConfig = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// ─── deleteUser ───────────────────────────────────────────────
+// Hard-deletes a user: cleans up Better Auth records + app data.
+// Orders are kept for audit trail; customer_id becomes a dangling ref.
+
+export const deleteUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx);
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("Utilisateur introuvable");
+    if ((ADMIN_ROLES as readonly string[]).includes(user.role)) {
+      throw new Error("Impossible de supprimer un administrateur");
+    }
+
+    // ── Better Auth cleanup ────────────────────────────────────
+    if (user.better_auth_user_id) {
+      await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+        input: { model: "session", where: [{ field: "userId", value: user.better_auth_user_id }] },
+        paginationOpts: { numItems: 200, cursor: null },
+      });
+      await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+        input: { model: "account", where: [{ field: "userId", value: user.better_auth_user_id }] },
+        paginationOpts: { numItems: 200, cursor: null },
+      });
+      await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
+        input: { model: "user", where: [{ field: "_id", value: user.better_auth_user_id }] },
+      });
+    }
+
+    // ── App-level cleanup ─────────────────────────────────────
+    const notifs = await ctx.db
+      .query("notifications")
+      .withIndex("by_user", (q) => q.eq("user_id", args.userId))
+      .collect();
+    for (const n of notifs) await ctx.db.delete(n._id);
+
+    const subs = await ctx.db
+      .query("push_subscriptions")
+      .withIndex("by_user", (q) => q.eq("user_id", args.userId))
+      .collect();
+    for (const s of subs) await ctx.db.delete(s._id);
+
+    await ctx.db.delete(args.userId);
+
+    await logEvent(ctx, admin._id, admin.name, "user_deleted", {
+      target_type: "user",
+      target_id: args.userId,
+      target_label: user.email,
+    });
+
+    return { success: true };
+  },
+});
+
+// ─── bulkBanUsers ─────────────────────────────────────────────
+
+export const bulkBanUsers = mutation({
+  args: { userIds: v.array(v.id("users")) },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx);
+    let count = 0;
+    for (const userId of args.userIds) {
+      const user = await ctx.db.get(userId);
+      if (!user || (ADMIN_ROLES as readonly string[]).includes(user.role) || user.is_banned) continue;
+      await ctx.db.patch(userId, { is_banned: true, updated_at: Date.now() });
+      count++;
+    }
+    await logEvent(ctx, admin._id, admin.name, "bulk_action", {
+      metadata: { action: "ban", count },
+    });
+    return { count };
+  },
+});
+
+// ─── bulkUnbanUsers ───────────────────────────────────────────
+
+export const bulkUnbanUsers = mutation({
+  args: { userIds: v.array(v.id("users")) },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx);
+    let count = 0;
+    for (const userId of args.userIds) {
+      const user = await ctx.db.get(userId);
+      if (!user || !user.is_banned) continue;
+      await ctx.db.patch(userId, { is_banned: false, updated_at: Date.now() });
+      count++;
+    }
+    await logEvent(ctx, admin._id, admin.name, "bulk_action", {
+      metadata: { action: "unban", count },
+    });
+    return { count };
+  },
+});
+
+// ─── bulkDeleteUsers ──────────────────────────────────────────
+
+export const bulkDeleteUsers = mutation({
+  args: { userIds: v.array(v.id("users")) },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx);
+    let count = 0;
+    for (const userId of args.userIds) {
+      const user = await ctx.db.get(userId);
+      if (!user || (ADMIN_ROLES as readonly string[]).includes(user.role)) continue;
+
+      if (user.better_auth_user_id) {
+        await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+          input: { model: "session", where: [{ field: "userId", value: user.better_auth_user_id }] },
+          paginationOpts: { numItems: 200, cursor: null },
+        });
+        await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+          input: { model: "account", where: [{ field: "userId", value: user.better_auth_user_id }] },
+          paginationOpts: { numItems: 200, cursor: null },
+        });
+        await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
+          input: { model: "user", where: [{ field: "_id", value: user.better_auth_user_id }] },
+        });
+      }
+
+      const notifs = await ctx.db
+        .query("notifications")
+        .withIndex("by_user", (q) => q.eq("user_id", userId))
+        .collect();
+      for (const n of notifs) await ctx.db.delete(n._id);
+
+      const subs = await ctx.db
+        .query("push_subscriptions")
+        .withIndex("by_user", (q) => q.eq("user_id", userId))
+        .collect();
+      for (const s of subs) await ctx.db.delete(s._id);
+
+      await ctx.db.delete(userId);
+      count++;
+    }
+    await logEvent(ctx, admin._id, admin.name, "bulk_action", {
+      metadata: { action: "delete", count },
+    });
+    return { count };
+  },
+});
+
+// ─── bulkVerifyStores ─────────────────────────────────────────
+
+export const bulkVerifyStores = mutation({
+  args: { storeIds: v.array(v.id("stores")) },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx);
+    let count = 0;
+    for (const storeId of args.storeIds) {
+      const store = await ctx.db.get(storeId);
+      if (!store || store.is_verified) continue;
+      await ctx.db.patch(storeId, { is_verified: true, updated_at: Date.now() });
+      count++;
+    }
+    await logEvent(ctx, admin._id, admin.name, "bulk_action", {
+      metadata: { action: "verify_stores", count },
+    });
+    return { count };
+  },
+});
+
+// ─── bulkSuspendStores ────────────────────────────────────────
+
+export const bulkSuspendStores = mutation({
+  args: { storeIds: v.array(v.id("stores")), reason: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireSuperAdmin(ctx);
+    let count = 0;
+    for (const storeId of args.storeIds) {
+      const store = await ctx.db.get(storeId);
+      if (!store || store.status === "suspended") continue;
+      await ctx.db.patch(storeId, {
+        status: "suspended",
+        updated_at: Date.now(),
+      });
+      count++;
+    }
+    await logEvent(ctx, admin._id, admin.name, "bulk_action", {
+      metadata: { action: "suspend_stores", count, reason: args.reason },
+    });
+    return { count };
   },
 });

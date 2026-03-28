@@ -7,6 +7,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { formatPrice, formatDate } from "@/lib/format";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
 import {
   Table,
   TableBody,
@@ -41,8 +42,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MoreHorizontal, Store } from "lucide-react";
+import { MoreHorizontal, Store, X, CheckCircle2, Ban } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -211,6 +213,106 @@ function SuspendDialog({
   );
 }
 
+// ─── Bulk Verify Dialog ────────────────────────────────────────
+
+function BulkVerifyDialog({
+  open,
+  count,
+  onClose,
+  onConfirm,
+  loading,
+}: {
+  open: boolean;
+  count: number;
+  onClose: () => void;
+  onConfirm: () => void;
+  loading: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Vérifier {count} boutique{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>
+            Cette action marquera les {count} boutique{count > 1 ? "s" : ""} sélectionnée{count > 1 ? "s" : ""} comme vérifiées. Les boutiques déjà vérifiées seront ignorées.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Annuler
+          </Button>
+          <Button
+            className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? "En cours..." : `Vérifier ${count}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Bulk Suspend Dialog ───────────────────────────────────────
+
+function BulkSuspendDialog({
+  open,
+  count,
+  onClose,
+  onConfirm,
+  loading,
+}: {
+  open: boolean;
+  count: number;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+  loading: boolean;
+}) {
+  const [reason, setReason] = useState("");
+
+  const handleClose = () => {
+    setReason("");
+    onClose();
+  };
+
+  const handleConfirm = () => {
+    if (!reason.trim()) return;
+    onConfirm(reason.trim());
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Suspendre {count} boutique{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>
+            Les {count} boutique{count > 1 ? "s" : ""} sélectionnée{count > 1 ? "s" : ""} seront suspendues. Indiquez la raison commune.
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea
+          placeholder="Raison de la suspension (obligatoire)..."
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
+            Annuler
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={loading || !reason.trim()}
+          >
+            {loading ? "En cours..." : `Suspendre ${count}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Reactivate (inline, no dialog needed) ────────────────────
 
 function ActionsMenu({
@@ -263,6 +365,8 @@ function ActionsMenu({
 
 export function AdminStoresTemplate({ stores }: Props) {
   const reactivateStore = useMutation(api.admin.mutations.reactivateStore);
+  const bulkVerifyStores = useMutation(api.admin.mutations.bulkVerifyStores);
+  const bulkSuspendStores = useMutation(api.admin.mutations.bulkSuspendStores);
 
   const [search, setSearch] = useState("");
   const [filterVerified, setFilterVerified] = useState("all");
@@ -270,6 +374,10 @@ export function AdminStoresTemplate({ stores }: Props) {
 
   const [verifyTarget, setVerifyTarget] = useState<StoreItem | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<StoreItem | null>(null);
+
+  const [bulkVerifyOpen, setBulkVerifyOpen] = useState(false);
+  const [bulkSuspendOpen, setBulkSuspendOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const filtered = useMemo(() => {
     return stores.filter((s) => {
@@ -292,6 +400,9 @@ export function AdminStoresTemplate({ stores }: Props) {
     });
   }, [stores, search, filterVerified, filterStatus]);
 
+  const filteredIds = filtered.map((s) => s._id as string);
+  const bulk = useBulkSelection();
+
   // Stats
   const totalStores = stores.length;
   const unverifiedCount = stores.filter((s) => !s.is_verified).length;
@@ -303,6 +414,32 @@ export function AdminStoresTemplate({ stores }: Props) {
       await reactivateStore({ storeId });
     } catch (err) {
       console.error("Erreur réactivation:", err);
+    }
+  };
+
+  const handleBulkVerify = async () => {
+    setBulkLoading(true);
+    try {
+      await bulkVerifyStores({ storeIds: Array.from(bulk.selectedIds) as Id<"stores">[] });
+      bulk.clear();
+      setBulkVerifyOpen(false);
+    } catch (err) {
+      console.error("Erreur vérification bulk:", err);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkSuspend = async (reason: string) => {
+    setBulkLoading(true);
+    try {
+      await bulkSuspendStores({ storeIds: Array.from(bulk.selectedIds) as Id<"stores">[], reason });
+      bulk.clear();
+      setBulkSuspendOpen(false);
+    } catch (err) {
+      console.error("Erreur suspension bulk:", err);
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -400,6 +537,43 @@ export function AdminStoresTemplate({ stores }: Props) {
         </Select>
       </div>
 
+      {/* Bulk action bar */}
+      {bulk.count > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/60 px-4 py-2.5">
+          <span className="text-sm font-medium">
+            {bulk.count} boutique{bulk.count > 1 ? "s" : ""} sélectionnée{bulk.count > 1 ? "s" : ""}
+          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-green-700 border-green-300 hover:bg-green-50"
+              onClick={() => setBulkVerifyOpen(true)}
+            >
+              <CheckCircle2 className="size-3.5 mr-1" />
+              Vérifier
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={() => setBulkSuspendOpen(true)}
+            >
+              <Ban className="size-3.5 mr-1" />
+              Suspendre
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2"
+              onClick={bulk.clear}
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
@@ -411,6 +585,13 @@ export function AdminStoresTemplate({ stores }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={bulk.isAllSelected(filteredIds)}
+                    onCheckedChange={() => bulk.toggleAll(filteredIds)}
+                    aria-label="Tout sélectionner"
+                  />
+                </TableHead>
                 <TableHead>Boutique</TableHead>
                 <TableHead>Propriétaire</TableHead>
                 <TableHead>Vérifiée</TableHead>
@@ -424,7 +605,18 @@ export function AdminStoresTemplate({ stores }: Props) {
             </TableHeader>
             <TableBody>
               {filtered.map((store) => (
-                <TableRow key={store._id}>
+                <TableRow
+                  key={store._id}
+                  data-selected={bulk.selectedIds.has(store._id as string)}
+                  className="data-[selected=true]:bg-muted/40"
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={bulk.selectedIds.has(store._id as string)}
+                      onCheckedChange={() => bulk.toggle(store._id as string)}
+                      aria-label={`Sélectionner ${store.name}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="font-medium">{store.name}</p>
@@ -479,6 +671,20 @@ export function AdminStoresTemplate({ stores }: Props) {
       <SuspendDialog
         store={suspendTarget}
         onClose={() => setSuspendTarget(null)}
+      />
+      <BulkVerifyDialog
+        open={bulkVerifyOpen}
+        count={bulk.count}
+        onClose={() => setBulkVerifyOpen(false)}
+        onConfirm={handleBulkVerify}
+        loading={bulkLoading}
+      />
+      <BulkSuspendDialog
+        open={bulkSuspendOpen}
+        count={bulk.count}
+        onClose={() => setBulkSuspendOpen(false)}
+        onConfirm={handleBulkSuspend}
+        loading={bulkLoading}
       />
     </div>
   );

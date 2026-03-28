@@ -3,7 +3,9 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingBag, Search } from "lucide-react";
+import { ShoppingBag, Search, X } from "lucide-react";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatDate, formatPrice } from "@/lib/format";
 import {
   Table,
@@ -102,6 +104,7 @@ const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 export function AdminOrdersTemplate({ orders }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
+  const bulk = useBulkSelection();
 
   const filtered = orders.filter((o) => {
     const q = search.trim().toLowerCase();
@@ -115,8 +118,12 @@ export function AdminOrdersTemplate({ orders }: Props) {
     return matchSearch && matchStatus;
   });
 
+  const filteredIds = filtered.map((o) => o._id);
   const totalGmv = filtered.reduce((s, o) => s + o.total_amount, 0);
   const totalCommissions = filtered.reduce((s, o) => s + o.commission_amount, 0);
+  const selectedGmv = orders
+    .filter((o) => bulk.selectedIds.has(o._id))
+    .reduce((s, o) => s + o.total_amount, 0);
 
   return (
     <div className="space-y-6">
@@ -176,6 +183,26 @@ export function AdminOrdersTemplate({ orders }: Props) {
         </div>
       )}
 
+      {/* Bulk selection bar */}
+      {bulk.count > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/60 px-4 py-2.5">
+          <span className="text-sm font-medium">
+            {bulk.count} commande{bulk.count > 1 ? "s" : ""} sélectionnée{bulk.count > 1 ? "s" : ""}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            GMV sélection{" "}
+            <span className="font-semibold text-foreground">{formatPrice(selectedGmv, "XOF")}</span>
+          </span>
+          <button
+            onClick={bulk.clear}
+            className="ml-auto p-1 rounded hover:bg-muted transition-colors"
+            aria-label="Désélectionner"
+          >
+            <X className="size-3.5 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+
       {/* Empty state */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground">
@@ -187,6 +214,13 @@ export function AdminOrdersTemplate({ orders }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={bulk.isAllSelected(filteredIds)}
+                    onCheckedChange={() => bulk.toggleAll(filteredIds)}
+                    aria-label="Tout sélectionner"
+                  />
+                </TableHead>
                 <TableHead>N° commande</TableHead>
                 <TableHead>Boutique</TableHead>
                 <TableHead>Client</TableHead>
@@ -199,7 +233,18 @@ export function AdminOrdersTemplate({ orders }: Props) {
             </TableHeader>
             <TableBody>
               {filtered.map((order) => (
-                <TableRow key={order._id}>
+                <TableRow
+                  key={order._id}
+                  data-selected={bulk.selectedIds.has(order._id)}
+                  className="data-[selected=true]:bg-muted/40"
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={bulk.selectedIds.has(order._id)}
+                      onCheckedChange={() => bulk.toggle(order._id)}
+                      aria-label={`Sélectionner ${order.order_number}`}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono text-xs font-semibold">
                     {order.order_number}
                   </TableCell>
