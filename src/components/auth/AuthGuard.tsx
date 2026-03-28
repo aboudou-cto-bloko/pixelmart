@@ -6,7 +6,15 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { Loader2, Ban } from "lucide-react";
 import Link from "next/link";
 
-type Role = "admin" | "vendor" | "customer" | "agent";
+type Role =
+  | "admin"
+  | "finance"
+  | "logistics"
+  | "developer"
+  | "marketing"
+  | "vendor"
+  | "customer"
+  | "agent";
 
 interface AuthGuardProps {
   children: React.ReactNode;

@@ -3,6 +3,19 @@
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { authComponent } from "../auth";
 
+// ─── Admin role constants ──────────────────────────────────────
+
+/** Tous les rôles qui ont accès au dashboard admin */
+export const ADMIN_ROLES = [
+  "admin",
+  "finance",
+  "logistics",
+  "developer",
+  "marketing",
+] as const;
+
+export type AdminRole = (typeof ADMIN_ROLES)[number];
+
 type Ctx = QueryCtx | MutationCtx;
 
 /**
@@ -49,12 +62,36 @@ export async function requireVendor(ctx: Ctx) {
 }
 
 /**
- * Requiert un utilisateur admin.
+ * Requiert n'importe quel rôle admin (lecture générale du dashboard).
+ * Anciennement requireAdmin — garde le même nom pour ne pas casser les imports existants.
  */
 export async function requireAdmin(ctx: Ctx) {
   const user = await requireAppUser(ctx);
-  if (user.role !== "admin") {
+  if (!(ADMIN_ROLES as readonly string[]).includes(user.role)) {
     throw new Error("Accès réservé aux administrateurs");
+  }
+  return user;
+}
+
+/**
+ * Requiert le rôle super admin uniquement (admin).
+ * Utilisé pour les opérations sensibles : ban, config, changement de rôle, etc.
+ */
+export async function requireSuperAdmin(ctx: Ctx) {
+  const user = await requireAppUser(ctx);
+  if (user.role !== "admin") {
+    throw new Error("Accès réservé au super administrateur");
+  }
+  return user;
+}
+
+/**
+ * Requiert que l'utilisateur ait l'un des rôles spécifiés.
+ */
+export async function requireRoles(ctx: Ctx, roles: string[]) {
+  const user = await requireAppUser(ctx);
+  if (!roles.includes(user.role)) {
+    throw new Error("Accès non autorisé pour ce rôle");
   }
   return user;
 }

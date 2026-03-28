@@ -20,10 +20,14 @@ export default defineSchema({
     phone: v.optional(v.string()), // E.164 format: +22961234567
 
     role: v.union(
-      v.literal("admin"),
+      v.literal("admin"),      // Super Admin — accès total
+      v.literal("finance"),    // Responsable Financier — retraits, revenus, stockage facturation
+      v.literal("logistics"),  // Gestionnaire Livraisons — tarifs, pays, stockage réception
+      v.literal("developer"),  // Développeur — lecture audit & config
+      v.literal("marketing"),  // Gestionnaire Contenu — catégories, publicités
       v.literal("vendor"),
       v.literal("customer"),
-      v.literal("agent"), // Agent entrepôt — réception & saisie physique
+      v.literal("agent"),      // Agent entrepôt — réception & saisie physique
     ),
 
     // Security (app-level, not managed by Better Auth)
