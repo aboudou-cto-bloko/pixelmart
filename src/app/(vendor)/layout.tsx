@@ -1,5 +1,7 @@
 "use client";
 
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { VendorSidebar } from "@/components/layout/VendorSidebar";
 import {
@@ -20,6 +22,45 @@ import { usePathname } from "next/navigation";
 import { VENDOR_NAV_MAIN, VENDOR_NAV_SETTINGS } from "@/constants/vendor-nav";
 import { NotificationDropdown } from "@/components/notifications/organisms/NotificationDropdown";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+
+function StoreSuspendedScreen() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+        <AlertTriangle className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+      </div>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold text-foreground">Boutique suspendue</h1>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Votre boutique a été suspendue par l&apos;administration. Contactez le
+          support pour plus d&apos;informations.
+        </p>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button asChild>
+          <Link href="mailto:support@pixel-mart-bj.com">Contacter le support</Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/">Retour à l&apos;accueil</Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function VendorStoreGuard({ children }: { children: React.ReactNode }) {
+  const store = useQuery(api.stores.queries.getMyStore);
+
+  // store === undefined → still loading, let it through
+  if (store && store.status === "suspended") {
+    return <StoreSuspendedScreen />;
+  }
+
+  return <>{children}</>;
+}
 
 // Fusionner tous les items de navigation (principaux + réglages)
 const ALL_NAV_ITEMS = [...VENDOR_NAV_MAIN, ...VENDOR_NAV_SETTINGS];
@@ -120,6 +161,7 @@ export default function VendorLayout({
 }) {
   return (
     <AuthGuard roles={["vendor", "admin"]}>
+      <VendorStoreGuard>
       <SidebarProvider>
         <VendorSidebar />
         <SidebarInset>
@@ -142,6 +184,7 @@ export default function VendorLayout({
           </main>
         </SidebarInset>
       </SidebarProvider>
+      </VendorStoreGuard>
     </AuthGuard>
   );
 }
