@@ -1,5 +1,7 @@
+import Script from "next/script";
 import { HeaderNav } from "@/components/layout";
 import { FooterFull } from "@/components/storefront/organisms";
+
 export default function StorefrontLayout({
   children,
 }: {
@@ -10,6 +12,11 @@ export default function StorefrontLayout({
       <HeaderNav />
       <main className="flex-1">{children}</main>
       <FooterFull />
+      <Script
+        id="chatway"
+        src="https://cdn.chatway.app/widget.js?id=mpPjL88qvGok"
+        strategy="afterInteractive"
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 "use client";
 
 import * as React from "react";
+import { ChatwayButton } from "@/components/atoms/ChatwayButton";
 import { ChevronDown } from "lucide-react";
 
 const FAQ_CATEGORIES = [
@@ -159,12 +160,9 @@ export default function FaqPage() {
           <p className="text-muted-foreground text-sm mb-4">
             Notre équipe est disponible pour vous aider.
           </p>
-          <a
-            href="/contact"
-            className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
+          <ChatwayButton className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
             Contactez-nous
-          </a>
+          </ChatwayButton>
         </div>
       </section>
     </main>

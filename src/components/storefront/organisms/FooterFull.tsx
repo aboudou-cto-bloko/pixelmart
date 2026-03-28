@@ -3,8 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ROUTES } from "@/constants/routes";
-import { Phone, Mail, MapPin, Facebook, Instagram } from "lucide-react";
+import { MapPin, Facebook, Instagram, MessageCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { ChatwayButton } from "@/components/atoms/ChatwayButton";
 
 const TikTokIcon = () => (
   <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
@@ -18,7 +19,6 @@ const FOOTER_LINKS = {
     links: [
       { label: "À propos", href: "/landing" },
       { label: "Devenir vendeur", href: "/onboarding/vendor" },
-      { label: "Contact", href: "/contact" },
     ],
   },
   categories: {
@@ -105,14 +105,10 @@ export function FooterFull() {
                 <MapPin className="size-4 shrink-0 text-primary" />
                 <span>Cotonou, Bénin</span>
               </div>
-              <div className="flex items-center justify-center lg:justify-start gap-3 text-white/60 hover:text-white/90 transition-colors">
-                <Phone className="size-4 shrink-0 text-primary" />
-                <span>+229 XX XX XX XX</span>
-              </div>
-              <div className="flex items-center justify-center lg:justify-start gap-3 text-white/60 hover:text-white/90 transition-colors">
-                <Mail className="size-4 shrink-0 text-primary" />
-                <span>contact@pixel-mart-bj.com</span>
-              </div>
+              <ChatwayButton className="flex items-center justify-center lg:justify-start gap-3 text-white/60 hover:text-white/90 transition-colors">
+                <MessageCircle className="size-4 shrink-0 text-primary" />
+                <span>Chat en direct</span>
+              </ChatwayButton>
             </div>
 
             {/* Social */}

@@ -1,5 +1,6 @@
 // filepath: src/app/shop/[storeSlug]/layout.tsx
 
+import Script from "next/script";
 import { preloadQuery, fetchQuery } from "convex/nextjs";
 import { api } from "../../../../convex/_generated/api";
 import { ShopLayoutClient } from "./ShopLayoutClient";
@@ -78,8 +79,15 @@ export default async function ShopLayout({ children, params }: LayoutProps) {
   });
 
   return (
-    <ShopLayoutClient storeSlug={storeSlug} preloadedConfig={preloadedConfig}>
-      {children}
-    </ShopLayoutClient>
+    <>
+      <ShopLayoutClient storeSlug={storeSlug} preloadedConfig={preloadedConfig}>
+        {children}
+      </ShopLayoutClient>
+      <Script
+        id="chatway"
+        src="https://cdn.chatway.app/widget.js?id=mpPjL88qvGok"
+        strategy="afterInteractive"
+      />
+    </>
   );
 }

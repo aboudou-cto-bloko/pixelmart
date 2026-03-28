@@ -47,12 +47,13 @@ export function AuthGuard({ children, roles, fallback }: AuthGuardProps) {
             qu&apos;il s&apos;agit d&apos;une erreur.
           </p>
         </div>
-        <Link
-          href="mailto:support@pixel-mart-bj.com"
+        <button
+          type="button"
+          onClick={() => (window as typeof window & { Chatway?: (cmd: string) => void }).Chatway?.("open")}
           className="text-sm text-primary underline underline-offset-4"
         >
-          support@pixel-mart-bj.com
-        </Link>
+          Contacter le support
+        </button>
         <Link href="/" className="text-sm text-muted-foreground underline underline-offset-4">
           Retour à l&apos;accueil
         </Link>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ROUTES } from "@/constants/routes";
+import { ChatwayButton } from "@/components/atoms/ChatwayButton";
 
 const FOOTER_LINKS = {
   marketplace: [
@@ -13,7 +14,6 @@ const FOOTER_LINKS = {
   ],
   support: [
     { label: "Centre d'aide", href: "/help" },
-    { label: "Contact", href: "/contact" },
     { label: "CGV", href: "/terms" },
     { label: "Confidentialité", href: "/privacy" },
   ],
@@ -79,6 +79,11 @@ export function Footer() {
           <div>
             <h3 className="text-sm font-semibold mb-3">Support</h3>
             <ul className="space-y-2">
+              <li>
+                <ChatwayButton className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Contact
+                </ChatwayButton>
+              </li>
               {FOOTER_LINKS.support.map((link) => (
                 <li key={link.href}>
                   <Link

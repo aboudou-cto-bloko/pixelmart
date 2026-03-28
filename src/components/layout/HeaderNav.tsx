@@ -166,13 +166,16 @@ export function HeaderNav() {
               )}
               {/* Fixed bottom */}
               <div className="mt-auto py-6 px-2 border-t border-sidebar-border">
-                <Link
-                  href="/contact"
-                  onClick={() => setMobileMenuOpen(false)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    (window as typeof window & { Chatway?: (cmd: string) => void }).Chatway?.("open");
+                  }}
                   className="text-sm text-sidebar-foreground/70 hover:text-sidebar-accent-foreground transition-colors"
                 >
                   Contactez-nous
-                </Link>
+                </button>
               </div>
             </div>
           </SheetContent>
@@ -222,12 +225,13 @@ export function HeaderNav() {
             </NavigationMenuItem>
             <NavigationMenuItem>
               <NavigationMenuLink asChild>
-                <Link
-                  href="/contact"
+                <button
+                  type="button"
+                  onClick={() => (window as typeof window & { Chatway?: (cmd: string) => void }).Chatway?.("open")}
                   className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                 >
                   Contact
-                </Link>
+                </button>
               </NavigationMenuLink>
             </NavigationMenuItem>
             <NavigationMenuItem>
