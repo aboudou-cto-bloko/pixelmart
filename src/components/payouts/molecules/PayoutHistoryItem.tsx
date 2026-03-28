@@ -4,6 +4,7 @@
 
 import { PayoutStatusBadge } from "../atoms/PayoutStatusBadge";
 import { PayoutMethodIcon, getMethodLabel } from "../atoms/PayoutMethodIcon";
+import { formatPrice } from "@/lib/format";
 
 interface PayoutHistoryItemProps {
   amount: number;
@@ -15,18 +16,6 @@ interface PayoutHistoryItemProps {
   processedAt?: number;
   reference?: string;
   notes?: string;
-}
-
-function formatAmount(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") {
-    return `${value.toLocaleString("fr-FR")} FCFA`;
-  }
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-  }).format(value);
 }
 
 function formatDate(timestamp: number): string {
@@ -61,7 +50,7 @@ export function PayoutHistoryItem({
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-medium">{getMethodLabel(payoutMethod)}</p>
           <p className="text-sm font-semibold tabular-nums">
-            {formatAmount(netAmount, currency)}
+            {formatPrice(netAmount, currency)}
           </p>
         </div>
 
@@ -76,8 +65,8 @@ export function PayoutHistoryItem({
         {/* Ligne 3 : détails optionnels */}
         {fee > 0 && (
           <p className="mt-1.5 text-[11px] text-muted-foreground">
-            Montant brut : {formatAmount(amount, currency)} · Frais :{" "}
-            {formatAmount(fee, currency)}
+            Montant brut : {formatPrice(amount, currency)} · Frais :{" "}
+            {formatPrice(fee, currency)}
           </p>
         )}
 

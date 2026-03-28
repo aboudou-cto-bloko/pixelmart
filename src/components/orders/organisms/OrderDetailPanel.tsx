@@ -15,6 +15,7 @@ import { TrackingForm } from "../molecules/TrackingForm";
 import { OrderStatusActions } from "../molecules/OrderStatusActions";
 import { OrderSummaryCard } from "../molecules/OrderSummaryCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatPrice } from "@/lib/format";
 import Image from "next/image";
 
 interface OrderItem {
@@ -253,13 +254,11 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
                 <p className="text-sm line-clamp-1">{item.title}</p>
                 <p className="text-xs text-muted-foreground">
                   {item.quantity} ×{" "}
-                  {(item.unit_price / 100).toLocaleString("fr-FR")}{" "}
-                  {order.currency}
+                  {formatPrice(item.unit_price, order.currency)}
                 </p>
               </div>
               <span className="text-sm font-medium tabular-nums">
-                {(item.total_price / 100).toLocaleString("fr-FR")}{" "}
-                {order.currency}
+                {formatPrice(item.total_price, order.currency)}
               </span>
             </div>
           ))}

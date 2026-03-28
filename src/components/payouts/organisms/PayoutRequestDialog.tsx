@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { formatPrice } from "@/lib/format";
 
 // ─── Moneroo Provider Options ────────────────────────────────
 
@@ -76,17 +77,7 @@ function calculateFee(amount: number, method: string): number {
   }
 }
 
-function formatAmount(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") {
-    return `${value.toLocaleString("fr-FR")} FCFA`;
-  }
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-  }).format(value);
-}
+const NO_DECIMAL = ["XOF", "XAF", "GNF", "CDF"];
 
 // ─── Component ───────────────────────────────────────────────
 
@@ -109,14 +100,17 @@ export function PayoutRequestDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Computed
-  const amountCentimes = Math.round((parseFloat(amountInput) || 0) * 100);
+  const isNoDecimal = NO_DECIMAL.includes(currency);
+  const amountCentimes = isNoDecimal
+    ? Math.round(parseFloat(amountInput) || 0)
+    : Math.round((parseFloat(amountInput) || 0) * 100);
   const fee = calculateFee(amountCentimes, method);
   const netAmount = amountCentimes - fee;
 
   // Validation
   const errors: string[] = [];
   if (amountCentimes > 0 && amountCentimes < minAmount) {
-    errors.push(`Montant minimum : ${minAmount / 100} ${currency}`);
+    errors.push(`Montant minimum : ${formatPrice(minAmount, currency)}`);
   }
   if (amountCentimes > balance) {
     errors.push("Montant supérieur au solde disponible");
@@ -182,7 +176,7 @@ export function PayoutRequestDialog({
         payoutDetails,
       });
 
-      toast.success(`${formatAmount(netAmount, currency)} en cours d'envoi.`);
+      toast.success(`${formatPrice(netAmount, currency)} en cours d'envoi.`);
 
       resetForm();
       onOpenChange(false);
@@ -209,7 +203,7 @@ export function PayoutRequestDialog({
         <DialogHeader>
           <DialogTitle>Demander un retrait</DialogTitle>
           <DialogDescription>
-            Solde disponible : {formatAmount(balance, currency)}
+            Solde disponible : {formatPrice(balance, currency)}
           </DialogDescription>
         </DialogHeader>
 
@@ -222,17 +216,17 @@ export function PayoutRequestDialog({
             <Input
               id="payout-amount"
               type="number"
-              min={minAmount / 100}
-              max={balance / 100}
+              min={isNoDecimal ? minAmount : minAmount / 100}
+              max={isNoDecimal ? balance : balance / 100}
               step="1"
-              placeholder={`Min. ${minAmount / 100}`}
+              placeholder={`Min. ${isNoDecimal ? minAmount : minAmount / 100}`}
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
             />
             {amountCentimes > 0 && amountCentimes <= balance && (
               <button
                 type="button"
-                onClick={() => setAmountInput(String(balance / 100))}
+                onClick={() => setAmountInput(String(isNoDecimal ? balance : balance / 100))}
                 className="text-xs text-primary hover:underline"
               >
                 Retirer tout le solde
@@ -332,7 +326,7 @@ export function PayoutRequestDialog({
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Montant brut</span>
-                  <span>{formatAmount(amountCentimes, currency)}</span>
+                  <span>{formatPrice(amountCentimes, currency)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>
@@ -344,13 +338,13 @@ export function PayoutRequestDialog({
                         : "2%"}
                     )
                   </span>
-                  <span>-{formatAmount(fee, currency)}</span>
+                  <span>-{formatPrice(fee, currency)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-semibold">
                   <span>Vous recevrez</span>
                   <span className="text-emerald-500">
-                    {formatAmount(Math.max(0, netAmount), currency)}
+                    {formatPrice(Math.max(0, netAmount), currency)}
                   </span>
                 </div>
               </div>

@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/format";
 
 interface PayoutBalanceCardProps {
   balance: number;
@@ -15,18 +16,6 @@ interface PayoutBalanceCardProps {
   validationError?: string;
   isLoading?: boolean;
   onRequestPayout: () => void;
-}
-
-function formatAmount(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") {
-    return `${value.toLocaleString("fr-FR")} FCFA`;
-  }
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-  }).format(value);
 }
 
 export function PayoutBalanceCard({
@@ -65,7 +54,7 @@ export function PayoutBalanceCard({
             <div>
               <p className="text-sm text-muted-foreground">Solde disponible</p>
               <p className="text-2xl font-bold tracking-tight">
-                {formatAmount(balance, currency)}
+                {formatPrice(balance, currency)}
               </p>
             </div>
           </div>
