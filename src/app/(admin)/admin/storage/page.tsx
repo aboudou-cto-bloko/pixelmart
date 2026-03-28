@@ -8,5 +8,11 @@ import { AdminStorageTemplate } from "@/components/admin/templates/AdminStorageT
 
 export default function AdminStoragePage() {
   const requests = useQuery(api.admin.queries.listStorageRequests);
-  return <AdminStorageTemplate requests={requests ?? []} />;
+  const pendingWithdrawals = useQuery(api.storage.queries.getPendingWithdrawals);
+  return (
+    <AdminStorageTemplate
+      requests={requests ?? []}
+      pendingWithdrawals={pendingWithdrawals ?? []}
+    />
+  );
 }

@@ -225,6 +225,77 @@ export const getDebt = query({
   },
 });
 
+// ─── Vendor — retraits de stock ──────────────────────────────
+
+export const getWithdrawals = query({
+  args: {
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("processed"),
+        v.literal("cancelled"),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    const withdrawals = args.status
+      ? await ctx.db
+          .query("storage_withdrawals")
+          .withIndex("by_store_status", (q) =>
+            q.eq("store_id", store._id).eq("status", args.status!),
+          )
+          .order("desc")
+          .collect()
+      : await ctx.db
+          .query("storage_withdrawals")
+          .withIndex("by_store", (q) => q.eq("store_id", store._id))
+          .order("desc")
+          .collect();
+
+    return await Promise.all(
+      withdrawals.map(async (w) => {
+        const req = await ctx.db.get(w.request_id);
+        return {
+          ...w,
+          product_name: req?.product_name ?? "—",
+          storage_code: req?.storage_code ?? "—",
+        };
+      }),
+    );
+  },
+});
+
+// ─── Admin — retraits en attente ─────────────────────────────
+
+export const getPendingWithdrawals = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const withdrawals = await ctx.db
+      .query("storage_withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("asc")
+      .collect();
+
+    return await Promise.all(
+      withdrawals.map(async (w) => {
+        const req = await ctx.db.get(w.request_id);
+        const store = await ctx.db.get(w.store_id);
+        return {
+          ...w,
+          product_name: req?.product_name ?? "—",
+          storage_code: req?.storage_code ?? "—",
+          store_name: store?.name ?? "—",
+        };
+      }),
+    );
+  },
+});
+
 // ─── Vendor — items en stock avec nb commandes en attente ────
 
 /**

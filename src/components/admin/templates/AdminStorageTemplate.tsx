@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Warehouse } from "lucide-react";
+import { Warehouse, ArrowDownToLine } from "lucide-react";
 import { formatRelativeTime } from "@/lib/format";
 import {
   Table,
@@ -51,8 +51,23 @@ type StorageRequest = {
   created_at: number;
 };
 
+type PendingWithdrawal = {
+  _id: Id<"storage_withdrawals">;
+  store_id: Id<"stores">;
+  request_id: Id<"storage_requests">;
+  quantity: number;
+  reason?: string;
+  status: string;
+  requested_by: Id<"users">;
+  created_at: number;
+  product_name: string;
+  storage_code: string;
+  store_name: string;
+};
+
 interface Props {
   requests: StorageRequest[];
+  pendingWithdrawals: PendingWithdrawal[];
 }
 
 // ─── Mesures ─────────────────────────────────────────────────
@@ -261,16 +276,100 @@ function RejectDialog({
   );
 }
 
+// ─── ProcessWithdrawalDialog ──────────────────────────────────
+
+function ProcessWithdrawalDialog({
+  withdrawal,
+  onClose,
+}: {
+  withdrawal: PendingWithdrawal | null;
+  onClose: () => void;
+}) {
+  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(false);
+  const processWithdrawal = useMutation(api.storage.mutations.processWithdrawal);
+
+  if (!withdrawal) return null;
+
+  async function handle(status: "approved" | "processed" | "cancelled") {
+    if (!withdrawal) return;
+    setLoading(true);
+    try {
+      await processWithdrawal({
+        withdrawalId: withdrawal._id,
+        status,
+        notes: notes.trim() || undefined,
+      });
+      onClose();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!withdrawal} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Traiter le retrait</DialogTitle>
+          <DialogDescription>
+            {withdrawal.store_name} — {withdrawal.product_name} ({withdrawal.storage_code})
+            <br />
+            Quantité demandée : <strong>{withdrawal.quantity}</strong>
+            {withdrawal.reason && (
+              <><br />Raison : {withdrawal.reason}</>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Textarea
+            placeholder="Notes (optionnel)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+          />
+        </div>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <Button
+            variant="outline"
+            onClick={() => handle("cancelled")}
+            disabled={loading}
+            className="text-destructive border-destructive hover:bg-destructive hover:text-white"
+          >
+            Refuser
+          </Button>
+          <Button
+            onClick={() => handle("approved")}
+            disabled={loading}
+            variant="outline"
+          >
+            Approuver
+          </Button>
+          <Button
+            onClick={() => handle("processed")}
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            {loading ? "Traitement…" : "Marquer remis"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main Template ────────────────────────────────────────────
 
-export function AdminStorageTemplate({ requests }: Props) {
+export function AdminStorageTemplate({ requests, pendingWithdrawals }: Props) {
   const [validateTarget, setValidateTarget] = useState<StorageRequest | null>(
     null,
   );
   const [rejectTarget, setRejectTarget] = useState<StorageRequest | null>(null);
+  const [withdrawalTarget, setWithdrawalTarget] = useState<PendingWithdrawal | null>(null);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Heading */}
       <div>
         <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
@@ -362,6 +461,59 @@ export function AdminStorageTemplate({ requests }: Props) {
         </div>
       )}
 
+      {/* Retraits en attente */}
+      {pendingWithdrawals.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <ArrowDownToLine className="h-5 w-5 text-amber-600" />
+            <h2 className="text-lg font-semibold">
+              Retraits en attente
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({pendingWithdrawals.length})
+              </span>
+            </h2>
+          </div>
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Boutique</TableHead>
+                  <TableHead>Produit</TableHead>
+                  <TableHead>Code</TableHead>
+                  <TableHead className="text-right">Qté</TableHead>
+                  <TableHead className="hidden sm:table-cell">Raison</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingWithdrawals.map((w) => (
+                  <TableRow key={w._id}>
+                    <TableCell className="font-medium text-sm">{w.store_name}</TableCell>
+                    <TableCell className="text-sm">{w.product_name}</TableCell>
+                    <TableCell>
+                      <span className="font-mono text-xs">{w.storage_code}</span>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">{w.quantity}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
+                      {w.reason ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 text-xs"
+                        onClick={() => setWithdrawalTarget(w)}
+                      >
+                        Traiter
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
       <ValidateDialog
         req={validateTarget}
         onClose={() => setValidateTarget(null)}
@@ -369,6 +521,10 @@ export function AdminStorageTemplate({ requests }: Props) {
       <RejectDialog
         req={rejectTarget}
         onClose={() => setRejectTarget(null)}
+      />
+      <ProcessWithdrawalDialog
+        withdrawal={withdrawalTarget}
+        onClose={() => setWithdrawalTarget(null)}
       />
     </div>
   );

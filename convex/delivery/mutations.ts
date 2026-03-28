@@ -69,6 +69,8 @@ export const createBatch = mutation({
     validateOrdersForBatch(orders);
 
     // Pour un lot entrepôt, vérifier qu'il y a bien des articles en stock
+    // et construire la map productId → storage_code
+    let storageCodeByProductId = new Map<string, string>();
     if (args.isWarehouseBatch) {
       const inStockRequests = await ctx.db
         .query("storage_requests")
@@ -76,11 +78,13 @@ export const createBatch = mutation({
           q.eq("store_id", store._id).eq("status", "in_stock"),
         )
         .collect();
-      const inStockProductIds = new Set(
-        inStockRequests.filter((r) => r.product_id != null).map((r) => r.product_id!.toString()),
-      );
+      for (const r of inStockRequests) {
+        if (r.product_id) {
+          storageCodeByProductId.set(r.product_id.toString(), r.storage_code);
+        }
+      }
       const hasWarehouseItems = orders.some((o) =>
-        o.items.some((item) => inStockProductIds.has(item.product_id.toString())),
+        o.items.some((item) => storageCodeByProductId.has(item.product_id.toString())),
       );
       if (!hasWarehouseItems) {
         throw new Error("Aucun article de ce lot n'est en stock à l'entrepôt Pixel-Mart");
@@ -109,12 +113,26 @@ export const createBatch = mutation({
     });
 
     // Mettre à jour les commandes avec le batch_id et passer en "shipped"
-    for (const orderId of args.orderIds) {
-      await ctx.db.patch(orderId, {
-        batch_id: batchId,
-        status: "shipped",
-        updated_at: Date.now(),
-      });
+    // Pour les lots entrepôt, enrichir les items avec le storage_code
+    for (const order of orders) {
+      if (args.isWarehouseBatch && storageCodeByProductId.size > 0) {
+        await ctx.db.patch(order._id, {
+          batch_id: batchId,
+          status: "shipped",
+          updated_at: Date.now(),
+          items: order.items.map((item) => ({
+            ...item,
+            storage_code:
+              storageCodeByProductId.get(item.product_id.toString()) ?? item.storage_code,
+          })),
+        });
+      } else {
+        await ctx.db.patch(order._id, {
+          batch_id: batchId,
+          status: "shipped",
+          updated_at: Date.now(),
+        });
+      }
     }
 
     return {
