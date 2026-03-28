@@ -13,6 +13,7 @@ import {
   ScanLine,
   Bike,
   Globe,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -75,6 +76,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
     title: "Retraits",
     href: "/admin/payouts",
     icon: CreditCard,
+    section: "Financier",
+    roles: ["admin", "finance"],
+  },
+  {
+    title: "Rapports",
+    href: "/admin/reports",
+    icon: FileText,
     section: "Financier",
     roles: ["admin", "finance"],
   },

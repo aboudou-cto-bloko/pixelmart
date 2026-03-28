@@ -6,8 +6,9 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Users, Search } from "lucide-react";
+import { Users, Search, Trash2, ShieldOff, ShieldCheck, X } from "lucide-react";
 import { formatDate } from "@/lib/format";
+import { useBulkSelection } from "@/hooks/useBulkSelection";
 import {
   Table,
   TableBody,
@@ -41,6 +42,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -98,13 +100,7 @@ function RoleBadge({ role }: { role: UserRole }) {
 
 // ─── Change Role Dialog ───────────────────────────────────────
 
-function ChangeRoleDialog({
-  user,
-  onClose,
-}: {
-  user: UserItem | null;
-  onClose: () => void;
-}) {
+function ChangeRoleDialog({ user, onClose }: { user: UserItem | null; onClose: () => void }) {
   const changeRole = useMutation(api.admin.mutations.changeUserRole);
   const [role, setRole] = useState<UserRole | "">("");
   const [loading, setLoading] = useState(false);
@@ -128,39 +124,21 @@ function ChangeRoleDialog({
   };
 
   return (
-    <Dialog
-      open={!!user}
-      onOpenChange={() => {
-        onClose();
-        setRole("");
-        setError(null);
-      }}
-    >
+    <Dialog open={!!user} onOpenChange={() => { onClose(); setRole(""); setError(null); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Changer le rôle</DialogTitle>
-          <DialogDescription>
-            Modifier le rôle de{" "}
-            <span className="font-semibold">{user.name}</span>
-          </DialogDescription>
+          <DialogDescription>Modifier le rôle de <span className="font-semibold">{user.name}</span></DialogDescription>
         </DialogHeader>
-
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground w-24">Rôle actuel</span>
             <RoleBadge role={user.role} />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground w-24">
-              Nouveau rôle
-            </span>
-            <Select
-              value={role}
-              onValueChange={(v) => setRole(v as UserRole)}
-            >
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Choisir…" />
-              </SelectTrigger>
+            <span className="text-sm text-muted-foreground w-24">Nouveau rôle</span>
+            <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
+              <SelectTrigger className="w-48"><SelectValue placeholder="Choisir…" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">👑 Super Admin</SelectItem>
                 <SelectItem value="finance">💰 Financier</SelectItem>
@@ -174,13 +152,9 @@ function ChangeRoleDialog({
             </Select>
           </div>
         </div>
-
         {error && <p className="text-sm text-destructive">{error}</p>}
-
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Annuler
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
           <Button onClick={handleSubmit} disabled={loading || !role}>
             {loading ? "Enregistrement…" : "Confirmer"}
           </Button>
@@ -190,33 +164,23 @@ function ChangeRoleDialog({
   );
 }
 
-// ─── Ban Confirm Dialog ───────────────────────────────────────
+// ─── Ban Dialog ───────────────────────────────────────────────
 
-function BanDialog({
-  user,
-  onClose,
-}: {
-  user: UserItem | null;
-  onClose: () => void;
-}) {
+function BanDialog({ user, onClose }: { user: UserItem | null; onClose: () => void }) {
   const ban = useMutation(api.admin.mutations.banUser);
   const unban = useMutation(api.admin.mutations.unbanUser);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!user) return null;
-
   const isBanned = user.is_banned;
 
   const handleAction = async () => {
     setLoading(true);
     setError(null);
     try {
-      if (isBanned) {
-        await unban({ userId: user._id });
-      } else {
-        await ban({ userId: user._id });
-      }
+      if (isBanned) await unban({ userId: user._id });
+      else await ban({ userId: user._id });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -229,32 +193,129 @@ function BanDialog({
     <Dialog open={!!user} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isBanned ? "Débannir l'utilisateur" : "Bannir l'utilisateur"}
-          </DialogTitle>
+          <DialogTitle>{isBanned ? "Débannir l'utilisateur" : "Bannir l'utilisateur"}</DialogTitle>
           <DialogDescription>
             {isBanned
               ? `${user.name} pourra à nouveau accéder à la plateforme.`
               : `${user.name} ne pourra plus accéder à la plateforme.`}
           </DialogDescription>
         </DialogHeader>
-
         {error && <p className="text-sm text-destructive">{error}</p>}
-
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Annuler
+          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
+          <Button variant={isBanned ? "default" : "destructive"} onClick={handleAction} disabled={loading}>
+            {loading ? "…" : isBanned ? "Débannir" : "Bannir"}
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Delete User Dialog ───────────────────────────────────────
+
+function DeleteUserDialog({ user, onClose }: { user: UserItem | null; onClose: () => void }) {
+  const deleteUser = useMutation(api.admin.mutations.deleteUser);
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!user) return null;
+
+  const handleDelete = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await deleteUser({ userId: user._id });
+      onClose();
+      setConfirm("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!user} onOpenChange={() => { onClose(); setConfirm(""); setError(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-destructive">Supprimer le compte</DialogTitle>
+          <DialogDescription>
+            Cette action est <strong>irréversible</strong>. Le compte de{" "}
+            <span className="font-semibold">{user.name}</span> ({user.email}) sera
+            supprimé de la plateforme et de l'authentification. Les commandes existantes sont conservées.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Saisissez <span className="font-mono font-semibold">{user.email}</span> pour confirmer
+          </p>
+          <Input
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder={user.email}
+            className="font-mono text-sm"
+          />
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
           <Button
-            variant={isBanned ? "default" : "destructive"}
-            onClick={handleAction}
-            disabled={loading}
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={loading || confirm !== user.email}
           >
-            {loading
-              ? "…"
-              : isBanned
-                ? "Débannir"
-                : "Bannir"}
+            {loading ? "Suppression…" : "Supprimer définitivement"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Bulk Delete Dialog ───────────────────────────────────────
+
+function BulkDeleteDialog({
+  count,
+  onConfirm,
+  onClose,
+}: {
+  count: number;
+  onConfirm: () => Promise<void>;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConfirm = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await onConfirm();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-destructive">Supprimer {count} compte{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogDescription>
+            Cette action est irréversible. {count} compte{count > 1 ? "s" : ""} seront définitivement supprimés.
+            Les comptes administrateurs seront ignorés.
+          </DialogDescription>
+        </DialogHeader>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
+          <Button variant="destructive" onClick={handleConfirm} disabled={loading}>
+            {loading ? "Suppression…" : "Confirmer la suppression"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -269,6 +330,12 @@ export function AdminUsersTemplate({ users }: Props) {
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [roleTarget, setRoleTarget] = useState<UserItem | null>(null);
   const [banTarget, setBanTarget] = useState<UserItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserItem | null>(null);
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+
+  const bulkBan = useMutation(api.admin.mutations.bulkBanUsers);
+  const bulkUnban = useMutation(api.admin.mutations.bulkUnbanUsers);
+  const bulkDelete = useMutation(api.admin.mutations.bulkDeleteUsers);
 
   const filtered = users.filter((u) => {
     const matchSearch =
@@ -279,13 +346,32 @@ export function AdminUsersTemplate({ users }: Props) {
     return matchSearch && matchRole;
   });
 
+  const { selectedIds, toggle, toggleAll, clear, isAllSelected, count: selectedCount } =
+    useBulkSelection();
+
+  const filteredIds = filtered.map((u) => u._id);
+  const allSelected = isAllSelected(filteredIds);
+
+  const handleBulkBan = async () => {
+    await bulkBan({ userIds: Array.from(selectedIds) as Id<"users">[] });
+    clear();
+  };
+
+  const handleBulkUnban = async () => {
+    await bulkUnban({ userIds: Array.from(selectedIds) as Id<"users">[] });
+    clear();
+  };
+
+  const handleBulkDelete = async () => {
+    await bulkDelete({ userIds: Array.from(selectedIds) as Id<"users">[] });
+    clear();
+  };
+
   return (
     <div className="space-y-6">
       {/* Heading */}
       <div>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-          Utilisateurs
-        </h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Utilisateurs</h1>
         <p className="text-sm text-muted-foreground">
           {users.length} utilisateur{users.length !== 1 ? "s" : ""} au total
         </p>
@@ -302,22 +388,49 @@ export function AdminUsersTemplate({ users }: Props) {
             className="pl-9"
           />
         </div>
-        <Select
-          value={roleFilter}
-          onValueChange={(v) => setRoleFilter(v as UserRole | "all")}
-        >
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
+        <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as UserRole | "all")}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les rôles</SelectItem>
-            <SelectItem value="admin">admin</SelectItem>
-            <SelectItem value="vendor">vendor</SelectItem>
-            <SelectItem value="customer">customer</SelectItem>
-            <SelectItem value="agent">agent</SelectItem>
+            <SelectItem value="admin">Super Admin</SelectItem>
+            <SelectItem value="finance">Financier</SelectItem>
+            <SelectItem value="logistics">Logistique</SelectItem>
+            <SelectItem value="developer">Développeur</SelectItem>
+            <SelectItem value="marketing">Marketing</SelectItem>
+            <SelectItem value="vendor">Vendeur</SelectItem>
+            <SelectItem value="customer">Client</SelectItem>
+            <SelectItem value="agent">Agent</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {/* Bulk action bar */}
+      {selectedCount > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5">
+          <span className="text-sm font-medium">
+            {selectedCount} sélectionné{selectedCount > 1 ? "s" : ""}
+          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button size="sm" variant="outline" onClick={handleBulkBan} className="gap-1.5">
+              <ShieldOff className="size-3.5" />Bannir
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleBulkUnban} className="gap-1.5">
+              <ShieldCheck className="size-3.5" />Débannir
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setShowBulkDelete(true)}
+              className="gap-1.5"
+            >
+              <Trash2 className="size-3.5" />Supprimer
+            </Button>
+            <Button size="sm" variant="ghost" onClick={clear} className="gap-1.5">
+              <X className="size-3.5" />Annuler
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Empty state */}
       {filtered.length === 0 ? (
@@ -330,6 +443,13 @@ export function AdminUsersTemplate({ users }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={() => toggleAll(filteredIds)}
+                    aria-label="Tout sélectionner"
+                  />
+                </TableHead>
                 <TableHead>Nom</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Rôle</TableHead>
@@ -341,62 +461,54 @@ export function AdminUsersTemplate({ users }: Props) {
             </TableHeader>
             <TableBody>
               {filtered.map((user) => (
-                <TableRow
-                  key={user._id}
-                  className={user.is_banned ? "opacity-60" : ""}
-                >
-                  <TableCell className="font-medium text-sm">
-                    {user.name}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {user.email}
-                  </TableCell>
+                <TableRow key={user._id} className={user.is_banned ? "opacity-60" : ""}>
                   <TableCell>
-                    <RoleBadge role={user.role} />
+                    <Checkbox
+                      checked={selectedIds.has(user._id)}
+                      onCheckedChange={() => toggle(user._id)}
+                      aria-label={`Sélectionner ${user.name}`}
+                    />
                   </TableCell>
+                  <TableCell className="font-medium text-sm">{user.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
+                  <TableCell><RoleBadge role={user.role} /></TableCell>
                   <TableCell>
                     {user.is_banned ? (
-                      <Badge className="bg-red-100 text-red-700 border-red-300">
-                        banni
-                      </Badge>
+                      <Badge className="bg-red-100 text-red-700 border-red-300">banni</Badge>
                     ) : (
-                      <Badge className="bg-green-100 text-green-700 border-green-300">
-                        actif
-                      </Badge>
+                      <Badge className="bg-green-100 text-green-700 border-green-300">actif</Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatDate(user._creationTime)}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                    {user.last_login_at
-                      ? formatDate(user.last_login_at)
-                      : "—"}
+                    {user.last_login_at ? formatDate(user.last_login_at) : "—"}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 px-2">
-                          •••
-                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2">•••</Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => setRoleTarget(user)}
-                        >
+                        <DropdownMenuItem onClick={() => setRoleTarget(user)}>
                           Changer le rôle
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          className={
-                            user.is_banned
-                              ? "text-green-600"
-                              : "text-destructive"
-                          }
+                          className={user.is_banned ? "text-green-600" : "text-destructive"}
                           onClick={() => setBanTarget(user)}
                           disabled={user.role === "admin"}
                         >
                           {user.is_banned ? "Débannir" : "Bannir"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => setDeleteTarget(user)}
+                          disabled={user.role === "admin"}
+                        >
+                          Supprimer le compte
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -408,11 +520,16 @@ export function AdminUsersTemplate({ users }: Props) {
         </div>
       )}
 
-      <ChangeRoleDialog
-        user={roleTarget}
-        onClose={() => setRoleTarget(null)}
-      />
+      <ChangeRoleDialog user={roleTarget} onClose={() => setRoleTarget(null)} />
       <BanDialog user={banTarget} onClose={() => setBanTarget(null)} />
+      <DeleteUserDialog user={deleteTarget} onClose={() => setDeleteTarget(null)} />
+      {showBulkDelete && (
+        <BulkDeleteDialog
+          count={selectedCount}
+          onConfirm={handleBulkDelete}
+          onClose={() => setShowBulkDelete(false)}
+        />
+      )}
     </div>
   );
 }
