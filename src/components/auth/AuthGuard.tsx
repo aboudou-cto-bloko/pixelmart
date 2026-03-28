@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { Loader2 } from "lucide-react";
+import { Loader2, Ban } from "lucide-react";
+import Link from "next/link";
 
 type Role = "admin" | "vendor" | "customer" | "agent";
 
@@ -17,9 +18,11 @@ export function AuthGuard({ children, roles, fallback }: AuthGuardProps) {
   const router = useRouter();
   const { user, isLoading, isAuthenticated } = useCurrentUser();
 
+  const isBanned = !!user?.is_banned;
+
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) router.push("/login");
-  }, [isLoading, isAuthenticated, router]);
+    if (!isLoading && !isAuthenticated && !isBanned) router.push("/login");
+  }, [isLoading, isAuthenticated, isBanned, router]);
 
   if (isLoading) {
     return (
@@ -28,6 +31,32 @@ export function AuthGuard({ children, roles, fallback }: AuthGuardProps) {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       )
+    );
+  }
+
+  if (isBanned) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+          <Ban className="h-8 w-8 text-destructive" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-foreground">Compte suspendu</h1>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Votre compte a été suspendu. Contactez le support si vous pensez
+            qu&apos;il s&apos;agit d&apos;une erreur.
+          </p>
+        </div>
+        <Link
+          href="mailto:support@pixel-mart-bj.com"
+          className="text-sm text-primary underline underline-offset-4"
+        >
+          support@pixel-mart-bj.com
+        </Link>
+        <Link href="/" className="text-sm text-muted-foreground underline underline-offset-4">
+          Retour à l&apos;accueil
+        </Link>
+      </div>
     );
   }
 
