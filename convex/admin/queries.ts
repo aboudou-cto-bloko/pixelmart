@@ -699,6 +699,91 @@ export const listOrders = query({
   },
 });
 
+// ─── listBatchesAdmin ─────────────────────────────────────────
+
+export const listBatchesAdmin = query({
+  args: {
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("transmitted"),
+        v.literal("assigned"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+        v.literal("cancelled"),
+      ),
+    ),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const limit = Math.min(args.limit ?? 100, 200);
+
+    const batches = args.status
+      ? await ctx.db
+          .query("delivery_batches")
+          .withIndex("by_status", (q) => q.eq("status", args.status!))
+          .order("desc")
+          .take(limit)
+      : await ctx.db
+          .query("delivery_batches")
+          .order("desc")
+          .take(limit);
+
+    return Promise.all(
+      batches.map(async (batch) => {
+        const store = await ctx.db.get(batch.store_id);
+        const vendor = batch.created_by ? await ctx.db.get(batch.created_by) : null;
+
+        let zone_name: string | undefined;
+        if (batch.order_ids.length > 0) {
+          const firstOrder = await ctx.db.get(batch.order_ids[0]);
+          zone_name = firstOrder?.shipping_address?.city;
+        }
+
+        const orders = await Promise.all(batch.order_ids.map((id) => ctx.db.get(id)));
+        const total_to_collect = orders
+          .filter((o) => o?.payment_mode === "cod")
+          .reduce((sum, o) => sum + (o?.total_amount ?? 0), 0);
+
+        return {
+          ...batch,
+          store_name: store?.name ?? "Boutique supprimée",
+          vendor_name: vendor?.name ?? "—",
+          zone_name,
+          total_to_collect,
+        };
+      }),
+    );
+  },
+});
+
+// ─── getDeliveryAdminStats ─────────────────────────────────────
+
+export const getDeliveryAdminStats = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const allBatches = await ctx.db.query("delivery_batches").collect();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayTs = startOfToday.getTime();
+
+    return {
+      transmitted: allBatches.filter((b) => b.status === "transmitted").length,
+      assigned: allBatches.filter((b) => b.status === "assigned").length,
+      in_progress: allBatches.filter((b) => b.status === "in_progress").length,
+      completed_today: allBatches.filter(
+        (b) => b.status === "completed" && (b.completed_at ?? 0) >= todayTs,
+      ).length,
+      total_fees_all: allBatches
+        .filter((b) => b.status === "completed")
+        .reduce((sum, b) => sum + b.total_delivery_fee, 0),
+    };
+  },
+});
+
 // ─── listAuditLog ─────────────────────────────────────────────
 
 export const listAuditLog = query({

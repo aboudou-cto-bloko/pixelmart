@@ -540,6 +540,58 @@ export const deleteDeliveryRate = mutation({
   },
 });
 
+// ─── updateBatchStatus ────────────────────────────────────────
+
+export const updateBatchStatus = mutation({
+  args: {
+    batchId: v.id("delivery_batches"),
+    status: v.union(
+      v.literal("assigned"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+    ),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireRoles(ctx, ["admin", "logistics"]);
+
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) throw new Error("Lot introuvable");
+
+    // Validate transitions
+    const allowed: Record<string, string[]> = {
+      transmitted: ["assigned", "cancelled"],
+      assigned: ["in_progress", "cancelled"],
+      in_progress: ["completed", "cancelled"],
+    };
+    if (!allowed[batch.status]?.includes(args.status)) {
+      throw new Error(`Transition ${batch.status} → ${args.status} non autorisée`);
+    }
+
+    const now = Date.now();
+    const patch: Record<string, unknown> = {
+      status: args.status,
+      updated_at: now,
+      processed_by: user._id,
+    };
+    if (args.status === "assigned") patch.assigned_at = now;
+    if (args.status === "completed") patch.completed_at = now;
+    if (args.notes) patch.admin_notes = args.notes;
+
+    await ctx.db.patch(args.batchId, patch);
+
+    await logEvent(ctx, user._id, user.name, "batch_status_updated", {
+      target_type: "delivery_batches",
+      target_id: args.batchId,
+      target_label: batch.batch_number,
+      metadata: { from: batch.status, to: args.status, notes: args.notes },
+    });
+
+    return { success: true };
+  },
+});
+
 // ─── generateAdminUploadUrl ───────────────────────────────────
 
 export const generateAdminUploadUrl = mutation({

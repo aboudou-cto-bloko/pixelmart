@@ -121,7 +121,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
     roles: ["admin", "developer"],
   },
   {
-    title: "Tarifs livraison",
+    title: "Livraison",
     href: "/admin/delivery",
     icon: Bike,
     section: "Paramètres",
