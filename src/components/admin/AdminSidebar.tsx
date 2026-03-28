@@ -8,7 +8,7 @@ import Link from "next/link";
 import { ChevronsUpDown, LogOut, ShieldCheck } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { authClient } from "@/lib/auth-client";
-import { ADMIN_NAV } from "@/constants/admin-nav";
+import { ADMIN_NAV, type AdminRole } from "@/constants/admin-nav";
 import {
   Sidebar,
   SidebarContent,
@@ -56,8 +56,21 @@ function useAutoCloseMobileSidebar() {
   return setOpenMobile;
 }
 
+// ── Role label / color map ──
+const ROLE_META: Record<AdminRole, { label: string; color: string }> = {
+  admin:     { label: "Super Admin", color: "bg-red-600" },
+  finance:   { label: "Financier",   color: "bg-emerald-600" },
+  logistics: { label: "Logistique",  color: "bg-blue-600" },
+  developer: { label: "Dev",         color: "bg-violet-600" },
+  marketing: { label: "Marketing",   color: "bg-orange-500" },
+};
+
 // ---- Admin Header ----
 function AdminHeader() {
+  const { user } = useCurrentUser();
+  const role = (user?.role ?? "admin") as AdminRole;
+  const meta = ROLE_META[role] ?? ROLE_META.admin;
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -70,10 +83,9 @@ function AdminHeader() {
               <span className="truncate font-semibold">Pixel-Mart</span>
               <span className="truncate text-xs text-muted-foreground flex items-center gap-1">
                 <Badge
-                  variant="destructive"
-                  className="h-4 px-1 text-[10px] font-semibold"
+                  className={`h-4 px-1 text-[10px] font-semibold text-white ${meta.color}`}
                 >
-                  Admin
+                  {meta.label}
                 </Badge>
               </span>
             </div>
@@ -88,9 +100,16 @@ function AdminHeader() {
 function AdminNavSection() {
   const pathname = usePathname();
   const closeMobileSidebar = useAutoCloseMobileSidebar();
+  const { user } = useCurrentUser();
+  const role = (user?.role ?? "admin") as AdminRole;
+
+  // Filtrer par rôle (undefined = accessible à tous)
+  const visibleNav = ADMIN_NAV.filter(
+    (item) => !item.roles || item.roles.includes(role),
+  );
 
   // Group items by section
-  const sections = ADMIN_NAV.reduce<Record<string, typeof ADMIN_NAV>>((acc, item) => {
+  const sections = visibleNav.reduce<Record<string, typeof ADMIN_NAV>>((acc, item) => {
     const key = item.section ?? "Administration";
     if (!acc[key]) acc[key] = [];
     acc[key].push(item);
@@ -99,7 +118,7 @@ function AdminNavSection() {
 
   return (
     <>
-      {Object.entries(sections).map(([section, items]) => (
+      {Object.entries(sections).map(([section, items]: [string, typeof ADMIN_NAV]) => (
         <SidebarGroup key={section}>
           <SidebarGroupLabel>{section}</SidebarGroupLabel>
           <SidebarMenu>

@@ -6,7 +6,7 @@ import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { requireAdmin } from "../users/helpers";
+import { requireAdmin, requireSuperAdmin, requireRoles, ADMIN_ROLES } from "../users/helpers";
 
 // ─── Audit log helper ─────────────────────────────────────────
 
@@ -41,7 +41,7 @@ export const verifyStore = mutation({
     storeId: v.id("stores"),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSuperAdmin(ctx);
 
     const store = await ctx.db.get(args.storeId);
     if (!store) throw new Error("Boutique introuvable");
@@ -87,7 +87,7 @@ export const suspendStore = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSuperAdmin(ctx);
 
     const store = await ctx.db.get(args.storeId);
     if (!store) throw new Error("Boutique introuvable");
@@ -133,7 +133,7 @@ export const reactivateStore = mutation({
     storeId: v.id("stores"),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSuperAdmin(ctx);
 
     const store = await ctx.db.get(args.storeId);
     if (!store) throw new Error("Boutique introuvable");
@@ -178,7 +178,7 @@ export const approvePayout = mutation({
     payoutId: v.id("payouts"),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireRoles(ctx, ["admin", "finance"]);
 
     const payout = await ctx.db.get(args.payoutId);
     if (!payout) throw new Error("Virement introuvable");
@@ -226,11 +226,13 @@ export const approvePayout = mutation({
 export const banUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSuperAdmin(ctx);
 
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("Utilisateur introuvable");
-    if (user.role === "admin") throw new Error("Impossible de bannir un admin");
+    if ((ADMIN_ROLES as readonly string[]).includes(user.role)) {
+      throw new Error("Impossible de bannir un administrateur");
+    }
 
     await ctx.db.patch(args.userId, { is_banned: true, updated_at: Date.now() });
 
@@ -260,7 +262,7 @@ export const banUser = mutation({
 export const unbanUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSuperAdmin(ctx);
 
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("Utilisateur introuvable");
@@ -295,13 +297,17 @@ export const changeUserRole = mutation({
     userId: v.id("users"),
     role: v.union(
       v.literal("admin"),
+      v.literal("finance"),
+      v.literal("logistics"),
+      v.literal("developer"),
+      v.literal("marketing"),
       v.literal("vendor"),
       v.literal("customer"),
       v.literal("agent"),
     ),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireSuperAdmin(ctx);
 
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("Utilisateur introuvable");
@@ -317,10 +323,14 @@ export const changeUserRole = mutation({
     });
 
     const ROLE_LABELS: Record<string, string> = {
-      admin: "Administrateur",
+      admin: "Super Admin",
+      finance: "Responsable Financier",
+      logistics: "Gestionnaire Livraisons",
+      developer: "Développeur",
+      marketing: "Gestionnaire Contenu",
       vendor: "Vendeur",
       customer: "Client",
-      agent: "Agent",
+      agent: "Agent Entrepôt",
     };
     await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
       userId: args.userId,
@@ -348,7 +358,7 @@ export const createCategory = mutation({
     is_active: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireRoles(ctx, ["admin", "marketing"]);
 
     const existing = await ctx.db
       .query("categories")
@@ -383,7 +393,7 @@ export const updateCategory = mutation({
     is_active: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireRoles(ctx, ["admin", "marketing"]);
 
     const category = await ctx.db.get(args.id);
     if (!category) throw new Error("Catégorie introuvable");
@@ -412,7 +422,7 @@ export const updateCategory = mutation({
 export const deleteCategory = mutation({
   args: { id: v.id("categories") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireRoles(ctx, ["admin", "marketing"]);
 
     const products = await ctx.db
       .query("products")
@@ -439,7 +449,7 @@ export const setCountryActive = mutation({
     is_active: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAdmin(ctx);
+    const user = await requireRoles(ctx, ["admin", "logistics"]);
 
     const existing = await ctx.db
       .query("country_config")
@@ -485,7 +495,7 @@ export const upsertDeliveryRate = mutation({
     is_active: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireRoles(ctx, ["admin", "logistics"]);
 
     const { id, ...fields } = args;
     const payload = { ...fields, updated_at: Date.now() };
@@ -506,7 +516,7 @@ export const upsertDeliveryRate = mutation({
 export const toggleDeliveryRate = mutation({
   args: { id: v.id("delivery_rates") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireRoles(ctx, ["admin", "logistics"]);
     const rate = await ctx.db.get(args.id);
     if (!rate) throw new Error("Tarif introuvable");
     await ctx.db.patch(args.id, {
@@ -522,7 +532,7 @@ export const toggleDeliveryRate = mutation({
 export const deleteDeliveryRate = mutation({
   args: { id: v.id("delivery_rates") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireRoles(ctx, ["admin", "logistics"]);
     const rate = await ctx.db.get(args.id);
     if (!rate) throw new Error("Tarif introuvable");
     await ctx.db.delete(args.id);
@@ -555,7 +565,7 @@ export const deleteAdminFile = mutation({
 export const toggleAdSpace = mutation({
   args: { adSpaceId: v.id("ad_spaces") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    await requireRoles(ctx, ["admin", "marketing"]);
 
     const space = await ctx.db.get(args.adSpaceId);
     if (!space) throw new Error("Espace introuvable");
@@ -578,7 +588,7 @@ export const upsertPlatformConfig = mutation({
     label: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAdmin(ctx);
+    const user = await requireSuperAdmin(ctx);
 
     const existing = await ctx.db
       .query("platform_config")
@@ -622,7 +632,7 @@ export const rejectPayout = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const admin = await requireRoles(ctx, ["admin", "finance"]);
 
     const payout = await ctx.db.get(args.payoutId);
     if (!payout) throw new Error("Virement introuvable");
@@ -657,7 +667,7 @@ export const rejectPayout = mutation({
 export const deletePlatformConfig = mutation({
   args: { key: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAdmin(ctx);
+    const user = await requireSuperAdmin(ctx);
 
     const existing = await ctx.db
       .query("platform_config")

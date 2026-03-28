@@ -44,7 +44,26 @@ import { Input } from "@/components/ui/input";
 
 // ─── Types ────────────────────────────────────────────────────
 
-type UserRole = "admin" | "vendor" | "customer" | "agent";
+type UserRole =
+  | "admin"
+  | "finance"
+  | "logistics"
+  | "developer"
+  | "marketing"
+  | "vendor"
+  | "customer"
+  | "agent";
+
+const ROLE_LABELS: Record<UserRole, string> = {
+  admin:     "Super Admin",
+  finance:   "Financier",
+  logistics: "Logistique",
+  developer: "Développeur",
+  marketing: "Marketing",
+  vendor:    "Vendeur",
+  customer:  "Client",
+  agent:     "Agent",
+};
 
 type UserItem = {
   _id: Id<"users">;
@@ -65,12 +84,16 @@ interface Props {
 
 function RoleBadge({ role }: { role: UserRole }) {
   const map: Record<UserRole, string> = {
-    admin: "bg-red-100 text-red-700 border-red-300",
-    vendor: "bg-purple-100 text-purple-700 border-purple-300",
-    customer: "bg-blue-100 text-blue-700 border-blue-300",
-    agent: "bg-orange-100 text-orange-700 border-orange-300",
+    admin:     "bg-red-100 text-red-700 border-red-300",
+    finance:   "bg-emerald-100 text-emerald-700 border-emerald-300",
+    logistics: "bg-blue-100 text-blue-700 border-blue-300",
+    developer: "bg-violet-100 text-violet-700 border-violet-300",
+    marketing: "bg-orange-100 text-orange-700 border-orange-300",
+    vendor:    "bg-purple-100 text-purple-700 border-purple-300",
+    customer:  "bg-slate-100 text-slate-700 border-slate-300",
+    agent:     "bg-amber-100 text-amber-700 border-amber-300",
   };
-  return <Badge className={map[role]}>{role}</Badge>;
+  return <Badge className={map[role]}>{ROLE_LABELS[role]}</Badge>;
 }
 
 // ─── Change Role Dialog ───────────────────────────────────────
@@ -135,14 +158,18 @@ function ChangeRoleDialog({
               value={role}
               onValueChange={(v) => setRole(v as UserRole)}
             >
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-48">
                 <SelectValue placeholder="Choisir…" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">admin</SelectItem>
-                <SelectItem value="vendor">vendor</SelectItem>
-                <SelectItem value="customer">customer</SelectItem>
-                <SelectItem value="agent">agent</SelectItem>
+                <SelectItem value="admin">👑 Super Admin</SelectItem>
+                <SelectItem value="finance">💰 Financier</SelectItem>
+                <SelectItem value="logistics">🚚 Logistique</SelectItem>
+                <SelectItem value="developer">💻 Développeur</SelectItem>
+                <SelectItem value="marketing">📢 Marketing</SelectItem>
+                <SelectItem value="vendor">🛍 Vendeur</SelectItem>
+                <SelectItem value="customer">👤 Client</SelectItem>
+                <SelectItem value="agent">📦 Agent Entrepôt</SelectItem>
               </SelectContent>
             </Select>
           </div>
