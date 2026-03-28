@@ -481,6 +481,33 @@ export default function StoreSettingsPage() {
                 Cliquez sur la carte ou recherchez votre adresse pour définir
                 votre point de retrait.
               </p>
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                <div className="flex-shrink-0 mt-0.5">
+                  <svg
+                    className="size-4 text-blue-600 dark:text-blue-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="text-xs text-blue-800 dark:text-blue-200">
+                  <p className="font-medium mb-1">
+                    💡 Conseil pour la localisation
+                  </p>
+                  <p>
+                    La géolocalisation automatique ("Ma position") peut parfois
+                    être imprécise sur ordinateur. Si vous remarquez que votre
+                    position n'est pas correcte, essayez de passer sur mobile
+                    avant de sauvegarder, ou utilisez la recherche d'adresse
+                    pour une meilleure précision.
+                  </p>
+                </div>
+              </div>
               <LocationPicker
                 value={customPickup}
                 onChange={setCustomPickup}
