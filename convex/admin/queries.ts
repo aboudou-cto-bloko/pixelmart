@@ -529,6 +529,7 @@ export const getAnalytics = query({
         newStores, prevNewStores,
         adRevenue,
         storageRevenue,
+        netRevenue: commissions + adRevenue + storageRevenue,
         aov, prevAov,
         conversionRate,
       },
@@ -651,6 +652,50 @@ export const getPlatformHealth = query({
         pendingPayment: pendingPaymentBookings.length,
       },
     };
+  },
+});
+
+// ─── listAuditLog ─────────────────────────────────────────────
+
+// ─── listOrders ──────────────────────────────────────────────
+
+export const listOrders = query({
+  args: {
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const orders = args.status
+      ? await ctx.db
+          .query("orders")
+          .filter((q) => q.eq(q.field("status"), args.status))
+          .order("desc")
+          .collect()
+      : await ctx.db.query("orders").order("desc").collect();
+
+    const enriched = await Promise.all(
+      orders.map(async (order) => {
+        const store = await ctx.db.get(order.store_id);
+        const customer = await ctx.db.get(order.customer_id);
+        return {
+          _id: order._id,
+          order_number: order.order_number,
+          store_name: store?.name ?? "Boutique inconnue",
+          customer_name: customer?.name ?? "Client inconnu",
+          customer_email: customer?.email ?? "—",
+          total_amount: order.total_amount,
+          commission_amount: order.commission_amount ?? 0,
+          currency: order.currency,
+          status: order.status,
+          payment_status: order.payment_status,
+          items_count: order.items.length,
+          _creationTime: order._creationTime,
+        };
+      }),
+    );
+
+    return enriched;
   },
 });
 

@@ -275,6 +275,12 @@ function AnalyticsTab({ period, onPeriodChange }: { period: Period; onPeriodChan
             trend={<Trend current={data.kpis.newStores} previous={data.kpis.prevNewStores} />}
           />
           <KpiCard
+            label="Revenus plateforme (net)"
+            value={formatPrice(data.kpis.netRevenue, "XOF")}
+            sub="commissions + pub + stockage"
+            icon={TrendingUp}
+          />
+          <KpiCard
             label="Revenus publicitaires"
             value={formatPrice(data.kpis.adRevenue, "XOF")}
             icon={Megaphone}
