@@ -1,6 +1,7 @@
 // filepath: convex/coupons/helpers.ts
 
 import type { Doc } from "../_generated/dataModel";
+import { formatAmountText } from "../lib/format";
 
 /**
  * Vérifie la validité d'un coupon (sans throw — retourne un message d'erreur ou null).
@@ -22,7 +23,7 @@ export function validateCouponRules(
   }
 
   if (coupon.min_order_amount && subtotal < coupon.min_order_amount) {
-    return `Montant minimum requis : ${coupon.min_order_amount / 100} FCFA`;
+    return `Montant minimum requis : ${formatAmountText(coupon.min_order_amount, "XOF")}`;
   }
 
   return null;
@@ -55,7 +56,7 @@ export function getCouponLabel(coupon: Doc<"coupons">): string {
     case "percentage":
       return `-${coupon.value}%`;
     case "fixed_amount":
-      return `-${coupon.value / 100} FCFA`;
+      return `-${formatAmountText(coupon.value, "XOF")}`;
     case "free_shipping":
       return "Livraison gratuite";
     default:

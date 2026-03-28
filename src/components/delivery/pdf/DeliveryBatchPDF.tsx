@@ -295,8 +295,10 @@ const styles = StyleSheet.create({
 
 // ─── Helpers ─────────────────────────────────────────────────
 
+const NO_DECIMAL = ["XOF", "XAF", "GNF", "CDF"];
 function formatPrice(amount: number, currency: string): string {
-  return `${Math.round(amount / 100).toLocaleString("fr-FR")} ${currency}`;
+  const value = NO_DECIMAL.includes(currency) ? amount : Math.round(amount / 100);
+  return `${value.toLocaleString("fr-FR")} ${currency}`;
 }
 
 function formatDate(dateString: string): string {
