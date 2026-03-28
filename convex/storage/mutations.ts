@@ -6,6 +6,7 @@ import { v, ConvexError } from "convex/values";
 import { getVendorStore, requireAgent, requireAdmin } from "../users/helpers";
 import { DEFAULT_CURRENCY } from "../lib/constants";
 import { computeStorageFee, generateStorageCode } from "./helpers";
+import { getEffectiveStorageFees } from "../lib/getConfig";
 
 // ─── Create Request (Vendor) ─────────────────────────────────
 
@@ -190,9 +191,11 @@ export const validateRequest = mutation({
         ? (request.actual_qty ?? 0)
         : (request.actual_weight_kg ?? 0);
 
+    const storageFees = await getEffectiveStorageFees(ctx);
     const storageFee = computeStorageFee(
       request.measurement_type,
       measureValue,
+      storageFees,
     );
     const now = Date.now();
     const paymentMethod = args.payment_method ?? "deferred";

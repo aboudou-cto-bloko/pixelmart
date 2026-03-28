@@ -230,10 +230,13 @@ export function assertValidTransition(
  * - pending : toujours
  * - paid : dans les 2h suivant la création
  */
-export function canCustomerCancel(order: Doc<"orders">): boolean {
+export function canCustomerCancel(
+  order: Doc<"orders">,
+  windowMs: number = CANCELLATION_WINDOW_MS,
+): boolean {
   if (order.status === "pending") return true;
   if (order.status === "paid") {
-    return Date.now() - order._creationTime <= CANCELLATION_WINDOW_MS;
+    return Date.now() - order._creationTime <= windowMs;
   }
   return false;
 }
@@ -251,8 +254,11 @@ export function canVendorCancel(order: Doc<"orders">): boolean {
  * Retourne le taux de commission en basis points selon le plan.
  * Source de vérité : convex/lib/constants.ts
  */
-export function getCommissionRate(tier: SubscriptionTier): number {
-  return COMMISSION_RATES[tier] ?? COMMISSION_RATES.free;
+export function getCommissionRate(
+  tier: SubscriptionTier,
+  rates: Record<SubscriptionTier, number> = COMMISSION_RATES,
+): number {
+  return rates[tier] ?? rates.free;
 }
 
 /**

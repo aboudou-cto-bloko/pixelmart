@@ -10,6 +10,10 @@ import { requireAppUser, getVendorStore } from "../users/helpers";
 import { logOrderEvent } from "./events";
 import { DEFAULT_CURRENCY } from "../lib/constants";
 import {
+  getEffectiveCommissionRates,
+  getCancellationWindowMs,
+} from "../lib/getConfig";
+import {
   generateOrderNumber,
   validateAndBuildItems,
   decrementInventory,
@@ -240,8 +244,9 @@ export const createOrder = mutation({
     // 7. Total — tout en XOF centimes
     const totalAmount = Math.max(0, subtotal - discountAmount + shippingAmount);
 
-    // 8. Commission — source : convex/lib/constants.ts
-    const commissionRate = getCommissionRate(store.subscription_tier);
+    // 8. Commission — source : platform_config (fallback : convex/lib/constants.ts)
+    const commissionRates = await getEffectiveCommissionRates(ctx);
+    const commissionRate = getCommissionRate(store.subscription_tier, commissionRates);
     const commissionAmount = calculateCommission(totalAmount, commissionRate);
 
     // 9. Générer le numéro de commande
@@ -510,7 +515,8 @@ export const cancelOrder = mutation({
       isVendor = store?._id === order.store_id;
     }
 
-    if (isCustomer && !canCustomerCancel(order)) {
+    const cancellationWindowMs = await getCancellationWindowMs(ctx);
+    if (isCustomer && !canCustomerCancel(order, cancellationWindowMs)) {
       throw new Error(
         "Annulation impossible — délai de 2h dépassé ou commande déjà expédiée",
       );

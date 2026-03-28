@@ -2,11 +2,12 @@
 
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+import { STORAGE_FEES, STORAGE_CODE_PREFIX } from "../lib/constants";
 import {
-  STORAGE_FEES,
-  STORAGE_CODE_PREFIX,
-  STORAGE_DEBT_BLOCK_DELAY_MS,
-} from "../lib/constants";
+  getEffectiveStorageFees,
+  getStorageDebtBlockDelayMs,
+  type EffectiveStorageFees,
+} from "../lib/getConfig";
 
 // ─── Fee Calculation ─────────────────────────────────────────
 
@@ -25,22 +26,23 @@ import {
 export function computeStorageFee(
   type: "units" | "weight",
   value: number,
+  fees: EffectiveStorageFees = STORAGE_FEES,
 ): number {
   if (value <= 0) return 0;
 
   if (type === "units") {
-    if (value > STORAGE_FEES.BULK_THRESHOLD_UNITS) {
-      return value * STORAGE_FEES.PER_UNIT_BULK;
+    if (value > fees.BULK_THRESHOLD_UNITS) {
+      return value * fees.PER_UNIT_BULK;
     }
-    return value * STORAGE_FEES.PER_UNIT;
+    return value * fees.PER_UNIT;
   }
 
   // weight
-  if (value <= STORAGE_FEES.FREE_MAX_KG) return 0;
-  if (value <= STORAGE_FEES.MEDIUM_MAX_KG) return STORAGE_FEES.MEDIUM_KG_FLAT;
+  if (value <= fees.FREE_MAX_KG) return 0;
+  if (value <= fees.MEDIUM_MAX_KG) return fees.MEDIUM_KG_FLAT;
 
-  const extraKg = Math.ceil(value - STORAGE_FEES.MEDIUM_MAX_KG);
-  return STORAGE_FEES.HEAVY_BASE + extraKg * STORAGE_FEES.HEAVY_PER_KG;
+  const extraKg = Math.ceil(value - fees.MEDIUM_MAX_KG);
+  return fees.HEAVY_BASE + extraKg * fees.HEAVY_PER_KG;
 }
 
 // ─── Code Generation ─────────────────────────────────────────
@@ -82,7 +84,8 @@ export async function hasBlockingDebt(
   ctx: QueryCtx | MutationCtx,
   storeId: Id<"stores">,
 ): Promise<boolean> {
-  const threshold = Date.now() - STORAGE_DEBT_BLOCK_DELAY_MS;
+  const delayMs = await getStorageDebtBlockDelayMs(ctx);
+  const threshold = Date.now() - delayMs;
 
   const overdue = await ctx.db
     .query("storage_invoices")
