@@ -36,6 +36,9 @@ import {
   Store,
   FileText,
   List,
+  Truck,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -632,6 +635,184 @@ function PipelineTab() {
   );
 }
 
+// ─── Dispatch Tab ─────────────────────────────────────────────
+
+type WarehouseBatch = {
+  _id: string;
+  batch_number: string;
+  store_name: string;
+  status: string;
+  order_count: number;
+  storage_codes: string[];
+  total_delivery_fee: number;
+  assigned_at?: number;
+  orders: Array<{
+    _id: string;
+    order_number: string;
+    customer_name: string;
+    items: Array<{ product_id: string; name: string; quantity: number; storage_code?: string }>;
+    total_amount: number;
+    payment_mode: string;
+  }>;
+};
+
+const BATCH_STATUS_LABELS: Record<string, string> = {
+  transmitted: "Transmis",
+  assigned: "Assigné",
+  in_progress: "En cours",
+};
+
+const BATCH_STATUS_STYLES: Record<string, string> = {
+  transmitted: "bg-blue-100 text-blue-700 border-blue-300",
+  assigned: "bg-purple-100 text-purple-700 border-purple-300",
+  in_progress: "bg-orange-100 text-orange-700 border-orange-300",
+};
+
+function DispatchBatchCard({ batch }: { batch: WarehouseBatch }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-lg border bg-card">
+      <button
+        className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-muted/40 transition-colors rounded-lg"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <Truck className="size-4 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <span className="font-mono text-sm font-bold">{batch.batch_number}</span>
+            <span className="mx-2 text-muted-foreground">·</span>
+            <span className="text-sm">{batch.store_name}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge className={BATCH_STATUS_STYLES[batch.status] ?? ""}>
+            {BATCH_STATUS_LABELS[batch.status] ?? batch.status}
+          </Badge>
+          <span className="text-xs text-muted-foreground">{batch.order_count} cmd</span>
+          {expanded ? (
+            <ChevronUp className="size-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="size-4 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t px-4 pb-4 pt-3 space-y-4">
+          {/* Codes à prélever */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              Codes à prélever en rayon
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {batch.storage_codes.length > 0 ? (
+                batch.storage_codes.map((code) => (
+                  <span
+                    key={code}
+                    className="font-mono text-sm font-bold bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5"
+                  >
+                    {code}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-muted-foreground italic">
+                  Codes non renseignés sur les articles
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Liste des commandes */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              Commandes ({batch.orders.length})
+            </p>
+            <div className="space-y-2">
+              {batch.orders.map((order) => (
+                <div key={order._id} className="rounded-md border bg-muted/30 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="font-mono font-medium text-xs">{order.order_number}</span>
+                    {order.payment_mode === "cod" && (
+                      <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs">
+                        COD — {formatPrice(order.total_amount, "XOF")}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground text-xs">{order.customer_name}</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    {order.items.map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{item.quantity}×</span>
+                        <span className="flex-1">{item.name}</span>
+                        {item.storage_code && (
+                          <span className="font-mono text-primary font-bold">{item.storage_code}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DispatchTab() {
+  const batches = useQuery(api.delivery.queries.listWarehouseBatchesForAgent);
+
+  if (batches === undefined) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
+        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Chargement…
+      </div>
+    );
+  }
+
+  if (batches.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+        <Truck className="size-10 opacity-25" />
+        <p className="text-sm">Aucune expédition entrepôt en attente</p>
+        <p className="text-xs">
+          Les lots marqués "Entrepôt" par les vendeurs apparaissent ici une fois assignés.
+        </p>
+      </div>
+    );
+  }
+
+  const transmittedCount = batches.filter((b) => b.status === "transmitted").length;
+  const assignedCount = batches.filter((b) => b.status === "assigned").length;
+  const inProgressCount = batches.filter((b) => b.status === "in_progress").length;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: "Transmis", count: transmittedCount, style: "bg-blue-50 border-blue-200" },
+          { label: "Assignés", count: assignedCount, style: "bg-purple-50 border-purple-200" },
+          { label: "En cours", count: inProgressCount, style: "bg-orange-50 border-orange-200" },
+        ].map(({ label, count, style }) => (
+          <div key={label} className={`rounded-lg border p-3 ${style}`}>
+            <p className="text-xl font-bold">{count}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-3">
+        {batches.map((batch) => (
+          <DispatchBatchCard key={batch._id} batch={batch as unknown as WarehouseBatch} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Template ────────────────────────────────────────────
 
 export function AgentStorageTemplate() {
@@ -659,6 +840,10 @@ export function AgentStorageTemplate() {
             <List className="h-4 w-4" />
             Pipeline
           </TabsTrigger>
+          <TabsTrigger value="dispatch" className="flex items-center gap-2">
+            <Truck className="h-4 w-4" />
+            Expéditions
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="scan" className="mt-4">
@@ -685,6 +870,10 @@ export function AgentStorageTemplate() {
 
         <TabsContent value="pipeline" className="mt-4">
           <PipelineTab />
+        </TabsContent>
+
+        <TabsContent value="dispatch" className="mt-4">
+          <DispatchTab />
         </TabsContent>
       </Tabs>
     </div>

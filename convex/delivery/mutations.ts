@@ -53,6 +53,7 @@ export const createBatch = mutation({
   args: {
     orderIds: v.array(v.id("orders")),
     groupingType: v.union(v.literal("zone"), v.literal("manual")),
+    isWarehouseBatch: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { user, store } = await getVendorStore(ctx);
@@ -66,6 +67,25 @@ export const createBatch = mutation({
 
     // Valider l'éligibilité des commandes
     validateOrdersForBatch(orders);
+
+    // Pour un lot entrepôt, vérifier qu'il y a bien des articles en stock
+    if (args.isWarehouseBatch) {
+      const inStockRequests = await ctx.db
+        .query("storage_requests")
+        .withIndex("by_store_status", (q) =>
+          q.eq("store_id", store._id).eq("status", "in_stock"),
+        )
+        .collect();
+      const inStockProductIds = new Set(
+        inStockRequests.filter((r) => r.product_id != null).map((r) => r.product_id!.toString()),
+      );
+      const hasWarehouseItems = orders.some((o) =>
+        o.items.some((item) => inStockProductIds.has(item.product_id.toString())),
+      );
+      if (!hasWarehouseItems) {
+        throw new Error("Aucun article de ce lot n'est en stock à l'entrepôt Pixel-Mart");
+      }
+    }
 
     // Générer le numéro de lot
     const batchNumber = await getNextBatchNumber(ctx);
@@ -81,6 +101,7 @@ export const createBatch = mutation({
       order_ids: args.orderIds,
       order_count: args.orderIds.length,
       grouping_type: args.groupingType,
+      is_warehouse_batch: args.isWarehouseBatch ?? false,
       status: "pending",
       total_delivery_fee: totalDeliveryFee,
       currency: DEFAULT_CURRENCY,

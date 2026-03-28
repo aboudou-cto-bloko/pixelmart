@@ -20,11 +20,22 @@ export default function VendorStoragePage() {
 
   const stats = useQuery(api.storage.queries.getStats, {});
 
+  // Pending orders count per in_stock item (pour afficher les opportunités d'expédition entrepôt)
+  const inStockWithOrders = useQuery(api.storage.queries.getInStockWithPendingOrders, {});
+
   const isLoading = requests === undefined;
+
+  // Fusionner les pending_orders_count dans les requests
+  const enrichedRequests = (requests ?? []).map((req) => {
+    const match = inStockWithOrders?.find((r) => r._id === req._id);
+    return match
+      ? { ...req, pending_orders_count: match.pending_orders_count }
+      : req;
+  });
 
   return (
     <VendorStorageTemplate
-      requests={requests ?? []}
+      requests={enrichedRequests}
       stats={stats ?? undefined}
       statusFilter={statusFilter}
       onStatusFilterChange={setStatusFilter}

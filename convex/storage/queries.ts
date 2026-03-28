@@ -224,3 +224,61 @@ export const getDebt = query({
     return { debts, totalOutstanding };
   },
 });
+
+// ─── Vendor — items en stock avec nb commandes en attente ────
+
+/**
+ * Retourne les items in_stock avec le nombre de commandes éligibles
+ * dont au moins un article correspond au produit stocké.
+ * Permet au vendeur de visualiser les opportunités d'expédition entrepôt.
+ */
+export const getInStockWithPendingOrders = query({
+  args: {},
+  handler: async (ctx) => {
+    const { store } = await getVendorStore(ctx);
+
+    const inStockRequests = await ctx.db
+      .query("storage_requests")
+      .withIndex("by_store_status", (q) =>
+        q.eq("store_id", store._id).eq("status", "in_stock"),
+      )
+      .order("desc")
+      .collect();
+
+    if (inStockRequests.length === 0) return [];
+
+    // Toutes les commandes éligibles (sans lot, payées)
+    const allOrders = await ctx.db
+      .query("orders")
+      .withIndex("by_store", (q) => q.eq("store_id", store._id))
+      .collect();
+
+    const eligibleOrders = allOrders.filter(
+      (o) =>
+        (o.status === "processing" || o.status === "ready_for_delivery") &&
+        !o.batch_id &&
+        (o.payment_status === "paid" || o.payment_mode === "cod"),
+    );
+
+    return inStockRequests.map((req) => {
+      const pendingCount = req.product_id
+        ? eligibleOrders.filter((o) =>
+            o.items.some((item) => item.product_id === req.product_id),
+          ).length
+        : 0;
+
+      return {
+        _id: req._id,
+        storage_code: req.storage_code,
+        product_id: req.product_id,
+        product_name: req.product_name,
+        actual_qty: req.actual_qty,
+        actual_weight_kg: req.actual_weight_kg,
+        measurement_type: req.measurement_type,
+        storage_fee: req.storage_fee,
+        validated_at: req.validated_at,
+        pending_orders_count: pendingCount,
+      };
+    });
+  },
+});
