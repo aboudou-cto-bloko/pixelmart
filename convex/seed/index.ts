@@ -6,6 +6,7 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+// Note: internal.seed.queries is used via ctx.runQuery below
 import {
   SEED_USERS,
   SEED_STORES,
@@ -183,8 +184,25 @@ export const seedAll = action({
       productResults[storeSlug] = count;
     }
 
+    // 4. Créer les commandes
+    console.log("[seed] 4/4 Création des commandes simulées...");
+    const orderResults: Record<string, unknown> = {};
+
+    for (const [storeSlug, storeId] of Object.entries(storeIds)) {
+      if (!storeId) { orderResults[storeSlug] = "skipped (no store)"; continue; }
+      try {
+        const res = await ctx.runMutation(internal.seed.mutations.createOrders, {
+          storeId: storeId as Id<"stores">,
+          customerEmail: "customer@pixel-mart.test",
+        });
+        orderResults[storeSlug] = `${res.created} commandes`;
+      } catch (err) {
+        orderResults[storeSlug] = `erreur: ${String(err)}`;
+      }
+    }
+
     console.log("[seed] Terminé ✓");
-    return { users: userResults, storeIds, products: productResults };
+    return { users: userResults, storeIds, products: productResults, orders: orderResults };
   },
 });
 
@@ -276,6 +294,33 @@ export const promoteUser = action({
   handler: async (ctx, args): Promise<{ userId: string; email: string; role: string }> => {
     assertSeedEnabled();
     return await ctx.runMutation(internal.seed.mutations.promoteUser, args);
+  },
+});
+
+// ─── Seed des commandes pour une boutique ────────────────────────────────────
+
+export const seedOrders = action({
+  args: {
+    storeSlug: v.string(),
+    customerEmail: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{ created: number; storeId: string }> => {
+    assertSeedEnabled();
+
+    // Trouver la boutique par slug
+    const store = await ctx.runQuery(internal.seed.queries.getStoreBySlug, {
+      slug: args.storeSlug,
+    });
+    if (!store) throw new Error(`Boutique "${args.storeSlug}" introuvable`);
+
+    const customerEmail = args.customerEmail ?? "customer@pixel-mart.test";
+
+    const result = await ctx.runMutation(internal.seed.mutations.createOrders, {
+      storeId: store._id as Id<"stores">,
+      customerEmail,
+    });
+
+    return { created: result.created, storeId: store._id };
   },
 });
 
