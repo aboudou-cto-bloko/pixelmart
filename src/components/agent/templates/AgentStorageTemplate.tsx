@@ -18,6 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatDate, formatPrice } from "@/lib/format";
 import {
   Search,
@@ -26,6 +35,7 @@ import {
   AlertCircle,
   Store,
   FileText,
+  List,
 } from "lucide-react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -486,6 +496,144 @@ function CodeResult({
   );
 }
 
+// ─── Status config ────────────────────────────────────────────
+
+type StorageStatus = "pending_drop_off" | "received" | "in_stock" | "rejected";
+
+const STATUS_LABELS: Record<StorageStatus, string> = {
+  pending_drop_off: "À réceptionner",
+  received:         "Réceptionné",
+  in_stock:         "En stock",
+  rejected:         "Rejeté",
+};
+
+const STATUS_STYLES: Record<StorageStatus, string> = {
+  pending_drop_off: "bg-amber-100 text-amber-700 border-amber-300",
+  received:         "bg-blue-100 text-blue-700 border-blue-300",
+  in_stock:         "bg-green-100 text-green-700 border-green-300",
+  rejected:         "bg-red-100 text-red-700 border-red-300",
+};
+
+// ─── Pipeline Tab ─────────────────────────────────────────────
+
+function PipelineTab() {
+  const [statusFilter, setStatusFilter] = useState<StorageStatus | "all">("all");
+  const [search, setSearch] = useState("");
+
+  const allRequests = useQuery(api.storage.queries.listAllForAgent, {});
+  const filteredByStatus = useQuery(
+    api.storage.queries.listAllForAgent,
+    statusFilter !== "all" ? { status: statusFilter } : {},
+  );
+
+  const requests = statusFilter === "all" ? (allRequests ?? []) : (filteredByStatus ?? []);
+
+  const counts = (allRequests ?? []).reduce<Record<string, number>>((acc, r) => {
+    acc[r.status] = (acc[r.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const visible = requests.filter((r) => {
+    const q = search.trim().toLowerCase();
+    return (
+      q === "" ||
+      r.storage_code.toLowerCase().includes(q) ||
+      r.product_name.toLowerCase().includes(q) ||
+      r.store_name.toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Status counters */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {(["pending_drop_off", "received", "in_stock", "rejected"] as StorageStatus[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
+            className={`rounded-lg border p-3 text-left transition-colors ${
+              statusFilter === s
+                ? "border-primary bg-primary/5"
+                : "bg-muted/40 hover:bg-muted"
+            }`}
+          >
+            <p className="text-lg font-bold">{counts[s] ?? 0}</p>
+            <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+              {STATUS_LABELS[s]}
+            </p>
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        <Input
+          placeholder="Code, produit, boutique…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Table */}
+      {visible.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+          <Package className="size-10 opacity-25" />
+          <p className="text-sm">Aucun colis trouvé</p>
+        </div>
+      ) : (
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Code</TableHead>
+                <TableHead>Produit</TableHead>
+                <TableHead>Boutique</TableHead>
+                <TableHead>Qté / Poids</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visible.map((r) => (
+                <TableRow key={r._id}>
+                  <TableCell className="font-mono text-sm font-bold">
+                    {r.storage_code}
+                  </TableCell>
+                  <TableCell className="text-sm">{r.product_name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {r.store_name}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {r.measurement_type === "weight" && r.actual_weight_kg
+                      ? `${r.actual_weight_kg} kg`
+                      : r.actual_qty
+                        ? `${r.actual_qty} u.`
+                        : r.estimated_qty
+                          ? `~${r.estimated_qty} u. (estimé)`
+                          : "—"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={STATUS_STYLES[r.status as StorageStatus]}>
+                      {STATUS_LABELS[r.status as StorageStatus] ?? r.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatDate(r.created_at)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Template ────────────────────────────────────────────
+
 export function AgentStorageTemplate() {
   const [activeCode, setActiveCode] = useState<string | null>(null);
 
@@ -494,33 +642,51 @@ export function AgentStorageTemplate() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
-          Réception entrepôt
+          Entrepôt
         </h1>
         <p className="text-sm text-muted-foreground">
-          Scannez ou saisissez le code écrit sur le colis
+          Réception et suivi du pipeline de stockage
         </p>
       </div>
 
-      {/* Scanner / Lookup */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Code de stockage
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <CodeLookup onFound={(code) => setActiveCode(code)} />
-          {activeCode && (
-            <div className="border-t pt-4">
-              <CodeResult
-                storageCode={activeCode}
-                onReset={() => setActiveCode(null)}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="scan">
+        <TabsList>
+          <TabsTrigger value="scan" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Scanner un colis
+          </TabsTrigger>
+          <TabsTrigger value="pipeline" className="flex items-center gap-2">
+            <List className="h-4 w-4" />
+            Pipeline
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="scan" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Code de stockage
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <CodeLookup onFound={(code) => setActiveCode(code)} />
+              {activeCode && (
+                <div className="border-t pt-4">
+                  <CodeResult
+                    storageCode={activeCode}
+                    onReset={() => setActiveCode(null)}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="pipeline" className="mt-4">
+          <PipelineTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

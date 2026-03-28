@@ -115,6 +115,50 @@ export const getPendingValidation = query({
   },
 });
 
+// ─── Agent — liste toutes les demandes (pipeline) ────────────
+
+export const listAllForAgent = query({
+  args: {
+    status: v.optional(
+      v.union(
+        v.literal("pending_drop_off"),
+        v.literal("received"),
+        v.literal("in_stock"),
+        v.literal("rejected"),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await requireAgent(ctx);
+
+    const requests = args.status
+      ? await ctx.db
+          .query("storage_requests")
+          .withIndex("by_status", (q) => q.eq("status", args.status!))
+          .order("desc")
+          .collect()
+      : await ctx.db.query("storage_requests").order("desc").collect();
+
+    return await Promise.all(
+      requests.map(async (r) => {
+        const store = await ctx.db.get(r.store_id);
+        return {
+          _id: r._id,
+          storage_code: r.storage_code,
+          product_name: r.product_name,
+          status: r.status,
+          estimated_qty: r.estimated_qty,
+          actual_qty: r.actual_qty,
+          actual_weight_kg: r.actual_weight_kg,
+          measurement_type: r.measurement_type,
+          created_at: r.created_at,
+          store_name: store?.name ?? "Boutique inconnue",
+        };
+      }),
+    );
+  },
+});
+
 // ─── Vendor — liste ses factures ─────────────────────────────
 
 export const getInvoices = query({
