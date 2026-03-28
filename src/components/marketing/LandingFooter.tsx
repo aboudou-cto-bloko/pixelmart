@@ -1,6 +1,7 @@
 // filepath: src/components/marketing/LandingFooter.tsx
 
 import Link from "next/link";
+import { ChatwayButton } from "@/components/atoms/ChatwayButton";
 
 export function LandingFooter() {
   return (
@@ -26,12 +27,9 @@ export function LandingFooter() {
             >
               Confidentialité
             </Link>
-            <a
-              href="mailto:hello@pixelmart.bj"
-              className="transition-colors hover:text-muted-foreground"
-            >
+            <ChatwayButton className="transition-colors hover:text-muted-foreground">
               Contact
-            </a>
+            </ChatwayButton>
           </div>
 
           <p className="text-xs text-muted-foreground/35">

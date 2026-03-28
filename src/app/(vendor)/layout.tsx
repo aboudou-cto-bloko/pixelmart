@@ -40,8 +40,10 @@ function StoreSuspendedScreen() {
         </p>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button asChild>
-          <Link href="mailto:support@pixel-mart-bj.com">Contacter le support</Link>
+        <Button
+          onClick={() => (window as typeof window & { Chatway?: (cmd: string) => void }).Chatway?.("open")}
+        >
+          Contacter le support
         </Button>
         <Button variant="outline" asChild>
           <Link href="/">Retour à l&apos;accueil</Link>
