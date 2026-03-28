@@ -5,6 +5,7 @@ import { Section, Text } from "@react-email/components";
 import * as React from "react";
 import { Layout, emailTheme } from "./components/Layout";
 import { CTAButton } from "./components/CTAButton";
+import { formatPrice } from "../src/lib/format";
 
 interface StorageValidatedProps {
   vendorName: string;
@@ -16,12 +17,6 @@ interface StorageValidatedProps {
   actualQty?: number;
   actualWeightKg?: number;
   measurementType?: "units" | "weight";
-}
-
-function fmt(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") return `${value.toLocaleString("fr-FR")} FCFA`;
-  return `${value.toFixed(2)} ${currency}`;
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -48,7 +43,7 @@ export function StorageValidated({
 
   return (
     <Layout
-      preview={`${storageCode} en stock — Frais : ${fmt(storageFee, currency)}`}
+      preview={`${storageCode} en stock — Frais : ${formatPrice(storageFee, currency)}`}
     >
       <Text
         style={{
@@ -103,7 +98,7 @@ export function StorageValidated({
           ...(measurementType
             ? [{ label: "Mesure officielle", value: measureLabel }]
             : []),
-          { label: "Frais de stockage", value: fmt(storageFee, currency) },
+          { label: "Frais de stockage", value: formatPrice(storageFee, currency) },
           {
             label: "Mode de facturation",
             value: PAYMENT_LABELS[paymentMethod],
@@ -147,7 +142,7 @@ export function StorageValidated({
             margin: "0 0 24px 0",
           }}
         >
-          Une facture de <strong>{fmt(storageFee, currency)}</strong> est
+          Une facture de <strong>{formatPrice(storageFee, currency)}</strong> est
           disponible. Réglez-la depuis votre espace facturation pour activer le
           service.
         </Text>

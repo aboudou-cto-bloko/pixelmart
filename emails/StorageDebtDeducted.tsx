@@ -5,6 +5,7 @@ import { Section, Text } from "@react-email/components";
 import * as React from "react";
 import { Layout, emailTheme } from "./components/Layout";
 import { CTAButton } from "./components/CTAButton";
+import { formatPrice } from "../src/lib/format";
 
 interface StorageDebtDeductedProps {
   vendorName: string;
@@ -13,12 +14,6 @@ interface StorageDebtDeductedProps {
   grossPayout: number; // centimes — montant brut demandé
   netPayout: number; // centimes — montant effectivement reçu (après dette + frais)
   period: string; // ex: "mars 2026"
-}
-
-function fmt(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") return `${value.toLocaleString("fr-FR")} FCFA`;
-  return `${value.toFixed(2)} ${currency}`;
 }
 
 export function StorageDebtDeducted({
@@ -31,7 +26,7 @@ export function StorageDebtDeducted({
 }: StorageDebtDeductedProps) {
   return (
     <Layout
-      preview={`Dette de stockage déduite — ${fmt(deductedAmount, currency)}`}
+      preview={`Dette de stockage déduite — ${formatPrice(deductedAmount, currency)}`}
     >
       <Text
         style={{
@@ -83,15 +78,15 @@ export function StorageDebtDeducted({
         </Text>
 
         {[
-          { label: "Montant demandé", value: fmt(grossPayout, currency) },
+          { label: "Montant demandé", value: formatPrice(grossPayout, currency) },
           {
             label: "Dette de stockage déduite",
-            value: `- ${fmt(deductedAmount, currency)}`,
+            value: `- ${formatPrice(deductedAmount, currency)}`,
             highlight: true,
           },
           {
             label: "Montant reçu (après frais)",
-            value: fmt(netPayout, currency),
+            value: formatPrice(netPayout, currency),
             bold: true,
           },
         ].map(({ label, value, highlight, bold }) => (

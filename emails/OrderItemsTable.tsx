@@ -3,6 +3,7 @@
 import { Section, Text, Row, Column, Img } from "@react-email/components";
 import * as React from "react";
 import { emailTheme } from "./components/Layout";
+import { formatPrice } from "../src/lib/format";
 
 interface OrderItem {
   title: string;
@@ -16,12 +17,6 @@ interface OrderItemsTableProps {
   items: OrderItem[];
   currency: string;
   totalAmount: number;
-}
-
-function fmt(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  if (currency === "XOF") return `${value.toLocaleString("fr-FR")} FCFA`;
-  return `${value.toFixed(2)} ${currency}`;
 }
 
 export function OrderItemsTable({
@@ -65,7 +60,7 @@ export function OrderItemsTable({
                 margin: "2px 0 0 0",
               }}
             >
-              {item.quantity} × {fmt(item.unit_price, currency)}
+              {item.quantity} × {formatPrice(item.unit_price, currency)}
             </Text>
           </Column>
           <Column
@@ -84,7 +79,7 @@ export function OrderItemsTable({
                 fontWeight: "600",
               }}
             >
-              {fmt(item.total_price, currency)}
+              {formatPrice(item.total_price, currency)}
             </Text>
           </Column>
         </Row>
@@ -122,7 +117,7 @@ export function OrderItemsTable({
                 margin: "0",
               }}
             >
-              {fmt(totalAmount, currency)}
+              {formatPrice(totalAmount, currency)}
             </Text>
           </Column>
         </Row>

@@ -241,19 +241,19 @@ export default function VendorAdsPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">Jour</p>
                     <p className="text-sm font-semibold">
-                      {formatPrice(space.base_price_daily / 100, "XOF")}
+                      {formatPrice(space.base_price_daily, "XOF")}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Semaine</p>
                     <p className="text-sm font-semibold">
-                      {formatPrice(space.base_price_weekly / 100, "XOF")}
+                      {formatPrice(space.base_price_weekly, "XOF")}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Mois</p>
                     <p className="text-sm font-semibold">
-                      {formatPrice(space.base_price_monthly / 100, "XOF")}
+                      {formatPrice(space.base_price_monthly, "XOF")}
                     </p>
                   </div>
                 </div>
@@ -345,7 +345,7 @@ export default function VendorAdsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {formatPrice(booking.total_price / 100, booking.currency)}
+                      {formatPrice(booking.total_price, booking.currency)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusInfo.variant}>
