@@ -11,14 +11,6 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.convex.cloud",
       },
-      {
-        protocol: "https",
-        hostname: "basic-heron-166.convex.cloud",
-      },
-      {
-        protocol: "https",
-        hostname: "unpkg.com",
-      },
     ],
   },
 

@@ -213,7 +213,7 @@ export const createOrders = internalMutation({
   handler: async (ctx, args) => {
     // ── Récupérer store + customer ─────────────────────────────
     const store = await ctx.db.get(args.storeId);
-    if (!store) throw new Error("Store introuvable");
+    if (!store) throw new Error("Boutique introuvable");
 
     const customer = await ctx.db
       .query("users")

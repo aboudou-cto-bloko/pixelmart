@@ -51,6 +51,14 @@ export const confirmPayment = internalMutation({
       return { alreadyProcessed: true };
     }
 
+    // Valider le montant reçu (protection contre les webhooks falsifiés)
+    if (args.amountPaid < order.total_amount) {
+      throw new Error(
+        `Montant reçu insuffisant pour la commande ${order.order_number} : ` +
+          `${args.amountPaid} centimes reçus, ${order.total_amount} attendus`,
+      );
+    }
+
     // Valider la transition
     assertValidTransition(order.status, "paid");
 

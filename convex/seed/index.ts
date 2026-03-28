@@ -88,7 +88,6 @@ export const seedAll = action({
     if (!siteUrl) throw new Error("SITE_URL non configuré");
 
     // 1. Créer les utilisateurs
-    console.log("[seed] 1/3 Création des utilisateurs...");
     const userResults: Record<string, string> = {};
 
     for (const u of SEED_USERS) {
@@ -107,7 +106,6 @@ export const seedAll = action({
     }
 
     // 2. Créer les boutiques
-    console.log("[seed] 2/3 Création des boutiques...");
     const storeIds: Record<string, Id<"stores"> | null> = {};
 
     for (const s of SEED_STORES) {
@@ -133,7 +131,6 @@ export const seedAll = action({
     }
 
     // 3. Créer les produits avec images uploadées
-    console.log("[seed] 3/3 Création des produits et upload des images...");
     const productResults: Record<string, number> = {};
 
     for (const [storeSlug, products] of Object.entries(SEED_PRODUCTS)) {
@@ -185,7 +182,6 @@ export const seedAll = action({
     }
 
     // 4. Créer les commandes
-    console.log("[seed] 4/4 Création des commandes simulées...");
     const orderResults: Record<string, unknown> = {};
 
     for (const [storeSlug, storeId] of Object.entries(storeIds)) {
@@ -201,7 +197,6 @@ export const seedAll = action({
       }
     }
 
-    console.log("[seed] Terminé ✓");
     return { users: userResults, storeIds, products: productResults, orders: orderResults };
   },
 });

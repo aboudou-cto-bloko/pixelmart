@@ -17,7 +17,8 @@ export const getVendorDashboard = query({
     const allOrders = await ctx.db
       .query("orders")
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
-      .collect();
+      .order("desc")
+      .take(500);
 
     const countByStatus = (status: string) =>
       allOrders.filter((o) => o.status === status).length;
@@ -102,7 +103,7 @@ export const getVendorDashboard = query({
     const allProducts = await ctx.db
       .query("products")
       .withIndex("by_store", (q) => q.eq("store_id", store._id))
-      .collect();
+      .take(500);
 
     const activeProducts = allProducts.filter((p) => p.status === "active");
     const outOfStock = allProducts.filter((p) => p.status === "out_of_stock");
