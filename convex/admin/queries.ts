@@ -684,6 +684,7 @@ export const listOrders = query({
           store_name: store?.name ?? "Boutique inconnue",
           customer_name: customer?.name ?? "Client inconnu",
           customer_email: customer?.email ?? "—",
+          customer_phone: customer?.phone ?? undefined,
           total_amount: order.total_amount,
           commission_amount: order.commission_amount ?? 0,
           currency: order.currency,

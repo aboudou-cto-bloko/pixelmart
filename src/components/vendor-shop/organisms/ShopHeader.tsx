@@ -5,7 +5,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, ShoppingCart, X } from "lucide-react";
+import { Menu, ShoppingCart, ShieldCheck, X } from "lucide-react";
 import { useShopCart } from "../providers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ interface ShopHeaderProps {
   storeName: string;
   storeSlug: string;
   logoUrl: string | null;
+  isVerified?: boolean;
 }
 
 const NAV_ITEMS = [
@@ -22,7 +23,7 @@ const NAV_ITEMS = [
   { label: "Produits", href: "/products" },
 ];
 
-export function ShopHeader({ storeName, storeSlug, logoUrl }: ShopHeaderProps) {
+export function ShopHeader({ storeName, storeSlug, logoUrl, isVerified }: ShopHeaderProps) {
   const { totalItems } = useShopCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const basePath = `/shop/${storeSlug}`;
@@ -52,6 +53,13 @@ export function ShopHeader({ storeName, storeSlug, logoUrl }: ShopHeaderProps) {
             <span className="font-semibold text-base truncate hidden sm:block">
               {storeName}
             </span>
+            {isVerified && (
+              <ShieldCheck
+                className="size-4 shrink-0 hidden sm:block"
+                style={{ color: "var(--shop-primary, #6366f1)" }}
+                aria-label="Boutique vérifiée"
+              />
+            )}
           </Link>
 
           {/* Desktop nav */}
@@ -117,7 +125,15 @@ export function ShopHeader({ storeName, storeSlug, logoUrl }: ShopHeaderProps) {
                         {storeName.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="font-semibold">{storeName}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold">{storeName}</span>
+                      {isVerified && (
+                        <ShieldCheck
+                          className="size-3.5 shrink-0"
+                          style={{ color: "var(--shop-primary, #6366f1)" }}
+                        />
+                      )}
+                    </div>
                   </div>
 
                   {/* Nav items */}

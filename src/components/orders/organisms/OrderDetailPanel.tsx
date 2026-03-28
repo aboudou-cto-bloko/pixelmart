@@ -62,6 +62,7 @@ interface OrderDetail {
     _id: string;
     name: string;
     email: string;
+    phone?: string;
     avatar_url?: string;
   } | null;
   _creationTime: number;
@@ -284,9 +285,12 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       <div className="space-y-2">
         <h3 className="text-sm font-medium">Client</h3>
         {order.customer && (
-          <div className="text-sm">
-            <p>{order.customer.name}</p>
+          <div className="text-sm space-y-0.5">
+            <p className="font-medium">{order.customer.name}</p>
             <p className="text-muted-foreground">{order.customer.email}</p>
+            {order.customer.phone && (
+              <p className="text-muted-foreground">{order.customer.phone}</p>
+            )}
           </div>
         )}
       </div>

@@ -244,10 +244,11 @@ export const createOrder = mutation({
     // 7. Total — tout en XOF centimes
     const totalAmount = Math.max(0, subtotal - discountAmount + shippingAmount);
 
-    // 8. Commission — source : platform_config (fallback : convex/lib/constants.ts)
+    // 8. Commission — calculée sur le sous-total produits uniquement (hors livraison)
+    // Règle métier : les frais de livraison ne font pas partie du CA du vendeur
     const commissionRates = await getEffectiveCommissionRates(ctx);
     const commissionRate = getCommissionRate(store.subscription_tier, commissionRates);
-    const commissionAmount = calculateCommission(totalAmount, commissionRate);
+    const commissionAmount = calculateCommission(subtotal - discountAmount, commissionRate);
 
     // 9. Générer le numéro de commande
     const orderNumber = await generateOrderNumber(ctx);

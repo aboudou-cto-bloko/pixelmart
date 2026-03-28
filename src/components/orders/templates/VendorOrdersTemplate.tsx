@@ -18,6 +18,7 @@ interface OrderRow {
   currency: string;
   customer_name: string;
   customer_email: string;
+  customer_phone?: string;
   _creationTime: number;
   items: Array<{ title: string; quantity: number }>;
 }

@@ -46,6 +46,7 @@ type OrderItem = {
   store_name: string;
   customer_name: string;
   customer_email: string;
+  customer_phone?: string;
   total_amount: number;
   commission_amount: number;
   currency: string;
@@ -254,6 +255,9 @@ export function AdminOrdersTemplate({ orders }: Props) {
                   <TableCell>
                     <div className="text-sm">{order.customer_name}</div>
                     <div className="text-xs text-muted-foreground">{order.customer_email}</div>
+                    {order.customer_phone && (
+                      <div className="text-xs text-muted-foreground">{order.customer_phone}</div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium whitespace-nowrap">
                     {formatPrice(order.total_amount, order.currency)}

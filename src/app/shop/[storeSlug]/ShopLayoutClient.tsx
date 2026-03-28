@@ -74,6 +74,7 @@ export function ShopLayoutClient({
             storeName={config.storeName}
             storeSlug={storeSlug}
             logoUrl={config.logoUrl}
+            isVerified={config.isVerified}
           />
           <main className="flex-1">
             <div className="container mx-auto px-4 py-6">{children}</div>
