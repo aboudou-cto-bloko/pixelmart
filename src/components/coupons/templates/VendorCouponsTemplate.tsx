@@ -134,10 +134,10 @@ function CreateCouponDialog() {
           type === "percentage"
             ? Number(value)
             : type === "fixed_amount"
-              ? Math.round(Number(value) * 100) // XOF saisi en FCFA → centimes (même valeur pour XOF)
+              ? Math.round(Number(value)) // XOF : centimes = valeur FCFA, pas de ×100
               : 0,
         minOrderAmount: minOrder
-          ? Math.round(Number(minOrder) * 100)
+          ? Math.round(Number(minOrder)) // XOF : centimes = valeur FCFA
           : undefined,
         maxUses: maxUses ? Number(maxUses) : undefined,
         maxUsesPerUser: maxUsesPerUser ? Number(maxUsesPerUser) : 1,

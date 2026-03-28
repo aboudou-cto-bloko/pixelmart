@@ -15,10 +15,16 @@ interface PriceInputProps {
 
 /**
  * Input prix.
- * La valeur est TOUJOURS stockée en centimes (plus petite unité), quelle que
- * soit la devise. L'affichage se fait en unités principales (÷100).
- * - XOF/XAF/GNF/CDF/XPF : affiché sans décimales (ex: 150000 centimes → "1500")
- * - EUR/USD...            : affiché avec 2 décimales  (ex: 1050 centimes → "10.50")
+ * La valeur est TOUJOURS stockée en centimes (plus petite unité).
+ *
+ * IMPORTANT — règle XOF/XAF/GNF/CDF :
+ *   Pour ces devises, 1 centime = 1 unité d'affichage (pas de subdivision).
+ *   → L'utilisateur saisit la valeur FCFA directement, aucune conversion ×/÷ 100.
+ *   Exemple : 2 000 FCFA = 2000 centimes (stocké et affiché tel quel).
+ *
+ * Pour EUR/USD... :
+ *   L'utilisateur saisit en unités (€), stocké ×100 en centimes.
+ *   Exemple : 10.50 EUR → 1050 centimes.
  */
 export function PriceInput({
   id,
@@ -29,13 +35,17 @@ export function PriceInput({
   required = false,
   error,
 }: PriceInputProps) {
-  // Devises sans décimales à l'affichage (mais stockées en centimes quand même)
-  const noDecimalCurrencies = ["XOF", "XAF", "GNF", "CDF", "XPF"];
-  const isNoDecimal = noDecimalCurrencies.includes(currency);
+  // Pour XOF et équivalents, centimes = valeur affichée (pas de ÷100)
+  const noSubunitCurrencies = ["XOF", "XAF", "GNF", "CDF", "XPF"];
+  const isNoSubunit = noSubunitCurrencies.includes(currency);
 
-  // Toujours diviser par 100 pour afficher (centimes → unités principales)
+  // XOF : afficher tel quel (pas de ÷100) ; EUR : ÷100 avec 2 décimales
   const displayValue =
-    value !== undefined ? (value / 100).toFixed(isNoDecimal ? 0 : 2) : "";
+    value !== undefined
+      ? isNoSubunit
+        ? String(value)
+        : (value / 100).toFixed(2)
+      : "";
 
   function handleChange(raw: string) {
     if (raw === "") {
@@ -44,8 +54,8 @@ export function PriceInput({
     }
     const num = parseFloat(raw);
     if (isNaN(num)) return;
-    // Toujours multiplier par 100 pour stocker (unités → centimes)
-    onChange(Math.round(num * 100));
+    // XOF : stocker directement (pas de ×100) ; EUR : ×100
+    onChange(isNoSubunit ? Math.round(num) : Math.round(num * 100));
   }
 
   return (
@@ -59,7 +69,7 @@ export function PriceInput({
           id={id}
           type="number"
           min="0"
-          step={isNoDecimal ? "1" : "0.01"}
+          step={isNoSubunit ? "1" : "0.01"}
           value={displayValue}
           onChange={(e) => handleChange(e.target.value)}
           placeholder="0"

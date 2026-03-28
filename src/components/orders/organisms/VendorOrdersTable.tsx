@@ -28,6 +28,7 @@ interface OrderRow {
   currency: string;
   customer_name: string;
   customer_email: string;
+  customer_phone?: string;
   _creationTime: number;
   items: Array<{ title: string; quantity: number }>;
 }
@@ -102,6 +103,11 @@ export function VendorOrdersTable({
                 <p className="text-xs text-muted-foreground truncate">
                   {order.customer_email}
                 </p>
+                {order.customer_phone && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {order.customer_phone}
+                  </p>
+                )}
               </div>
             </TableCell>
             <TableCell>

@@ -27,8 +27,9 @@ function CategoryContent() {
   const maxPriceRaw = searchParams.get("max_price");
   const inStock = searchParams.get("in_stock") === "true" || undefined;
 
-  const minPrice = minPriceRaw ? parseInt(minPriceRaw, 10) * 100 : undefined;
-  const maxPrice = maxPriceRaw ? parseInt(maxPriceRaw, 10) * 100 : undefined;
+  // XOF : centimes = valeur FCFA saisie (pas de ×100)
+  const minPrice = minPriceRaw ? parseInt(minPriceRaw, 10) : undefined;
+  const maxPrice = maxPriceRaw ? parseInt(maxPriceRaw, 10) : undefined;
 
   const products = useQuery(
     api.products.queries.search,

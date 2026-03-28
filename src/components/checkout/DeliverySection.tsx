@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
-import type { GeocodingResult } from "@/lib/geocoding";
+import type { GeocodingResult, Coordinates } from "@/lib/geocoding";
 import type { DeliveryType, PaymentMode } from "@/constants/deliveryTypes";
 import { FEATURES } from "@/constants/features";
 import { AddressAutocomplete } from "./AddressAutocomplete";
@@ -50,6 +50,8 @@ interface DeliverySectionProps {
   onChange: (config: DeliveryConfig) => void;
   /** Erreur sur l'adresse */
   addressError?: string;
+  /** Point de collecte (défaut : entrepôt Pixel-Mart) */
+  collectionPoint?: Coordinates;
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -59,6 +61,7 @@ export function DeliverySection({
   value,
   onChange,
   addressError,
+  collectionPoint,
 }: DeliverySectionProps) {
   // ── Forcer paymentMode à "online" si COD désactivé ──
   useEffect(() => {
@@ -192,6 +195,7 @@ export function DeliverySection({
           selectedAddress={selectedAddress}
           deliveryType={value.deliveryType}
           weightKg={estimatedWeightKg}
+          collectionPoint={collectionPoint}
           onDistanceCalculated={handleDistanceCalculated}
         />
       </CardContent>

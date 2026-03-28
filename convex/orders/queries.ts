@@ -177,6 +177,7 @@ export const listByStore = query({
           ...order,
           customer_name: customer?.name ?? "Utilisateur supprimé",
           customer_email: customer?.email ?? "",
+          customer_phone: customer?.phone ?? undefined,
         };
       }),
     );
@@ -247,6 +248,7 @@ export const getOrderDetail = query({
             _id: customer._id,
             name: customer.name,
             email: customer.email,
+            phone: customer.phone,
             avatar_url: customer.avatar_url,
           }
         : null,

@@ -37,7 +37,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES, ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
-import { calculateDistance, DEFAULT_COLLECTION_POINT } from "@/lib/geocoding";
+import {
+  calculateDistance,
+  DEFAULT_COLLECTION_POINT,
+} from "@/lib/geocoding";
+import type { Coordinates } from "@/lib/geocoding";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 type AddressErrors = Partial<Record<keyof ShippingAddress, string>>;
@@ -79,19 +83,31 @@ export default function ShopCheckoutPage() {
     deliveryLon: undefined,
   });
 
-  // Calcul des distances bi-segment (scénario collecte : PM collecte chez le vendeur)
-  // Scénario C : use_pixelmart_service = true + has_storage_plan = false + coordonnées pickup vendeur disponibles
-  const isPickupScenario =
-    store !== undefined &&
-    store !== null &&
-    store.use_pixelmart_service === true &&
-    !store.has_storage_plan &&
-    store.custom_pickup_lat !== undefined &&
-    store.custom_pickup_lon !== undefined;
+  // ── Delivery service scenarios ──────────────────────────────
+  // A: use_pixelmart_service + has_storage_plan  → products in PM warehouse → DEFAULT_COLLECTION_POINT
+  // B: use_pixelmart_service + no storage plan + custom_pickup → PM collects from vendor → vendor coords
+  // C: !use_pixelmart_service                   → vendor manages own delivery → hide delivery section
+  const usePmService = store?.use_pixelmart_service === true;
+  const hasStoragePlan = store?.has_storage_plan === true;
+  const hasCustomPickup =
+    store?.custom_pickup_lat !== undefined &&
+    store?.custom_pickup_lon !== undefined;
 
+  // Show Pixel-Mart delivery section only when PM service is enabled
+  const showDeliverySection = store === undefined || usePmService;
+
+  // Collection point: vendor pickup in scenario B, PM warehouse otherwise
+  const collectionPoint: Coordinates | undefined =
+    usePmService && !hasStoragePlan && hasCustomPickup && store
+      ? { lat: store.custom_pickup_lat!, lon: store.custom_pickup_lon! }
+      : undefined; // undefined → DeliveryDistanceCalculator uses DEFAULT_COLLECTION_POINT
+
+  // Two-segment distances for storage in the order (scenario B only)
   const twoSegmentDistances = (() => {
     if (
-      !isPickupScenario ||
+      !usePmService ||
+      hasStoragePlan ||
+      !hasCustomPickup ||
       !store ||
       store.custom_pickup_lat === undefined ||
       store.custom_pickup_lon === undefined ||
@@ -305,9 +321,11 @@ export default function ShopCheckoutPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Livraison</span>
                 <span>
-                  {(deliveryConfig.deliveryFee ?? 0) > 0
-                    ? formatPrice(deliveryConfig.deliveryFee ?? 0, "XOF")
-                    : "À définir"}
+                  {!showDeliverySection
+                    ? "Par la boutique"
+                    : (deliveryConfig.deliveryFee ?? 0) > 0
+                      ? formatPrice(deliveryConfig.deliveryFee ?? 0, "XOF")
+                      : "À définir"}
                 </span>
               </div>
               <Separator />
@@ -322,11 +340,23 @@ export default function ShopCheckoutPage() {
         </Card>
 
         {/* Delivery */}
-        {store && (
+        {showDeliverySection ? (
           <DeliverySection
             value={deliveryConfig}
             onChange={setDeliveryConfig}
+            collectionPoint={collectionPoint}
           />
+        ) : (
+          store && (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">
+                  Les frais de livraison sont définis par la boutique et vous
+                  seront communiqués après confirmation de votre commande.
+                </p>
+              </CardContent>
+            </Card>
+          )
         )}
 
         {/* Address */}
