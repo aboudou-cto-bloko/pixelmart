@@ -1053,6 +1053,47 @@ export default defineSchema({
     .index("by_unsettled", ["store_id", "settled_at"]),
 
   // ============================================
+  // STORAGE WITHDRAWALS — Retraits physiques depuis l'entrepôt
+  // ============================================
+  // Flux : pending → approved → processed | cancelled
+  // Pour les vendeurs qui souhaitent récupérer leurs produits stockés.
+  storage_withdrawals: defineTable({
+    store_id: v.id("stores"),
+    request_id: v.id("storage_requests"),
+    product_id: v.optional(v.id("products")),
+
+    // Quantité à retirer
+    quantity: v.number(),
+
+    // Raison / instructions
+    reason: v.optional(v.string()),
+
+    // Statut
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("processed"),
+      v.literal("cancelled"),
+    ),
+
+    // Acteurs
+    requested_by: v.id("users"),
+    processed_by: v.optional(v.id("users")),
+    processed_at: v.optional(v.number()),
+
+    // Notes admin
+    notes: v.optional(v.string()),
+
+    // Timestamps
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_store", ["store_id"])
+    .index("by_request", ["request_id"])
+    .index("by_status", ["status"])
+    .index("by_store_status", ["store_id", "status"]),
+
+  // ============================================
   // DELIVERY RATES — Grille tarifaire (optionnel, peut être en constants)
   // ============================================
   // ============================================

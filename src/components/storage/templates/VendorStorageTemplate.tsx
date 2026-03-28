@@ -27,8 +27,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPrice, formatDate } from "@/lib/format";
-import { Plus, Package, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
-import type { Doc } from "../../../../convex/_generated/dataModel";
+import { Plus, Package, Clock, AlertCircle, CheckCircle2, ArrowDownToLine } from "lucide-react";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 type StorageStatus = Doc<"storage_requests">["status"];
 type StatusFilter = StorageStatus | "all";
@@ -208,6 +208,112 @@ function NewRequestDialog() {
   );
 }
 
+function WithdrawalDialog({ requestId, productName, availableQty }: {
+  requestId: Id<"storage_requests">;
+  productName: string;
+  availableQty: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [quantity, setQuantity] = useState("1");
+  const [reason, setReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const requestWithdrawal = useMutation(api.storage.mutations.requestWithdrawal);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const qty = Number(quantity);
+    if (qty < 1 || qty > availableQty) return;
+    setIsSubmitting(true);
+    try {
+      await requestWithdrawal({
+        request_id: requestId,
+        quantity: qty,
+        reason: reason.trim() || undefined,
+      });
+      setDone(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  function handleClose() {
+    setOpen(false);
+    setDone(false);
+    setQuantity("1");
+    setReason("");
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+          <ArrowDownToLine className="mr-1 h-3 w-3" />
+          Retrait
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Demande de retrait</DialogTitle>
+        </DialogHeader>
+        {done ? (
+          <div className="space-y-4 py-4 text-center">
+            <CheckCircle2 className="mx-auto h-10 w-10 text-green-500" />
+            <p className="text-sm text-muted-foreground">
+              Votre demande de retrait a été soumise. Un agent vous contactera pour organiser la récupération.
+            </p>
+            <Button className="w-full" onClick={handleClose}>Fermer</Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Produit : <span className="font-medium text-foreground">{productName}</span>
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="withdrawQty">
+                Quantité à retirer (max {availableQty})
+              </Label>
+              <Input
+                id="withdrawQty"
+                type="number"
+                min="1"
+                max={availableQty}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="withdrawReason">Raison (optionnel)</Label>
+              <Textarea
+                id="withdrawReason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Ex : retour fournisseur, rupture de commande…"
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || Number(quantity) < 1 || Number(quantity) > availableQty}
+              >
+                {isSubmitting ? "Envoi…" : "Soumettre"}
+              </Button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function MeasureLabel({ request }: { request: StorageRequest }) {
   if (
     request.measurement_type === "units" &&
@@ -273,6 +379,9 @@ function StorageRequestsTable({
           <TableHead className="hidden md:table-cell text-center">
             Cmdes en attente
           </TableHead>
+          <TableHead className="hidden md:table-cell text-center">
+            Actions
+          </TableHead>
           <TableHead className="hidden lg:table-cell text-right">
             Date
           </TableHead>
@@ -320,6 +429,17 @@ function StorageRequestsTable({
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
                   )
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell className="hidden md:table-cell text-center">
+                {req.status === "in_stock" && (req.actual_qty ?? 0) > 0 ? (
+                  <WithdrawalDialog
+                    requestId={req._id as Id<"storage_requests">}
+                    productName={req.product_name}
+                    availableQty={req.actual_qty ?? 0}
+                  />
                 ) : (
                   <span className="text-xs text-muted-foreground">—</span>
                 )}

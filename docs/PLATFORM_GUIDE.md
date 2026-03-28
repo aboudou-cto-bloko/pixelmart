@@ -727,6 +727,43 @@ Le vendeur imprime ou note le code **PM-NNN** et l'appose sur le colis avant de 
 - Montant de dette mensuelle accumulée
 - Historique des règlements
 
+### 8.7 Retrait physique — récupérer des produits stockés
+
+Un vendeur peut demander à récupérer physiquement tout ou partie de ses produits stockés à l'entrepôt (retour fournisseur, liquidation, etc.).
+
+**Flux :**
+```
+[Vendor] Clique "Retrait" sur un article in_stock
+    │
+    ▼
+storage.mutations.requestWithdrawal
+    ├── Vérifie statut in_stock + quantité disponible
+    ├── Vérifie absence de retrait en cours pour cet article
+    └── Insert storage_withdrawals { status: "pending" }
+
+[Admin] Voit la liste des retraits en attente (/admin/storage)
+    ├── "Approuver" → status: "approved" (l'agent prépare les articles)
+    ├── "Marquer remis" → status: "processed" → décrémente actual_qty + warehouse_qty
+    └── "Refuser" → status: "cancelled"
+```
+
+> **Règle F-06 :** Un retrait peut être refusé si la boutique a une facture impayée depuis > 30 jours.
+
+### 8.8 Matrice des scénarios vendeur
+
+Tous les scénarios sont supportés — le vendeur peut activer l'un, l'autre, les deux, ou aucun des services :
+
+| Scénario | `has_storage_plan` | Livraison Pixel-Mart | Comportement |
+|----------|--------------------|---------------------|--------------|
+| **Aucun service** | `false` | Non | Livraison manuelle par le vendeur. Pas d'accès à `/vendor/storage`. Les commandes doivent être traitées et expédiées manuellement. |
+| **Stockage seul** | `true` | Non | Le vendeur stocke ses produits à l'entrepôt, mais organise sa propre livraison. Peut demander des **retraits physiques** depuis l'entrepôt. L'indicateur "Cmdes en attente" reste visible pour opportunités de lot entrepôt. |
+| **Livraison seule** | `false` | Oui | Le vendeur prépare ses commandes depuis ses propres locaux et crée des **lots de livraison standard** (`is_warehouse_batch: false`). Pas d'accès à `/vendor/storage`. |
+| **Stockage + Livraison** | `true` | Oui | Flux complet : stock à l'entrepôt → commandes entrantes → lot entrepôt (`is_warehouse_batch: true`) → agent prépare depuis le stock → livraison. `items[].storage_code` est peuplé automatiquement à la création du lot. |
+
+**Conséquences sur l'inventaire :**
+- Lot entrepôt complété (admin) → `products.warehouse_qty` et `storage_requests.actual_qty` décrémentés automatiquement
+- Retrait physique traité (admin) → idem
+
 ---
 
 ## 9. Dashboard vendeur — Publicités
@@ -926,10 +963,28 @@ storage.mutations.validateRequest
     ├── Insert storage_invoice {status: "unpaid"}
     ├── Si "deferred" → upsert storage_debt mensuelle
     ├── status → "in_stock"
-    ├── Si product_id lié → product.quantity += actual_qty
+    ├── Si product_id lié → product.quantity += actual_qty + product.warehouse_qty += actual_qty
     ├── Email vendor "Stockage validé"
     └── Email vendor "Facture générée — NNN FCFA"
 ```
+
+### 11.4 Onglet "Expéditions" — Lots entrepôt à préparer
+
+Quand un vendeur qui utilise **à la fois** le stockage et la livraison crée un lot `is_warehouse_batch: true`, ce lot apparaît dans l'onglet "Expéditions" de l'agent.
+
+**Ce que l'agent voit :**
+- Tous les lots entrepôt avec statut `transmitted`, `assigned` ou `in_progress`
+- Codes de stockage (PM-NNN) des articles à prélever
+- Détail par commande : articles, montant, mode de paiement (COD badge)
+- Nom de la boutique
+
+**Ce que l'agent fait :**
+1. Prélève les articles au code PM-NNN indiqué
+2. Prépare les colis pour livraison
+3. L'admin passe le lot en `in_progress` puis `completed`
+4. À la complétion : `products.warehouse_qty` et `storage_requests.actual_qty` sont décrémentés automatiquement
+
+> **Dépendance :** Les `items[].storage_code` sont peuplés automatiquement par `createBatch` quand `isWarehouseBatch: true`, en faisant correspondre `product_id → storage_code` via les `storage_requests in_stock`.
 
 ---
 
@@ -1058,14 +1113,19 @@ Liste des retraits en attente (`status: "pending"`), triés du plus ancien au pl
 
 ### 12.7 Stockage — `/admin/storage`
 
-Vue de tous les colis en statut `received` (réceptionnés par l'agent, en attente de validation admin).
+Vue de tous les colis en statut `received` (réceptionnés par l'agent, en attente de validation admin), **et** des retraits physiques en attente.
 
-**Pour chaque colis :**
+**Section "Validation des dépôts" :**
 - Code PM, boutique, produit, quantité/poids mesurés par l'agent
 - Notes de l'agent
 - Boutons : Valider (choisir mode paiement) ou Rejeter (avec raison)
 
-> **Dépendance :** La validation par l'admin est le déclencheur de la facture. C'est à ce moment que la tarification est calculée et que `product.quantity` est mis à jour si le colis est lié à un produit catalogue.
+**Section "Retraits en attente" :** (apparaît si des retraits sont en cours)
+- Boutique, produit, code PM, quantité demandée, raison
+- Bouton "Traiter" → dialog : Approuver / Marquer remis / Refuser
+- "Marquer remis" décrémente `storage_requests.actual_qty` et `products.warehouse_qty`
+
+> **Dépendance :** La validation par l'admin est le déclencheur de la facture. C'est à ce moment que la tarification est calculée et que `product.quantity` et `product.warehouse_qty` sont mis à jour si le colis est lié à un produit catalogue.
 
 ### 12.8 Rapports — `/admin/reports`
 
@@ -1104,7 +1164,32 @@ Arbre de catégories à 2 niveaux (racine + sous-catégorie). L'admin (ou market
 
 > **Dépendance :** Sans catégories actives, les vendeurs ne peuvent pas créer de produits (le champ `category_id` est obligatoire). La création de catégories est donc un prérequis au lancement.
 
-### 12.11 Tarifs livraison — `/admin/delivery`
+### 12.11 Livraison — `/admin/delivery`
+
+Interface à deux onglets :
+
+**Onglet "Lots de livraison" (badge rouge si lots transmis en attente) :**
+
+KPIs : Transmis · Assignés · En cours · Complétés aujourd'hui · Total frais
+
+Tableau des lots avec :
+- Numéro lot, boutique, zone, nb commandes, frais, statut
+- Badge "Entrepôt" (icône entrepôt, fond teal) pour les lots `is_warehouse_batch: true`
+- Actions selon statut : Assigner → En cours → Compléter (ou Annuler)
+- Sheet latérale "Détail" avec liste des commandes + total COD
+
+**Transitions gérées par `admin.mutations.updateBatchStatus` :**
+```
+transmitted → assigned → in_progress → completed
+              └──────────────────────────────▶ cancelled (depuis 3 premiers états)
+```
+Chaque transition est loggée dans `platform_events` (audit trail).
+
+À la complétion d'un lot **entrepôt** :
+- `products.warehouse_qty` décrémenté pour chaque produit livré
+- `storage_requests.actual_qty` décrémenté en conséquence
+
+**Onglet "Tarifs" :**
 
 Grille tarifaire complète configurée par admin/logistique.
 
@@ -1197,10 +1282,36 @@ requested → approved → received → refunded
 
 ```
 pending → transmitted → assigned → in_progress → completed
-        → cancelled
+        └─────────────────────────────────────▶ cancelled
 ```
 
-### 13.6 Réservations publicitaires
+| Statut | Qui | Action |
+|--------|-----|--------|
+| `pending` | Vendor | Lot créé |
+| `transmitted` | Vendor | Lot soumis à l'admin |
+| `assigned` | Admin | Livreur désigné |
+| `in_progress` | Admin | Livraison en cours |
+| `completed` | Admin | Livraison terminée · Si lot entrepôt : inventaire décrémenté |
+| `cancelled` | Vendor / Admin | Annulation (depuis 3 premiers états) |
+
+**Lot entrepôt** (`is_warehouse_batch: true`) : les `items[].storage_code` sont peuplés à la création du lot. À la complétion, `products.warehouse_qty` et `storage_requests.actual_qty` sont décrémentés.
+
+### 13.6 Retraits de stock (storage_withdrawals)
+
+```
+pending → approved → processed
+        └─────────▶ cancelled
+approved ──────────▶ cancelled
+```
+
+| Statut | Qui | Action |
+|--------|-----|--------|
+| `pending` | Vendor | Demande soumise depuis `/vendor/storage` |
+| `approved` | Admin | Retrait autorisé, agent prépare |
+| `processed` | Admin | Articles remis physiquement · décrémente actual_qty + warehouse_qty |
+| `cancelled` | Admin | Retrait refusé |
+
+### 13.8 Réservations publicitaires
 
 ```
 pending → confirmed → active → completed
@@ -1208,7 +1319,7 @@ pending → confirmed → active → completed
 queued  → (libération d'un slot) → pending → ...
 ```
 
-### 13.7 Avis clients
+### 13.9 Avis clients
 
 ```
 is_published: false (< 24h)

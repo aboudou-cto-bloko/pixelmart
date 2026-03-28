@@ -581,6 +581,50 @@ export const updateBatchStatus = mutation({
 
     await ctx.db.patch(args.batchId, patch);
 
+    // Pour les lots entrepôt complétés : décrémenter l'inventaire entrepôt
+    if (args.status === "completed" && batch.is_warehouse_batch) {
+      // Agréger la quantité livrée par produit
+      const qtyByProductId = new Map<string, number>();
+      for (const orderId of batch.order_ids) {
+        const order = await ctx.db.get(orderId);
+        if (!order) continue;
+        for (const item of order.items) {
+          if (!item.storage_code) continue; // pas un article entrepôt
+          const key = item.product_id.toString();
+          qtyByProductId.set(key, (qtyByProductId.get(key) ?? 0) + item.quantity);
+        }
+      }
+
+      // Récupérer toutes les demandes en stock pour ce lot (une seule requête)
+      const inStockReqs = await ctx.db
+        .query("storage_requests")
+        .withIndex("by_store_status", (q) =>
+          q.eq("store_id", batch.store_id).eq("status", "in_stock"),
+        )
+        .collect();
+
+      // Décrémenter products.warehouse_qty + storage_requests.actual_qty
+      for (const [productIdStr, qty] of qtyByProductId) {
+        const req = inStockReqs.find((r) => r.product_id?.toString() === productIdStr);
+        if (!req) continue;
+
+        await ctx.db.patch(req._id, {
+          actual_qty: Math.max(0, (req.actual_qty ?? 0) - qty),
+          updated_at: now,
+        });
+
+        if (req.product_id) {
+          const product = await ctx.db.get(req.product_id);
+          if (product) {
+            await ctx.db.patch(req.product_id, {
+              warehouse_qty: Math.max(0, (product.warehouse_qty ?? 0) - qty),
+              updated_at: now,
+            });
+          }
+        }
+      }
+    }
+
     await logEvent(ctx, user._id, user.name, "batch_status_updated", {
       target_type: "delivery_batches",
       target_id: args.batchId,

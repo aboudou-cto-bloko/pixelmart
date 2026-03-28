@@ -608,3 +608,139 @@ export const settleDebtFromPayout = internalMutation({
     return { deductedAmount: totalDeducted };
   },
 });
+
+// ─── Withdrawal — Demande de retrait physique (Vendor) ────────
+
+/**
+ * Vendor demande à récupérer physiquement des produits stockés à l'entrepôt.
+ * Uniquement possible pour les demandes in_stock.
+ */
+export const requestWithdrawal = mutation({
+  args: {
+    request_id: v.id("storage_requests"),
+    quantity: v.number(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { user, store } = await getVendorStore(ctx);
+
+    if (args.quantity < 1) {
+      throw new ConvexError("La quantité doit être au moins 1");
+    }
+
+    const storageRequest = await ctx.db.get(args.request_id);
+    if (!storageRequest) throw new ConvexError("Demande de stockage introuvable");
+    if (storageRequest.store_id !== store._id) {
+      throw new ConvexError("Cette demande n'appartient pas à votre boutique");
+    }
+    if (storageRequest.status !== "in_stock") {
+      throw new ConvexError("Seuls les articles en stock peuvent faire l'objet d'un retrait");
+    }
+
+    // Vérifier qu'il n'y a pas déjà un retrait en cours pour cette demande
+    const existingPending = await ctx.db
+      .query("storage_withdrawals")
+      .withIndex("by_store_status", (q) =>
+        q.eq("store_id", store._id).eq("status", "pending"),
+      )
+      .collect();
+    const duplicate = existingPending.find((w) => w.request_id === args.request_id);
+    if (duplicate) {
+      throw new ConvexError("Un retrait est déjà en cours pour cet article");
+    }
+
+    // Vérifier la quantité disponible
+    const availableQty = storageRequest.actual_qty ?? 0;
+    if (args.quantity > availableQty) {
+      throw new ConvexError(
+        `Quantité demandée (${args.quantity}) supérieure au stock disponible (${availableQty})`,
+      );
+    }
+
+    const now = Date.now();
+    const withdrawalId = await ctx.db.insert("storage_withdrawals", {
+      store_id: store._id,
+      request_id: args.request_id,
+      product_id: storageRequest.product_id,
+      quantity: args.quantity,
+      reason: args.reason,
+      status: "pending",
+      requested_by: user._id,
+      created_at: now,
+      updated_at: now,
+    });
+
+    return { withdrawalId };
+  },
+});
+
+// ─── Withdrawal — Traitement (Admin / Agent) ──────────────────
+
+/**
+ * Admin ou agent traite une demande de retrait.
+ * approved = retrait autorisé, l'agent peut préparer les articles
+ * processed = articles remis au vendeur, inventaire décrémenté
+ * cancelled = retrait refusé
+ */
+export const processWithdrawal = mutation({
+  args: {
+    withdrawalId: v.id("storage_withdrawals"),
+    status: v.union(
+      v.literal("approved"),
+      v.literal("processed"),
+      v.literal("cancelled"),
+    ),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireAdmin(ctx);
+
+    const withdrawal = await ctx.db.get(args.withdrawalId);
+    if (!withdrawal) throw new ConvexError("Demande de retrait introuvable");
+
+    // Transitions autorisées : pending → approved | cancelled, approved → processed | cancelled
+    const allowed: Record<string, string[]> = {
+      pending: ["approved", "cancelled"],
+      approved: ["processed", "cancelled"],
+    };
+    if (!allowed[withdrawal.status]?.includes(args.status)) {
+      throw new ConvexError(
+        `Transition ${withdrawal.status} → ${args.status} non autorisée`,
+      );
+    }
+
+    const now = Date.now();
+
+    await ctx.db.patch(args.withdrawalId, {
+      status: args.status,
+      processed_by: actor._id,
+      processed_at: args.status === "processed" ? now : undefined,
+      notes: args.notes,
+      updated_at: now,
+    });
+
+    // Quand l'article est effectivement remis : décrémenter le stock
+    if (args.status === "processed") {
+      const storageReq = await ctx.db.get(withdrawal.request_id);
+      if (storageReq) {
+        const newQty = Math.max(0, (storageReq.actual_qty ?? 0) - withdrawal.quantity);
+        await ctx.db.patch(withdrawal.request_id, {
+          actual_qty: newQty,
+          updated_at: now,
+        });
+
+        if (withdrawal.product_id) {
+          const product = await ctx.db.get(withdrawal.product_id);
+          if (product) {
+            await ctx.db.patch(withdrawal.product_id, {
+              warehouse_qty: Math.max(0, (product.warehouse_qty ?? 0) - withdrawal.quantity),
+              updated_at: now,
+            });
+          }
+        }
+      }
+    }
+
+    return { success: true };
+  },
+});
