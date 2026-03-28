@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatPrice } from "@/lib/format";
 
 interface ChartDataPoint {
   date: string;
@@ -27,10 +28,16 @@ interface RevenueChartProps {
   currency: string;
 }
 
-function formatTick(centimes: number): string {
-  if (centimes >= 100_000_00) return `${(centimes / 100_000_00).toFixed(0)}M`;
-  if (centimes >= 1_000_00) return `${(centimes / 1_000_00).toFixed(0)}k`;
-  return `${(centimes / 100).toFixed(0)}`;
+const NO_DECIMAL_CHART = ["XOF", "XAF", "GNF", "CDF"];
+
+function makeFormatTick(currency: string) {
+  return (centimes: number): string => {
+    // Pour XOF/XAF/GNF/CDF : centimes = valeur directe (pas de ÷100)
+    const value = NO_DECIMAL_CHART.includes(currency) ? centimes : centimes / 100;
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+    return `${value.toFixed(0)}`;
+  };
 }
 
 export function RevenueChart({ data, isLoading, currency }: RevenueChartProps) {
@@ -83,7 +90,7 @@ export function RevenueChart({ data, isLoading, currency }: RevenueChartProps) {
           className="text-xs text-muted-foreground"
           tickLine={false}
           axisLine={false}
-          tickFormatter={formatTick}
+          tickFormatter={makeFormatTick(currency)}
         />
         <Tooltip
           contentStyle={{
@@ -93,19 +100,12 @@ export function RevenueChart({ data, isLoading, currency }: RevenueChartProps) {
             fontSize: "12px",
           }}
           formatter={(value: number, name: string) => {
-            const formatted = new Intl.NumberFormat("fr-FR", {
-              style: "currency",
-              currency,
-              minimumFractionDigits: currency === "XOF" ? 0 : 2,
-              maximumFractionDigits: currency === "XOF" ? 0 : 2,
-            }).format(value / 100);
-
             const labels: Record<string, string> = {
               revenue: "Revenus",
               net: "Net",
               commissions: "Commissions",
             };
-            return [formatted, labels[name] ?? name];
+            return [formatPrice(value, currency), labels[name] ?? name];
           }}
         />
         <Area

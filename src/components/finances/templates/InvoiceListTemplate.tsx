@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Download } from "lucide-react";
 import { OrderStatusBadge } from "@/components/orders/atoms/OrderStatusBadge";
+import { formatPrice } from "@/lib/format";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 
 type OrderStatus = Doc<"orders">["status"];
@@ -37,14 +38,6 @@ interface InvoiceListTemplateProps {
   isGenerating?: string;
 }
 
-function formatAmount(centimes: number, currency: string): string {
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: currency === "XOF" ? 0 : 2,
-    maximumFractionDigits: currency === "XOF" ? 0 : 2,
-  }).format(centimes / 100);
-}
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("fr-FR", {
@@ -125,7 +118,7 @@ export function InvoiceListTemplate({
                   <OrderStatusBadge status={inv.status} />
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums text-sm">
-                  {formatAmount(inv.totalAmount, inv.currency)}
+                  {formatPrice(inv.totalAmount, inv.currency)}
                 </TableCell>
                 <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
                   {formatDate(inv.createdAt)}

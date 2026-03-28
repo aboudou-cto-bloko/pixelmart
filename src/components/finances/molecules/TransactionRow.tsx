@@ -5,6 +5,7 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { TransactionBadge } from "../atoms/TransactionBadge";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/format";
 
 type TransactionType =
   | "sale"
@@ -28,15 +29,6 @@ interface TransactionRowProps {
   createdAt: number;
 }
 
-function formatAmount(centimes: number, currency: string): string {
-  const value = centimes / 100;
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: currency === "XOF" ? 0 : 2,
-    maximumFractionDigits: currency === "XOF" ? 0 : 2,
-  }).format(value);
-}
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("fr-FR", {
@@ -78,7 +70,7 @@ export function TransactionRow({
         )}
       >
         {isCredit ? "+" : "-"}
-        {formatAmount(amount, currency)}
+        {formatPrice(amount, currency)}
       </TableCell>
       <TableCell className="hidden sm:table-cell text-xs text-muted-foreground">
         {formatDate(createdAt)}

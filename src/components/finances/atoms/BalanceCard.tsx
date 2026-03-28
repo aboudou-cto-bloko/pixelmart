@@ -4,6 +4,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/format";
 import type { LucideIcon } from "lucide-react";
 
 interface BalanceCardProps {
@@ -16,15 +17,6 @@ interface BalanceCardProps {
   className?: string;
 }
 
-function formatAmount(centimes: number, currency: string): string {
-  const amount = centimes / 100;
-  return new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: currency === "XOF" ? 0 : 2,
-    maximumFractionDigits: currency === "XOF" ? 0 : 2,
-  }).format(amount);
-}
 
 export function BalanceCard({
   title,
@@ -45,7 +37,7 @@ export function BalanceCard({
           <Icon className="h-4 w-4 text-muted-foreground" />
         </div>
         <p className="mt-2 text-xl font-bold tracking-tight sm:text-2xl tabular-nums">
-          {formatAmount(amount, currency)}
+          {formatPrice(amount, currency)}
         </p>
         {(trend !== undefined || subtitle) && (
           <div className="mt-1 flex items-center gap-1.5">
