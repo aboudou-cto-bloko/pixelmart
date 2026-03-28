@@ -247,6 +247,41 @@ export const getFeaturedStores = query({
 });
 
 /**
+ * Récupère la configuration de livraison pour une liste de boutiques.
+ * Utilisé par le checkout multi-boutique.
+ */
+export const getDeliveryConfigBatch = query({
+  args: {
+    storeIds: v.array(v.id("stores")),
+  },
+  handler: async (ctx, args) => {
+    const stores = await Promise.all(
+      args.storeIds.map((id) => ctx.db.get(id)),
+    );
+    return stores.reduce(
+      (acc, store) => {
+        if (store) {
+          acc[store._id] = {
+            use_pixelmart_service: store.use_pixelmart_service ?? true,
+            custom_pickup_lat: store.custom_pickup_lat,
+            custom_pickup_lon: store.custom_pickup_lon,
+          };
+        }
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          use_pixelmart_service: boolean;
+          custom_pickup_lat?: number;
+          custom_pickup_lon?: number;
+        }
+      >,
+    );
+  },
+});
+
+/**
  * Liste toutes les boutiques appartenant au vendor connecté.
  */
 export const listMyStores = query({

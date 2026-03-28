@@ -2,7 +2,8 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
+import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,14 +70,16 @@ const PAYMENT_METHOD_LABELS: Record<
 
 function PayButton({ invoiceId }: { invoiceId: string }) {
   const [loading, setLoading] = useState(false);
-  const payInvoice = useMutation(api.storage.mutations.payInvoice);
+  const initiateInvoicePayment = useAction(api.storage.actions.initiateInvoicePayment);
 
   async function handlePay() {
     setLoading(true);
     try {
-      await payInvoice({ invoice_id: invoiceId as Id<"storage_invoices"> });
+      const result = await initiateInvoicePayment({ invoiceId: invoiceId as Id<"storage_invoices"> });
+      window.location.href = result.checkoutUrl;
     } catch (err) {
       console.error(err);
+      toast.error(err instanceof Error ? err.message : "Erreur lors du paiement");
     } finally {
       setLoading(false);
     }
@@ -164,10 +167,9 @@ function InvoicesTable({
                 })}
               </TableCell>
               <TableCell className="text-right">
-                {inv.status === "unpaid" &&
-                  inv.payment_method === "immediate" && (
-                    <PayButton invoiceId={inv._id} />
-                  )}
+                {inv.status === "unpaid" && (
+                  <PayButton invoiceId={inv._id} />
+                )}
               </TableCell>
             </TableRow>
           );

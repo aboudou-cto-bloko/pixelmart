@@ -14,6 +14,7 @@ interface OrderRow {
   _id: string;
   order_number: string;
   status: OrderStatus;
+  payment_status?: string;
   total_amount: number;
   currency: string;
   customer_name: string;

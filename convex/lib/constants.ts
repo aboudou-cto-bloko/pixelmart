@@ -34,30 +34,32 @@ export const ORDER_NUMBER_PREFIX = "PM";
 export const STORAGE_CODE_PREFIX = "PM";
 
 /**
- * Tarifs de stockage — centimes XOF.
+ * Tarifs de stockage — valeurs XOF.
+ *
+ * Pour XOF : centimes = valeur FCFA (pas de ÷100).
  *
  * Palier unités :
- *   ≤ 50 unités  → 100 XOF/unité (10 000 centimes)
- *   > 50 unités  →  60 XOF/unité  ( 6 000 centimes)
+ *   ≤ 50 unités  → 100 XOF/unité
+ *   > 50 unités  →  60 XOF/unité
  *
  * Palier poids :
  *    0–5 kg      → inclus dans le palier unités (ou gratuit si uniquement du poids)
- *   5–25 kg      → 5 000 XOF forfait (500 000 centimes)
+ *   5–25 kg      → 5 000 XOF forfait
  *   > 25 kg      → 5 000 XOF + 250 XOF/kg supplémentaire au-dessus de 25 kg
  */
 export const STORAGE_FEES = {
   /** 100 XOF par unité (≤ 50 unités) */
-  PER_UNIT: 10_000,
+  PER_UNIT: 100,
   /** 60 XOF par unité (> 50 unités) */
-  PER_UNIT_BULK: 6_000,
+  PER_UNIT_BULK: 60,
   /** Seuil de basculement vers le tarif bulk */
   BULK_THRESHOLD_UNITS: 50,
   /** Forfait 5–25 kg : 5 000 XOF */
-  MEDIUM_KG_FLAT: 500_000,
+  MEDIUM_KG_FLAT: 5_000,
   /** Base > 25 kg : 5 000 XOF */
-  HEAVY_BASE: 500_000,
+  HEAVY_BASE: 5_000,
   /** Surcoût > 25 kg : 250 XOF par kg supplémentaire */
-  HEAVY_PER_KG: 25_000,
+  HEAVY_PER_KG: 250,
   /** Seuil medium/heavy en kg */
   MEDIUM_MAX_KG: 25,
   /** Seuil free/medium en kg */

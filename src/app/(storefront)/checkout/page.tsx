@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { setPaymentQueue } from "@/lib/payment-queue";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -66,12 +66,14 @@ function StoreOrderCard({
   store,
   coupon,
   deliveryFee,
+  isPmStore,
   onCouponApply,
   onCouponRemove,
 }: {
   store: CartStore;
   coupon: StoreCoupon | null;
   deliveryFee: number;
+  isPmStore?: boolean;
   onCouponApply: (code: string, discount: number) => void;
   onCouponRemove: () => void;
 }) {
@@ -166,7 +168,11 @@ function StoreOrderCard({
           <div className="flex justify-between">
             <span className="text-muted-foreground">Livraison</span>
             <span>
-              {deliveryFee > 0 ? formatPrice(deliveryFee, "XOF") : "À définir"}
+              {isPmStore === false
+                ? "Par la boutique"
+                : deliveryFee > 0
+                  ? formatPrice(deliveryFee, "XOF")
+                  : "À définir"}
             </span>
           </div>
           <Separator />
@@ -190,6 +196,19 @@ export default function CheckoutPage() {
   const { stores, totalItems, clearStore } = useCart();
   const createOrder = useMutation(api.orders.mutations.createOrder);
   const initializePayment = useAction(api.payments.moneroo.initializePayment);
+
+  // ── Per-store delivery config ──
+  const storeIds = stores.map((s) => s.storeId as Id<"stores">);
+  const storeDeliveryConfigs = useQuery(
+    api.stores.queries.getDeliveryConfigBatch,
+    storeIds.length > 0 ? { storeIds } : "skip",
+  );
+
+  // Show DeliverySection if at least one store uses PM service OR configs not loaded yet
+  const anyPmStore = storeIds.some(
+    (id) => storeDeliveryConfigs?.[id]?.use_pixelmart_service !== false,
+  );
+  const showDeliverySection = !storeDeliveryConfigs || anyPmStore;
 
   // ── State ──
   const [address, setAddress] = useState<ShippingAddress>(() => ({
@@ -270,9 +289,11 @@ export default function CheckoutPage() {
   }, [stores, storeCoupons, deliveryFee]);
 
   // ── Validation ──
+  // If no PM store requires delivery, address validation is skipped
   const isDeliveryAddressValid =
-    deliveryConfig.deliveryLat !== undefined &&
-    deliveryConfig.deliveryLon !== undefined;
+    !showDeliverySection ||
+    (deliveryConfig.deliveryLat !== undefined &&
+      deliveryConfig.deliveryLon !== undefined);
 
   // ── Submit ──
   async function handleSubmit() {
@@ -289,8 +310,8 @@ export default function CheckoutPage() {
     }
     setAddressErrors(null);
 
-    // Valider l'adresse de livraison (coordonnées GPS requises)
-    if (!isDeliveryAddressValid) {
+    // Valider l'adresse de livraison (coordonnées GPS requises — seulement si PM service)
+    if (showDeliverySection && !isDeliveryAddressValid) {
       setDeliveryAddressError(
         "Veuillez sélectionner une adresse de livraison valide",
       );
@@ -307,6 +328,8 @@ export default function CheckoutPage() {
       // 1. Créer toutes les commandes
       for (const store of stores) {
         const coupon = storeCoupons[store.storeId];
+        const storePmService =
+          storeDeliveryConfigs?.[store.storeId]?.use_pixelmart_service !== false;
 
         const result = await createOrder({
           storeId: store.storeId,
@@ -332,8 +355,10 @@ export default function CheckoutPage() {
           // ── Champs delivery OpenStreetMap ──
           deliveryLat: deliveryConfig.deliveryLat,
           deliveryLon: deliveryConfig.deliveryLon,
-          deliveryDistanceKm: deliveryConfig.deliveryDistanceKm,
-          deliveryFee: deliveryConfig.deliveryFee,
+          deliveryDistanceKm: storePmService
+            ? deliveryConfig.deliveryDistanceKm
+            : undefined,
+          deliveryFee: storePmService ? deliveryConfig.deliveryFee : 0,
           deliveryType: deliveryConfig.deliveryType,
           paymentMode: deliveryConfig.paymentMode,
         });
@@ -452,12 +477,22 @@ export default function CheckoutPage() {
           </Card>
 
           {/* 2. Options de livraison (avec AddressAutocomplete OSM) */}
-          <DeliverySection
-            estimatedWeightKg={0}
-            value={deliveryConfig}
-            onChange={handleDeliveryConfigChange}
-            addressError={deliveryAddressError ?? undefined}
-          />
+          {showDeliverySection ? (
+            <DeliverySection
+              estimatedWeightKg={0}
+              value={deliveryConfig}
+              onChange={handleDeliveryConfigChange}
+              addressError={deliveryAddressError ?? undefined}
+            />
+          ) : (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">
+                  Les frais de livraison sont gérés par chaque boutique.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* 3. Notes */}
           <Card>
@@ -486,18 +521,23 @@ export default function CheckoutPage() {
 
         {/* Right — Order Summary */}
         <div className="lg:col-span-2 space-y-6">
-          {stores.map((store) => (
-            <StoreOrderCard
-              key={store.storeId}
-              store={store}
-              coupon={storeCoupons[store.storeId] ?? null}
-              deliveryFee={stores.length === 1 ? deliveryFee : 0}
-              onCouponApply={(code, discount) =>
-                handleCouponApply(store.storeId, code, discount)
-              }
-              onCouponRemove={() => handleCouponRemove(store.storeId)}
-            />
-          ))}
+          {stores.map((store) => {
+            const isPm =
+              storeDeliveryConfigs?.[store.storeId]?.use_pixelmart_service !== false;
+            return (
+              <StoreOrderCard
+                key={store.storeId}
+                store={store}
+                coupon={storeCoupons[store.storeId] ?? null}
+                deliveryFee={stores.length === 1 && isPm ? deliveryFee : 0}
+                isPmStore={isPm}
+                onCouponApply={(code, discount) =>
+                  handleCouponApply(store.storeId, code, discount)
+                }
+                onCouponRemove={() => handleCouponRemove(store.storeId)}
+              />
+            );
+          })}
 
           {/* Multi-store delivery fee notice */}
           {stores.length > 1 && deliveryFee > 0 && (

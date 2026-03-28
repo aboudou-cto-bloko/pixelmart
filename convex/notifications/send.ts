@@ -17,6 +17,7 @@ import StorageValidated from "../../emails/StorageValidated";
 import StorageRejected from "../../emails/StorageRejected";
 import StorageInvoiceCreated from "../../emails/StorageInvoiceCreated";
 import StorageDebtDeducted from "../../emails/StorageDebtDeducted";
+import StorageInvoicePaid from "../../emails/StorageInvoicePaid";
 
 const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
@@ -278,6 +279,43 @@ export const notifyNewOrderInApp = internalAction({
       userId: args.vendorUserId,
       title: "Nouvelle commande",
       body: `${args.customerName} — ${args.orderNumber} (${formatted})`,
+      url: "/vendor/orders",
+    });
+  },
+});
+
+// ─── Payment Failed → Vendor (in-app + push) ─────────────────
+
+export const notifyPaymentFailed = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    customerName: v.string(),
+    orderNumber: v.string(),
+    storeName: v.string(),
+    totalAmount: v.number(),
+    currency: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const formatted = formatAmountText(args.totalAmount, args.currency);
+
+    // In-app → vendor
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "order_new",
+      title: "Paiement échoué",
+      body: `${args.customerName} — ${args.orderNumber} (${formatted}) — paiement non abouti`,
+      link: "/vendor/orders",
+      channels: ["in_app", "push"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
+    // Push → vendor
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Paiement échoué",
+      body: `Commande ${args.orderNumber} de ${args.customerName} — paiement non abouti`,
       url: "/vendor/orders",
     });
   },
@@ -707,29 +745,55 @@ export const notifyStorageInvoiceCreated = internalAction({
   },
 });
 
-// ─── Storage: Invoice Paid (in-app only) → Vendor ────────────────────────
+// ─── Storage: Invoice Paid (in-app + push + email) → Vendor ──────────────
 
 export const notifyStorageInvoicePaid = internalAction({
   args: {
     vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
     amount: v.number(),
     currency: v.string(),
+    storageCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const fmtAmt = formatAmountText(args.amount, args.currency);
 
+    // 1. In-app
     await ctx.runMutation(internal.notifications.mutations.create, {
       userId: args.vendorUserId,
       type: "storage_invoice",
       title: "Facture de stockage réglée",
       body: `Votre facture de ${fmtAmt} a été confirmée`,
       link: "/vendor/billing",
-      channels: ["in_app"],
+      channels: ["in_app", "push", "email"],
       sentVia: ["in_app"],
       metadata: undefined,
     });
 
-    // Push notification
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        StorageInvoicePaid({
+          vendorName: args.vendorName,
+          amount: args.amount,
+          currency: args.currency,
+          storageCode: args.storageCode,
+        }),
+      );
+
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Facture de stockage réglée — ${fmtAmt}`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] StorageInvoicePaid email failed:", error);
+    }
+
+    // 3. Push notification
     await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
       userId: args.vendorUserId,
       title: "Facture de stockage réglée",

@@ -24,6 +24,7 @@ interface OrderRow {
   _id: string;
   order_number: string;
   status: OrderStatus;
+  payment_status?: string;
   total_amount: number;
   currency: string;
   customer_name: string;
@@ -111,7 +112,12 @@ export function VendorOrdersTable({
               </div>
             </TableCell>
             <TableCell>
-              <OrderStatusBadge status={order.status} />
+              <div className="flex flex-col gap-1">
+                <OrderStatusBadge status={order.status} />
+                {order.payment_status === "failed" && (
+                  <span className="text-[10px] text-destructive font-medium">Paiement échoué</span>
+                )}
+              </div>
             </TableCell>
             <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
               {order.items.length} article{order.items.length > 1 ? "s" : ""}
