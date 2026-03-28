@@ -226,7 +226,7 @@ DB / Convex      → centimes (integer)
 Moneroo send     → centimesToMonerooAmount(centimes, currency)   // XOF: no conversion; EUR: ÷100
 Moneroo receive  → monerooAmountToCentimes(amount, currency)     // XOF: no conversion; EUR: ×100
 Display          → formatPrice(centimes, "XOF") → "1 500 FCFA"  (NO division for XOF)
-Email templates  → pre-formatted strings passed as props
+Email templates  → import { formatPrice } from "@/lib/format" — format inside template
 Commission       → total_amount × commission_rate / 10_000
 ```
 
@@ -272,24 +272,25 @@ export const notifyXxx = internalAction({
 
 **Notification types** (schema `notifications.type` field):
 
-| Type | Audience | Email | Push | Dispatcher |
-|------|----------|-------|------|-----------|
-| `order_new` | Vendor | ✅ | ✅ | `notifyNewOrderInApp` |
-| `order_status` | Customer | ✅ | ✅ | `notifyOrderStatusInApp` |
-| `low_stock` | Vendor | ✅ | ✅ | `notifyLowStock` |
-| `payment` | Vendor | ✅ | ✅ | `notifyPayoutCompleted` |
-| `new_review` | Vendor | ✅ | ✅ | `notifyNewReview` |
-| `return_status` | Vendor + Customer | ✅ | ✅ | `notifyReturnStatus` |
-| `question` | Vendor | ❌ | ✅ | `notifyNewQuestion` |
-| `question_answered` | Customer | ❌ | ✅ | `notifyQuestionAnswered` |
-| `review_replied` | Customer | ❌ | ✅ | `notifyReviewReplied` |
+| Type | Audience | Email | Push | Trigger / Dispatcher |
+|------|----------|-------|------|---------------------|
+| `order_new` | Vendor | ✅ | ✅ | `payment.success` → `notifyNewOrderInApp` |
+| `order_status` | Customer | ✅ | ✅ | payment confirmed, shipped, delivered, cancelled, expired → `notifyOrderStatusInApp` / `createInAppNotification` |
+| `low_stock` | Vendor | ✅ | ✅ | `checkLowStock` cron → `notifyLowStock` |
+| `payment` | Vendor | ✅ | ✅ | payout completed → `notifyPayoutCompleted` ; payout requested/failed → `createInAppNotification` |
+| `new_review` | Vendor | ✅ | ✅ | review created + `autoPublishReviews` cron → `notifyNewReview` |
+| `return_status` | Vendor + Customer | ✅ | ✅ | return status change → `notifyReturnStatus` |
+| `question` | Vendor | ❌ | ✅ | question asked → `notifyNewQuestion` |
+| `question_answered` | Customer | ❌ | ✅ | question answered → `notifyQuestionAnswered` |
+| `review_replied` | Customer | ❌ | ✅ | vendor reply → `notifyReviewReplied` |
 | `system` | Any | ❌ | ❌ | `createInAppNotification` |
 | `promo` | Any | ❌ | ❌ | `createInAppNotification` |
-| `storage_received` | Vendor | ✅ | ✅ | `notifyStorageRequestReceived` |
-| `storage_validated` | Vendor | ✅ | ✅ | `notifyStorageValidated` |
-| `storage_rejected` | Vendor | ✅ | ✅ | `notifyStorageRejected` |
-| `storage_invoice` | Vendor | ✅ | ✅ | `notifyStorageInvoiceCreated` / `notifyStorageInvoicePaid` |
-| `storage_debt_deducted` | Vendor | ✅ | ✅ | `notifyStorageDebtDeducted` |
+| `storage_received` | Vendor + Admin | ❌ | ❌ | agent scan (`receiveRequest`) → `createInAppNotification` (both) |
+| `storage_received` | Vendor | ✅ | ✅ | request created → `notifyStorageRequestReceived` |
+| `storage_validated` | Vendor | ✅ | ✅ | admin validates → `notifyStorageValidated` |
+| `storage_rejected` | Vendor | ✅ | ✅ | admin rejects / stale expiry → `notifyStorageRejected` / `createInAppNotification` |
+| `storage_invoice` | Vendor | ✅ | ✅ | invoice created → `notifyStorageInvoiceCreated` ; invoice paid → `notifyStorageInvoicePaid` ; overdue → `createInAppNotification` |
+| `storage_debt_deducted` | Vendor | ✅ | ✅ | debt deducted on payout → `notifyStorageDebtDeducted` |
 
 **Web Push settings**:
 - `push_notifications_enabled` field on `users` table (default: true)
@@ -540,7 +541,8 @@ main                    ← production (protected, auto-deploys to Vercel)
 | `convex/notifications/send.ts` | Dual-channel + push notification dispatchers |
 | `convex/push/actions.ts` | Web Push send (requires `"use node"`) |
 | `convex/lib/constants.ts` | All backend constants |
-| `src/lib/format.ts` | `formatPrice()`, `formatDate()`, `formatRelativeTime()` |
+| `convex/lib/format.ts` | `formatAmountText(centimes, currency)` — Convex-side amount formatting |
+| `src/lib/format.ts` | `formatPrice()`, `formatDate()`, `formatRelativeTime()` — frontend canonical |
 | `src/middleware.ts` | Preview gate + session auth gate |
 | `src/constants/routes.ts` | All app routes as constants |
 | `src/components/auth/AuthGuard.tsx` | Role-based access guard (client-side) |

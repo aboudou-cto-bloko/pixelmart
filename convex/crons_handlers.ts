@@ -6,6 +6,7 @@ import { recalculateRatings } from "./reviews/helpers";
 import { restoreInventory } from "./orders/helpers";
 import { internal } from "./_generated/api";
 import { getBalanceReleaseDelayMs } from "./lib/getConfig";
+import { formatAmountText } from "./lib/format";
 const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -243,6 +244,28 @@ export const autoPublishReviews = internalMutation({
     for (const review of pendingReviews) {
       await ctx.db.patch(review._id, { is_published: true });
       await recalculateRatings(ctx, review.product_id, review.store_id);
+
+      // Notifier le vendor que l'avis est maintenant publié
+      const store = await ctx.db.get(review.store_id);
+      const product = await ctx.db.get(review.product_id);
+      if (store && product) {
+        const vendor = await ctx.db.get(store.owner_id);
+        if (vendor) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.notifications.send.notifyNewReview,
+            {
+              vendorUserId: vendor._id,
+              vendorEmail: vendor.email,
+              vendorName: store.name,
+              customerName: "Un client",
+              productTitle: product.title,
+              rating: review.rating,
+              reviewTitle: review.title ?? "",
+            },
+          );
+        }
+      }
     }
   },
 });
@@ -280,6 +303,25 @@ export const expirePendingOrders = internalMutation({
       });
 
       await restoreInventory(ctx, order.items);
+
+      // Notifier le client (in-app)
+      const customer = await ctx.db.get(order.customer_id);
+      if (customer) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.createInAppNotification,
+          {
+            userId: customer._id,
+            type: "order_status",
+            title: `Commande ${order.order_number} expirée`,
+            body: `Votre commande a expiré car le paiement n'a pas été finalisé dans les délais impartis.`,
+            link: `/orders`,
+            channels: ["in_app"],
+            sentVia: ["in_app"],
+            metadata: undefined,
+          },
+        );
+      }
 
       cancelledCount++;
     }
@@ -407,7 +449,7 @@ export const notifyOverdueStorageDebts = internalMutation({
         user_id: vendor._id,
         type: "storage_invoice",
         title: "Facture de stockage en retard",
-        body: `Votre facture de stockage de ${invoice.amount} centimes est impayée depuis plus de 30 jours. Réglez-la depuis /vendor/billing.`,
+        body: `Votre facture de stockage de ${formatAmountText(invoice.amount, invoice.currency)} est impayée depuis plus de 30 jours. Réglez-la depuis votre espace facturation.`,
         link: "/vendor/billing",
         is_read: false,
         channels: ["in_app"],

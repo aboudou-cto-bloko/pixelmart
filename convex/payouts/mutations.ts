@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import { getVendorStore } from "../users/helpers";
 import { validatePayoutRequest, calculatePayoutFee } from "./helpers";
 import { getOutstandingDebt } from "../storage/helpers";
+import { formatAmountText } from "../lib/format";
 
 // ─── Request Payout (Vendor) ─────────────────────────────────
 
@@ -39,7 +40,7 @@ export const requestPayout = mutation({
     const outstandingDebt = await getOutstandingDebt(ctx, store._id);
     if (outstandingDebt > args.amount) {
       throw new Error(
-        `Votre dette de stockage (${outstandingDebt / 100} XOF) dépasse le montant du retrait`,
+        `Votre dette de stockage (${formatAmountText(outstandingDebt, store.currency)}) dépasse le montant du retrait`,
       );
     }
     const grossAmount = args.amount; // montant demandé par le vendeur
@@ -62,7 +63,7 @@ export const requestPayout = mutation({
       balance_before: balanceBefore,
       balance_after: balanceAfter,
       status: "pending",
-      description: `Retrait de ${grossAmount / 100} ${store.currency}${outstandingDebt > 0 ? ` (dont ${outstandingDebt / 100} XOF dette stockage)` : ""}`,
+      description: `Retrait de ${formatAmountText(grossAmount, store.currency)}${outstandingDebt > 0 ? ` (dont ${formatAmountText(outstandingDebt, store.currency)} dette stockage)` : ""}`,
       processed_at: Date.now(),
     });
 
@@ -96,7 +97,45 @@ export const requestPayout = mutation({
       );
     }
 
-    // 8. Lancer l'action Moneroo en arrière-plan
+    // 8. Notifier le vendeur que la demande est soumise
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: user._id,
+        type: "payment",
+        title: "Demande de retrait soumise",
+        body: `Votre demande de retrait de ${formatAmountText(amountAfterDebt, store.currency)} est en cours de traitement.`,
+        link: "/vendor/finance/payouts",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
+
+    // Notifier les admins — nouveau retrait en attente
+    const admins = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "admin"))
+      .collect();
+    for (const admin of admins) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.createInAppNotification,
+        {
+          userId: admin._id,
+          type: "payment",
+          title: "Nouveau retrait à traiter",
+          body: `${store.name} a demandé un retrait de ${formatAmountText(amountAfterDebt, store.currency)}.`,
+          link: "/admin/payouts",
+          channels: ["in_app"],
+          sentVia: ["in_app"],
+          metadata: undefined,
+        },
+      );
+    }
+
+    // 9. Lancer l'action Moneroo en arrière-plan
     await ctx.scheduler.runAfter(
       0,
       internal.payouts.actions.initializePayoutViaMoneroo,
@@ -244,7 +283,7 @@ export const failPayout = internalMutation({
           userId: vendor._id,
           type: "payment",
           title: "Retrait échoué",
-          body: `Votre retrait de ${payout.amount / 100} ${payout.currency} a échoué. Le montant a été re-crédité.`,
+          body: `Votre retrait de ${formatAmountText(payout.amount, payout.currency)} a échoué. Le montant a été re-crédité.`,
           link: "/vendor/finance",
           channels: ["in_app"],
           sentVia: ["in_app"],

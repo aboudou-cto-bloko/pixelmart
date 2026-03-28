@@ -40,6 +40,7 @@ import type * as finance_helpers from "../finance/helpers.js";
 import type * as finance_queries from "../finance/queries.js";
 import type * as http from "../http.js";
 import type * as lib_constants from "../lib/constants.js";
+import type * as lib_format from "../lib/format.js";
 import type * as lib_getConfig from "../lib/getConfig.js";
 import type * as lib_ratelimits from "../lib/ratelimits.js";
 import type * as meta_helpers from "../meta/helpers.js";
@@ -139,6 +140,7 @@ declare const fullApi: ApiFromModules<{
   "finance/queries": typeof finance_queries;
   http: typeof http;
   "lib/constants": typeof lib_constants;
+  "lib/format": typeof lib_format;
   "lib/getConfig": typeof lib_getConfig;
   "lib/ratelimits": typeof lib_ratelimits;
   "meta/helpers": typeof meta_helpers;

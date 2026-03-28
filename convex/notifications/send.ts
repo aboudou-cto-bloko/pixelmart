@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
+import { formatAmountText } from "../lib/format";
 
 // ── Seuls les NOUVEAUX templates ──
 import LowStockAlert from "../../emails/LowStockAlert";
@@ -125,7 +126,7 @@ export const notifyPayoutCompleted = internalAction({
     storeName: v.string(),
   },
   handler: async (ctx, args) => {
-    const formatted = `${(args.amount / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+    const formatted = formatAmountText(args.amount, args.currency);
 
     // 1. In-app
     await ctx.runMutation(internal.notifications.mutations.create, {
@@ -259,7 +260,7 @@ export const notifyNewOrderInApp = internalAction({
     currency: v.string(),
   },
   handler: async (ctx, args) => {
-    const formatted = `${(args.totalAmount / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+    const formatted = formatAmountText(args.totalAmount, args.currency);
 
     await ctx.runMutation(internal.notifications.mutations.create, {
       userId: args.vendorUserId,
@@ -385,7 +386,7 @@ export const notifyReturnStatus = internalAction({
       received: args.isVendorNotification
         ? `Articles retournés reçus pour la commande ${args.orderNumber}`
         : `Le vendeur a reçu vos articles — remboursement en cours`,
-      refunded: `Remboursement de ${args.refundAmount / 100} ${args.currency} traité pour la commande ${args.orderNumber}`,
+      refunded: `Remboursement de ${formatAmountText(args.refundAmount, args.currency)} traité pour la commande ${args.orderNumber}`,
     };
 
     const link = args.isVendorNotification
@@ -528,7 +529,7 @@ export const notifyStorageValidated = internalAction({
     ),
   },
   handler: async (ctx, args) => {
-    const fmtFee = `${(args.storageFee / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+    const fmtFee = formatAmountText(args.storageFee, args.currency);
 
     // 1. In-app
     await ctx.runMutation(internal.notifications.mutations.create, {
@@ -654,7 +655,7 @@ export const notifyStorageInvoiceCreated = internalAction({
     dueDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const fmtAmt = `${(args.amount / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+    const fmtAmt = formatAmountText(args.amount, args.currency);
 
     // 1. In-app
     await ctx.runMutation(internal.notifications.mutations.create, {
@@ -715,7 +716,7 @@ export const notifyStorageInvoicePaid = internalAction({
     currency: v.string(),
   },
   handler: async (ctx, args) => {
-    const fmtAmt = `${(args.amount / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+    const fmtAmt = formatAmountText(args.amount, args.currency);
 
     await ctx.runMutation(internal.notifications.mutations.create, {
       userId: args.vendorUserId,
@@ -752,7 +753,7 @@ export const notifyStorageDebtDeducted = internalAction({
     period: v.string(),
   },
   handler: async (ctx, args) => {
-    const fmtAmt = `${(args.deductedAmount / 100).toLocaleString("fr-FR")} ${args.currency === "XOF" ? "FCFA" : args.currency}`;
+    const fmtAmt = formatAmountText(args.deductedAmount, args.currency);
 
     // 1. In-app
     await ctx.runMutation(internal.notifications.mutations.create, {
@@ -876,14 +877,23 @@ export const notifyNewQuestion = internalAction({
     productSlug: v.string(),
   },
   handler: async (ctx, args) => {
+    const notifBody = `${args.customerName} a posé une question sur "${args.productTitle}" : "${args.body.slice(0, 80)}${args.body.length > 80 ? "…" : ""}"`;
+
     await ctx.runMutation(internal.notifications.mutations.create, {
       userId: args.vendorUserId,
       type: "question",
       title: "Nouvelle question sur un produit",
-      body: `${args.customerName} a posé une question sur "${args.productTitle}" : "${args.body.slice(0, 80)}${args.body.length > 80 ? "…" : ""}"`,
+      body: notifBody,
       link: `/vendor/products`,
-      channels: ["in_app"],
+      channels: ["in_app", "push"],
       sentVia: ["in_app"],
+    });
+
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Nouvelle question sur un produit",
+      body: notifBody,
+      url: "/vendor/products",
     });
   },
 });
@@ -897,14 +907,23 @@ export const notifyQuestionAnswered = internalAction({
     productSlug: v.string(),
   },
   handler: async (ctx, args) => {
+    const notifBody = `${args.vendorName} a répondu à votre question sur "${args.productTitle}" : "${args.answer.slice(0, 80)}${args.answer.length > 80 ? "…" : ""}"`;
+
     await ctx.runMutation(internal.notifications.mutations.create, {
       userId: args.customerUserId,
       type: "question_answered",
       title: "Votre question a reçu une réponse",
-      body: `${args.vendorName} a répondu à votre question sur "${args.productTitle}" : "${args.answer.slice(0, 80)}${args.answer.length > 80 ? "…" : ""}"`,
+      body: notifBody,
       link: `/products/${args.productSlug}`,
-      channels: ["in_app"],
+      channels: ["in_app", "push"],
       sentVia: ["in_app"],
+    });
+
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.customerUserId,
+      title: "Votre question a reçu une réponse",
+      body: notifBody,
+      url: `/products/${args.productSlug}`,
     });
   },
 });
@@ -918,14 +937,23 @@ export const notifyReviewReplied = internalAction({
     productSlug: v.string(),
   },
   handler: async (ctx, args) => {
+    const notifBody = `${args.vendorName} a répondu à votre avis sur "${args.productTitle}" : "${args.reply.slice(0, 80)}${args.reply.length > 80 ? "…" : ""}"`;
+
     await ctx.runMutation(internal.notifications.mutations.create, {
       userId: args.customerUserId,
       type: "review_replied",
       title: "Le vendeur a répondu à votre avis",
-      body: `${args.vendorName} a répondu à votre avis sur "${args.productTitle}" : "${args.reply.slice(0, 80)}${args.reply.length > 80 ? "…" : ""}"`,
+      body: notifBody,
       link: `/products/${args.productSlug}`,
-      channels: ["in_app"],
+      channels: ["in_app", "push"],
       sentVia: ["in_app"],
+    });
+
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.customerUserId,
+      title: "Le vendeur a répondu à votre avis",
+      body: notifBody,
+      url: `/products/${args.productSlug}`,
     });
   },
 });
