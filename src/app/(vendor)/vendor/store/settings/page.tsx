@@ -532,6 +532,17 @@ export default function StoreSettingsPage() {
             </div>
           )}
 
+          {/* Storage plan note */}
+          {!usePixelmartService && (
+            <div className="flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+              <Info className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                Le service de stockage Pixel-Mart nécessite le service de
+                livraison activé.
+              </p>
+            </div>
+          )}
+
           {/* Save delivery */}
           <div className="flex items-center gap-3 pt-1">
             <Button

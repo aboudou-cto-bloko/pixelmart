@@ -1,6 +1,6 @@
 // filepath: convex/storage/queries.ts
 
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { getVendorStore, requireAgent, requireAdmin } from "../users/helpers";
 import { getOutstandingDebt } from "./helpers";
@@ -351,5 +351,19 @@ export const getInStockWithPendingOrders = query({
         pending_orders_count: pendingCount,
       };
     });
+  },
+});
+
+// ─── Internal — Get Invoice for Payment (used by actions) ────
+
+export const getInvoiceForPayment = internalQuery({
+  args: {
+    invoiceId: v.id("storage_invoices"),
+    storeId: v.id("stores"),
+  },
+  handler: async (ctx, args) => {
+    const invoice = await ctx.db.get(args.invoiceId);
+    if (!invoice || invoice.store_id !== args.storeId) return null;
+    return invoice;
   },
 });

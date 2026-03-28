@@ -252,6 +252,10 @@ export const failPayment = internalMutation({
 
     // Notifier le client
     const customer = await ctx.db.get(order.customer_id);
+
+    // Récupérer la boutique et le vendeur
+    const store = await ctx.db.get(order.store_id);
+
     if (customer) {
       await ctx.scheduler.runAfter(
         0,
@@ -260,13 +264,51 @@ export const failPayment = internalMutation({
           userId: customer._id,
           type: "order_status",
           title: `Paiement échoué — Commande ${order.order_number}`,
-          body: "Votre paiement n'a pas pu être traité. La commande a été annulée et votre stock restauré.",
+          body: "Votre paiement n'a pas pu être traité. La commande a été annulée.",
           link: "/orders",
-          channels: ["in_app"],
+          channels: ["in_app", "push", "email"],
           sentVia: ["in_app"],
           metadata: undefined,
         },
       );
+      await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+        userId: customer._id,
+        title: `Paiement échoué — Commande ${order.order_number}`,
+        body: "Votre paiement n'a pas pu être traité. La commande a été annulée.",
+        url: "/orders",
+      });
+
+      // Email d'annulation au client
+      await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderCancelled, {
+        customerEmail: customer.email,
+        customerName: customer.name ?? "Client",
+        orderNumber: order.order_number,
+        storeName: store?.name ?? "",
+        totalAmount: order.total_amount,
+        currency: order.currency,
+        reason: "Paiement non abouti",
+        wasRefunded: false,
+      });
+    }
+
+    // Notifier le vendeur
+    if (store) {
+      const vendor = await ctx.db.get(store.owner_id);
+      if (vendor) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyPaymentFailed,
+          {
+            vendorUserId: vendor._id,
+            vendorEmail: vendor.email,
+            customerName: customer?.name ?? "Client",
+            orderNumber: order.order_number,
+            storeName: store.name,
+            totalAmount: order.total_amount,
+            currency: order.currency,
+          },
+        );
+      }
     }
 
     return { success: true };

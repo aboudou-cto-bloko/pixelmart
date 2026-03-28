@@ -476,18 +476,26 @@ export const confirmStoragePayment = internalMutation({
       updated_at: now,
     });
 
-    // Notifier le vendeur (in-app)
+    // Notifier le vendeur (in-app + push + email)
     const storeForPay = await ctx.db.get(invoice.store_id);
     if (storeForPay) {
       const vendorForPay = await ctx.db.get(storeForPay.owner_id);
       if (vendorForPay) {
+        // Récupérer le code de stockage depuis la demande liée
+        const storageReqForCode = invoice.request_id
+          ? await ctx.db.get(invoice.request_id)
+          : null;
+
         await ctx.scheduler.runAfter(
           0,
           internal.notifications.send.notifyStorageInvoicePaid,
           {
             vendorUserId: vendorForPay._id,
+            vendorEmail: vendorForPay.email,
+            vendorName: vendorForPay.name ?? vendorForPay.email,
             amount: invoice.amount,
             currency: invoice.currency,
+            storageCode: storageReqForCode?.storage_code,
           },
         );
       }
@@ -539,6 +547,25 @@ export const failStoragePayment = internalMutation({
     }
 
     return { success: true };
+  },
+});
+
+// ─── Set Invoice Payment Method (Internal — from action) ────────
+
+export const setInvoicePaymentMethod = internalMutation({
+  args: {
+    invoiceId: v.id("storage_invoices"),
+    paymentMethod: v.union(
+      v.literal("immediate"),
+      v.literal("auto_debit"),
+      v.literal("deferred"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.invoiceId, {
+      payment_method: args.paymentMethod,
+      updated_at: Date.now(),
+    });
   },
 });
 
