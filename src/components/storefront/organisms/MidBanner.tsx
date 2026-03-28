@@ -23,7 +23,7 @@ export function MidBanner() {
   };
 
   return (
-    <section className="container py-4">
+    <section className="container mx-auto px-4 py-4">
       <AdBannerCard booking={ad} aspectRatio="6/1" className="w-full" />
     </section>
   );

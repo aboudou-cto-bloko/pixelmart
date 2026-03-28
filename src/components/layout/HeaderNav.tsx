@@ -182,9 +182,9 @@ export function HeaderNav() {
         <div className="shrink-0">
           <DynamicLogo
             href={ROUTES.HOME}
-            size="lg"
+            size="md"
             darkModeStyle={{
-              className: "pt-4", // 16px padding + 110% scale for dark mode
+              className: "pt-3",
             }}
           />
         </div>
@@ -213,7 +213,7 @@ export function HeaderNav() {
             <NavigationMenuItem>
               <NavigationMenuLink asChild>
                 <Link
-                  href="/about"
+                  href="/landing"
                   className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                 >
                   À propos

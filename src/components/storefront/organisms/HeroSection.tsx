@@ -56,7 +56,7 @@ export function HeroSection() {
   }
 
   return (
-    <section className="container py-4">
+    <section className="container mx-auto px-4 py-4">
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         {/* Main carousel */}
         <div className="relative overflow-hidden rounded-xl min-h-[280px] lg:min-h-[400px]">
@@ -72,6 +72,7 @@ export function HeroSection() {
                 booking={ad}
                 aspectRatio="auto"
                 className="h-full"
+                priority={i === 0}
               />
             </div>
           ))}

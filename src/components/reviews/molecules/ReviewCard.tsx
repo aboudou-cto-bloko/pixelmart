@@ -96,6 +96,8 @@ export function ReviewCard({
               key={i}
               src={url}
               alt={`Photo avis ${i + 1}`}
+              width={64}
+              height={64}
               className="size-16 rounded-md object-cover border"
             />
           ))}

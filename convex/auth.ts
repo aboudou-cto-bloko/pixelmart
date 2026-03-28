@@ -19,7 +19,7 @@ const siteUrl = process.env.SITE_URL!;
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Adresse expéditeur — modifier UNIQUEMENT ici pour changer
-const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
+const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
 // ---- Trigger functions reference ----
 const authFunctions: AuthFunctions = internal.auth;
@@ -94,7 +94,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     // ---- Email + Password ----
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      requireEmailVerification: process.env.SEED_MODE !== "true",
       minPasswordLength: 12, // Increased from 8 to 12
       maxPasswordLength: 128,
       autoSignIn: false,

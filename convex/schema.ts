@@ -41,6 +41,9 @@ export default defineSchema({
     // Multi-store: boutique active dans le dashboard vendeur
     active_store_id: v.optional(v.id("stores")),
 
+    // Notifications
+    push_notifications_enabled: v.optional(v.boolean()), // default: true
+
     // Metadata
     updated_at: v.number(),
   })
@@ -1084,4 +1087,18 @@ export default defineSchema({
     // Metadata
     updated_at: v.number(),
   }).index("by_type", ["delivery_type", "is_night_rate", "is_active"]),
+
+  // ============================================
+  // PUSH SUBSCRIPTIONS (Web Push API)
+  // ============================================
+  push_subscriptions: defineTable({
+    user_id: v.id("users"),
+    endpoint: v.string(),       // Push service URL (unique per device/browser)
+    p256dh: v.string(),         // Client public key
+    auth: v.string(),           // Client auth secret
+    user_agent: v.optional(v.string()), // Browser/device info
+    created_at: v.number(),
+  })
+    .index("by_user", ["user_id"])
+    .index("by_endpoint", ["endpoint"]),
 });

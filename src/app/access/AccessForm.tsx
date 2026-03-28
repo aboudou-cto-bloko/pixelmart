@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Lock, ArrowRight, Loader2 } from "lucide-react";
+import Image from "next/image";
 import { verifyAccessCode } from "./actions";
 
 export function AccessForm({ from }: { from: string }) {
@@ -28,7 +29,14 @@ export function AccessForm({ from }: { from: string }) {
         transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="mb-12"
       >
-        <img src="/Pixel-Mart.png" alt="Pixel-Mart" className="h-10 w-auto" />
+        <Image
+            src="/Pixel-Mart.png"
+            alt="Pixel-Mart"
+            width={120}
+            height={40}
+            className="h-10 w-auto"
+            priority
+          />
       </motion.div>
 
       <motion.div

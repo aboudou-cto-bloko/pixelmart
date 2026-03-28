@@ -41,6 +41,7 @@
     "@react-email/components": "^1.0.8",
     "@react-email/render": "^2.0.4",
     "@react-pdf/renderer": "^4.3.2",
+    "@tailwindcss/typography": "^0.5.19",
     "@tiptap/extension-color": "^3.20.4",
     "@tiptap/extension-text-align": "^3.20.4",
     "@tiptap/extension-text-style": "^3.20.4",
@@ -77,6 +78,7 @@
     "tailwind-merge": "^3.5.0",
     "use-debounce": "^10.1.0",
     "vaul": "^1.1.2",
+    "web-push": "^3.6.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -91,6 +93,7 @@
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
     "@typescript-eslint/eslint-plugin": "^8.57.1",
     "@typescript-eslint/parser": "^8.57.1",
     "eslint": "^9",

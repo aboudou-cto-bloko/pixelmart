@@ -17,7 +17,7 @@ const TRENDING_TAGS = [
 
 export function TrendingSearch() {
   return (
-    <section className="container py-6">
+    <section className="container mx-auto px-4 py-6">
       <h2 className="text-base font-semibold mb-3">Recherches Tendances</h2>
       <div className="flex flex-wrap gap-2">
         {TRENDING_TAGS.map((tag) => (

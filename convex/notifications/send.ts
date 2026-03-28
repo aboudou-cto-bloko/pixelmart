@@ -17,7 +17,7 @@ import StorageRejected from "../../emails/StorageRejected";
 import StorageInvoiceCreated from "../../emails/StorageInvoiceCreated";
 import StorageDebtDeducted from "../../emails/StorageDebtDeducted";
 
-const EMAIL_FROM = "Pixel-Mart <dev@aboudouzinsou.site>";
+const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -102,6 +102,14 @@ export const notifyLowStock = internalAction({
     } catch (error) {
       console.error("[Notification] Low stock email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Alerte stock faible",
+      body: `${args.productTitle} — ${args.currentQuantity} restant(s)`,
+      url: "/vendor/products",
+    });
   },
 });
 
@@ -152,6 +160,14 @@ export const notifyPayoutCompleted = internalAction({
     } catch (error) {
       console.error("[Notification] Payout email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Retrait effectué",
+      body: `${formatted} envoyé via ${args.method}`,
+      url: "/vendor/finance",
+    });
   },
 });
 
@@ -221,6 +237,14 @@ export const notifyOrderStatusGeneric = internalAction({
     } catch (error) {
       console.error("[Notification] Status email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.customerUserId,
+      title,
+      body: `${args.storeName} — Statut : ${label}`,
+      url: "/orders",
+    });
   },
 });
 
@@ -246,6 +270,14 @@ export const notifyNewOrderInApp = internalAction({
       channels: ["email", "in_app"],
       sentVia: ["in_app", "email"], // email envoyé par emails/send.ts
       metadata: undefined,
+    });
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Nouvelle commande",
+      body: `${args.customerName} — ${args.orderNumber} (${formatted})`,
+      url: "/vendor/orders",
     });
   },
 });
@@ -290,6 +322,14 @@ export const notifyOrderStatusInApp = internalAction({
       channels: ["email", "in_app"],
       sentVia: ["in_app", "email"], // email envoyé par emails/send.ts
       metadata: undefined,
+    });
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.customerUserId,
+      title: `Commande ${args.orderNumber} — ${label}`,
+      body: `${args.storeName} — Statut : ${label}`,
+      url: "/orders",
     });
   },
 });
@@ -375,7 +415,7 @@ export const notifyReturnStatus = internalAction({
           await import("../../emails/ReturnStatusUpdate");
 
         await resend.emails.send({
-          from: EMAIL_FROM ?? "Pixel-Mart <dev@aboudouzinsou.site>",
+          from: EMAIL_FROM ?? "Pixel-Mart <noreply@pixel-mart-bj.com>",
           to: args.recipientEmail,
           subject: `${titleMap[args.returnStatus]} — Commande ${args.orderNumber}`,
           react: ReturnStatusUpdate({
@@ -393,6 +433,14 @@ export const notifyReturnStatus = internalAction({
         console.error("Failed to send return status email:", error);
       }
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.recipientUserId,
+      title: titleMap[args.returnStatus] ?? "Mise à jour retour",
+      body: bodyMap[args.returnStatus] ?? `Retour commande ${args.orderNumber} mis à jour`,
+      url: link,
+    });
   },
 });
 
@@ -446,6 +494,14 @@ export const notifyStorageRequestReceived = internalAction({
         error,
       );
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Demande de stockage créée",
+      body: `Code : ${args.storageCode} — Écrivez ce code sur votre colis`,
+      url: "/vendor/storage",
+    });
   },
 });
 
@@ -512,6 +568,14 @@ export const notifyStorageValidated = internalAction({
     } catch (error) {
       console.error("[Notification] StorageValidated email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Produit mis en stock",
+      body: `${args.storageCode} — "${args.productName}" est maintenant en stock. Frais : ${fmtFee}.`,
+      url: "/vendor/storage",
+    });
   },
 });
 
@@ -560,6 +624,14 @@ export const notifyStorageRejected = internalAction({
     } catch (error) {
       console.error("[Notification] StorageRejected email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Demande de stockage rejetée",
+      body: `${args.storageCode} — "${args.productName}" a été rejeté`,
+      url: "/vendor/storage",
+    });
   },
 });
 
@@ -623,6 +695,14 @@ export const notifyStorageInvoiceCreated = internalAction({
         error,
       );
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Facture de stockage",
+      body: `${args.storageCode} — Montant : ${fmtAmt}`,
+      url: "/vendor/billing",
+    });
   },
 });
 
@@ -646,6 +726,14 @@ export const notifyStorageInvoicePaid = internalAction({
       channels: ["in_app"],
       sentVia: ["in_app"],
       metadata: undefined,
+    });
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Facture de stockage réglée",
+      body: `Votre facture de ${fmtAmt} a été confirmée`,
+      url: "/vendor/billing",
     });
   },
 });
@@ -701,6 +789,14 @@ export const notifyStorageDebtDeducted = internalAction({
     } catch (error) {
       console.error("[Notification] StorageDebtDeducted email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Dette de stockage déduite",
+      body: `${fmtAmt} déduit de votre retrait (${args.period})`,
+      url: "/vendor/billing",
+    });
   },
 });
 
@@ -760,5 +856,76 @@ export const notifyNewReview = internalAction({
     } catch (error) {
       console.error("[Notification] Review email failed:", error);
     }
+
+    // Push notification
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: `Nouvel avis ${args.rating}★ sur ${args.productTitle}`,
+      body: `${args.customerName} a donné ${args.rating}/5 étoiles`,
+      url: "/vendor/reviews",
+    });
+  },
+});
+
+export const notifyNewQuestion = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    productTitle: v.string(),
+    customerName: v.string(),
+    body: v.string(),
+    productSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "question",
+      title: "Nouvelle question sur un produit",
+      body: `${args.customerName} a posé une question sur "${args.productTitle}" : "${args.body.slice(0, 80)}${args.body.length > 80 ? "…" : ""}"`,
+      link: `/vendor/products`,
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+    });
+  },
+});
+
+export const notifyQuestionAnswered = internalAction({
+  args: {
+    customerUserId: v.id("users"),
+    productTitle: v.string(),
+    vendorName: v.string(),
+    answer: v.string(),
+    productSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.customerUserId,
+      type: "question_answered",
+      title: "Votre question a reçu une réponse",
+      body: `${args.vendorName} a répondu à votre question sur "${args.productTitle}" : "${args.answer.slice(0, 80)}${args.answer.length > 80 ? "…" : ""}"`,
+      link: `/products/${args.productSlug}`,
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+    });
+  },
+});
+
+export const notifyReviewReplied = internalAction({
+  args: {
+    customerUserId: v.id("users"),
+    productTitle: v.string(),
+    vendorName: v.string(),
+    reply: v.string(),
+    productSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.customerUserId,
+      type: "review_replied",
+      title: "Le vendeur a répondu à votre avis",
+      body: `${args.vendorName} a répondu à votre avis sur "${args.productTitle}" : "${args.reply.slice(0, 80)}${args.reply.length > 80 ? "…" : ""}"`,
+      link: `/products/${args.productSlug}`,
+      channels: ["in_app"],
+      sentVia: ["in_app"],
+    });
   },
 });

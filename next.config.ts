@@ -22,9 +22,25 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Headers HTTP pour cacher les assets statiques agressivement
+  // Headers HTTP — sécurité + cache assets statiques
   async headers() {
+    const securityHeaders = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "SAMEORIGIN" },
+      { key: "X-XSS-Protection", value: "1; mode=block" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      {
+        key: "Permissions-Policy",
+        value: "camera=(), microphone=(), geolocation=(self)",
+      },
+    ];
+
     return [
+      {
+        // Apply security headers to all routes
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
       {
         source: "/_next/static/:path*",
         headers: [
@@ -36,6 +52,15 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/fonts/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/icons/:path*",
         headers: [
           {
             key: "Cache-Control",

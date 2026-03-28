@@ -3,6 +3,7 @@
 import { action } from "../_generated/server";
 import { v, ConvexError } from "convex/values";
 import { api } from "../_generated/api";
+import { centimesToMonerooAmount } from "../payments/helpers";
 
 const MONEROO_API_URL = "https://api.moneroo.io/v1";
 
@@ -32,11 +33,10 @@ async function initializeMonerooPayment({
       Accept: "application/json",
     },
     body: JSON.stringify({
-      // Moneroo attend des FCFA entiers — convertir les centimes
-      amount:
-        (booking.currency ?? "XOF") === "XOF"
-          ? Math.round(booking.total_price / 100)
-          : booking.total_price,
+      amount: centimesToMonerooAmount(
+        booking.total_price,
+        booking.currency ?? "XOF",
+      ),
       currency: booking.currency ?? "XOF",
       description: `Publicité Pixel-Mart: ${booking.slot_id}`,
       customer: {
@@ -84,7 +84,7 @@ export const initiateAdPayment = action({
     const user = await ctx.runQuery(api.users.queries.getMe, {});
     if (!user) throw new ConvexError("Utilisateur introuvable");
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.pixel-mart-bj.com";
 
     const paymentData = await initializeMonerooPayment({
       booking: {

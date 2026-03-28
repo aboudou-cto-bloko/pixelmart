@@ -2,23 +2,33 @@
 
 import type { Doc } from "../_generated/dataModel";
 
+// Devises sans sous-unité : 1 "centimes" DB = 1 unité majeure (ex. 5000 centimes = 5000 FCFA)
+const NO_SUBUNIT_CURRENCIES = ["XOF", "XAF", "GNF", "CDF"];
+
 /**
- * Moneroo attend les montants dans l'unité majeure de la devise.
- * XOF n'a pas de sous-unité : 5000 XOF → envoyer 5000.
- * EUR a des centimes : 2900 centimes → envoyer 29.00 (mais Moneroo attend un entier).
- *
- * Notre DB stocke tout en centimes (1/100).
- * Conversion : moneroo_amount = Math.round(db_centimes / 100)
+ * Convertit les centimes DB vers le montant attendu par Moneroo.
+ * - XOF/XAF/GNF/CDF : aucune conversion (1 centimes = 1 FCFA)
+ * - Autres devises  : division par 100 (2900 centimes EUR → 29)
  */
-export function centimesToMonerooAmount(centimes: number): number {
-  return Math.round(centimes / 100);
+export function centimesToMonerooAmount(
+  centimes: number,
+  currency: string,
+): number {
+  return NO_SUBUNIT_CURRENCIES.includes(currency)
+    ? centimes
+    : Math.round(centimes / 100);
 }
 
 /**
- * Inverse : montant Moneroo → centimes DB.
+ * Convertit le montant Moneroo vers les centimes DB.
+ * - XOF/XAF/GNF/CDF : aucune conversion
+ * - Autres devises  : multiplication par 100
  */
-export function monerooAmountToCentimes(amount: number): number {
-  return amount * 100;
+export function monerooAmountToCentimes(
+  amount: number,
+  currency: string,
+): number {
+  return NO_SUBUNIT_CURRENCIES.includes(currency) ? amount : amount * 100;
 }
 
 /**

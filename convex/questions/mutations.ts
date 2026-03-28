@@ -1,6 +1,7 @@
 // filepath: convex/questions/mutations.ts
 
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v, ConvexError } from "convex/values";
 import { requireAppUser, getVendorStore } from "../users/helpers";
 import { rateLimiter } from "../lib/ratelimits";
@@ -48,6 +49,22 @@ export const ask = mutation({
       body: trimmed,
       is_published: true,
     });
+
+    // Notifier le vendor de la nouvelle question
+    const store = await ctx.db.get(product.store_id);
+    if (store) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.notifyNewQuestion,
+        {
+          vendorUserId: store.owner_id,
+          productTitle: product.title,
+          customerName: user.name ?? "Client",
+          body: trimmed,
+          productSlug: product.slug,
+        },
+      );
+    }
 
     return questionId;
   },
@@ -135,6 +152,24 @@ export const answer = mutation({
       vendor_answer: trimmed,
       answered_at: Date.now(),
     });
+
+    // Notifier l'auteur de la question
+    if (question.author_id) {
+      const product = await ctx.db.get(question.product_id);
+      if (product) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyQuestionAnswered,
+          {
+            customerUserId: question.author_id,
+            productTitle: product.title,
+            vendorName: store.name,
+            answer: trimmed,
+            productSlug: product.slug,
+          },
+        );
+      }
+    }
 
     return { success: true };
   },

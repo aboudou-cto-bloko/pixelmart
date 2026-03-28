@@ -4,6 +4,7 @@
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { centimesToMonerooAmount } from "../payments/helpers";
 
 const MONEROO_API_URL = "https://api.moneroo.io/v1";
 
@@ -30,9 +31,7 @@ export const initializePayoutViaMoneroo = internalAction({
   handler: async (ctx, args) => {
     const apiKey = getMonerooKey();
 
-    // Moneroo XOF : pas de sous-unités → amount en unité
-    const monerooAmount =
-      args.currency === "XOF" ? Math.round(args.amount / 100) : args.amount;
+    const monerooAmount = centimesToMonerooAmount(args.amount, args.currency);
 
     // Construire le recipient selon la méthode
     const recipient: Record<string, string> = {};
