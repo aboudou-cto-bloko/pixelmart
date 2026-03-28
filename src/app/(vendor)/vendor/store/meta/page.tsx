@@ -139,9 +139,8 @@ export default function VendorMetaSettingsPage() {
     );
   }
 
-  const shopUrl = store
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/shop/${store.slug}`
-    : "";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
+  const shopUrl = store ? `${siteUrl}/shop/${store.slug}` : "";
 
   return (
     <div className="max-w-2xl space-y-6">
