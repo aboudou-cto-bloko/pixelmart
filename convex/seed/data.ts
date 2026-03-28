@@ -32,6 +32,30 @@ export const SEED_USERS = [
     name: "Moussa Coulibaly",
     role: "agent" as const,
   },
+  {
+    email: "finance@pixel-mart.test",
+    password: "Finance@PixelMart2025!",
+    name: "Resp. Financier",
+    role: "finance" as const,
+  },
+  {
+    email: "logistics@pixel-mart.test",
+    password: "Logistics@PixelMart2025!",
+    name: "Gest. Livraisons",
+    role: "logistics" as const,
+  },
+  {
+    email: "developer@pixel-mart.test",
+    password: "Dev@PixelMart2025!",
+    name: "Développeur Tech",
+    role: "developer" as const,
+  },
+  {
+    email: "marketing@pixel-mart.test",
+    password: "Marketing@PixelMart2025!",
+    name: "Gest. Contenu",
+    role: "marketing" as const,
+  },
 ] as const;
 
 export const SEED_STORES = [
