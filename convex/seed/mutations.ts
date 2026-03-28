@@ -14,6 +14,10 @@ export const promoteUser = internalMutation({
     email: v.string(),
     role: v.union(
       v.literal("admin"),
+      v.literal("finance"),
+      v.literal("logistics"),
+      v.literal("developer"),
+      v.literal("marketing"),
       v.literal("vendor"),
       v.literal("customer"),
       v.literal("agent"),
@@ -469,6 +473,10 @@ export const wipeSeedData = internalMutation({
       "vendor2@pixel-mart.test",
       "customer@pixel-mart.test",
       "agent@pixel-mart.test",
+      "finance@pixel-mart.test",
+      "logistics@pixel-mart.test",
+      "developer@pixel-mart.test",
+      "marketing@pixel-mart.test",
     ];
 
     let deleted = { users: 0, stores: 0, products: 0, orders: 0, transactions: 0 };
