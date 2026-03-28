@@ -344,12 +344,16 @@ export const getRevenueByCategory = query({
       }
     }
 
-    // Build product → category mapping
+    // Build product → category mapping (parallélisé — évite N+1)
+    const productArray = Array.from(productIds);
+    const productDocs = await Promise.all(
+      productArray.map((id) => ctx.db.get(id)),
+    );
     const productCategoryMap = new Map<string, Id<"categories">>();
-    for (const productId of productIds) {
-      const product = await ctx.db.get(productId);
+    for (let i = 0; i < productArray.length; i++) {
+      const product = productDocs[i];
       if (product) {
-        productCategoryMap.set(productId, product.category_id);
+        productCategoryMap.set(productArray[i], product.category_id);
       }
     }
 

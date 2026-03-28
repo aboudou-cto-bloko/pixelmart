@@ -3,9 +3,30 @@
 import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { centimesToMonerooAmount } from "./helpers";
+import { centimesToMonerooAmount, monerooAmountToCentimes } from "./helpers";
 
 const MONEROO_API_URL = "https://api.moneroo.io/v1";
+const MONEROO_TIMEOUT_MS = 10_000;
+
+function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), MONEROO_TIMEOUT_MS);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() =>
+    clearTimeout(id),
+  );
+}
+
+function handleMonerooFetchError(err: unknown, context: string): never {
+  if ((err as Error).name === "AbortError") {
+    throw new Error(
+      `Délai d'attente dépassé lors de la connexion à Moneroo (${context}, timeout ${MONEROO_TIMEOUT_MS / 1000}s)`,
+    );
+  }
+  throw err;
+}
 
 interface MonerooInitResponse {
   message: string;
@@ -83,15 +104,23 @@ export const initializePayment = action({
     };
 
     // 3. Appeler l'API Moneroo
-    const response = await fetch(`${MONEROO_API_URL}/payments/initialize`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${secretKey}`,
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        `${MONEROO_API_URL}/payments/initialize`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${secretKey}`,
+            Accept: "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+    } catch (err) {
+      handleMonerooFetchError(err, "initialisation du paiement");
+    }
 
     if (!response.ok) {
       throw new Error(
@@ -164,15 +193,23 @@ export const initializeShopPayment = action({
       },
     };
 
-    const response = await fetch(`${MONEROO_API_URL}/payments/initialize`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${secretKey}`,
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        `${MONEROO_API_URL}/payments/initialize`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${secretKey}`,
+            Accept: "application/json",
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+    } catch (err) {
+      handleMonerooFetchError(err, "initialisation du paiement boutique");
+    }
 
     if (!response.ok) {
       throw new Error(
@@ -222,19 +259,26 @@ export const verifyPayment = action({
     }
 
     // Vérifier auprès de Moneroo
-    const response = await fetch(
-      `${MONEROO_API_URL}/payments/${order.payment_reference}/verify`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-          Accept: "application/json",
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        `${MONEROO_API_URL}/payments/${order.payment_reference}/verify`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            Accept: "application/json",
+          },
         },
-      },
-    );
+      );
+    } catch (err) {
+      handleMonerooFetchError(err, "vérification du paiement");
+    }
 
     if (!response.ok) {
-      throw new Error(`Erreur vérification Moneroo (${response.status})`);
+      throw new Error(
+        `Erreur lors de la vérification du paiement Moneroo (${response.status})`,
+      );
     }
 
     const result = await response.json();
@@ -245,13 +289,16 @@ export const verifyPayment = action({
       await ctx.runMutation(internal.payments.mutations.confirmPayment, {
         orderId: args.orderId,
         paymentReference: order.payment_reference,
-        amountPaid: result.data?.amount ?? 0,
+        amountPaid: monerooAmountToCentimes(
+          result.data?.amount ?? 0,
+          result.data?.currency ?? order.currency,
+        ),
         currency: result.data?.currency ?? order.currency,
       });
     } else if (monerooStatus === "failed" || monerooStatus === "cancelled") {
       await ctx.runMutation(internal.payments.mutations.failPayment, {
         orderId: args.orderId,
-        reason: `Moneroo status: ${monerooStatus}`,
+        reason: `Paiement ${monerooStatus === "cancelled" ? "annulé" : "échoué"} (Moneroo)`,
       });
     }
 

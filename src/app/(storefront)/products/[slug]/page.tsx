@@ -5,6 +5,8 @@ import { api } from "../../../../../convex/_generated/api";
 import { MarketplaceProductPageClient } from "./MarketplaceProductPageClient";
 import type { Metadata } from "next";
 
+export const revalidate = 3600; // Revalidation ISR toutes les heures
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
 
 interface Props {

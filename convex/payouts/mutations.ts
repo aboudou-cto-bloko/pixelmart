@@ -133,7 +133,7 @@ export const confirmPayout = internalMutation({
   },
   handler: async (ctx, args) => {
     const payout = await ctx.db.get(args.payoutId);
-    if (!payout) throw new Error("Payout introuvable");
+    if (!payout) throw new Error("Virement introuvable");
 
     // Idempotence
     if (payout.status === "completed") {
@@ -188,7 +188,7 @@ export const failPayout = internalMutation({
   },
   handler: async (ctx, args) => {
     const payout = await ctx.db.get(args.payoutId);
-    if (!payout) throw new Error("Payout introuvable");
+    if (!payout) throw new Error("Virement introuvable");
 
     // Idempotence
     if (payout.status === "failed" || payout.status === "completed") {
@@ -204,7 +204,7 @@ export const failPayout = internalMutation({
 
     // 2. Reversal — re-créditer le solde du store (F-01)
     const store = await ctx.db.get(payout.store_id);
-    if (!store) throw new Error("Store introuvable pour reversal");
+    if (!store) throw new Error("Boutique introuvable lors du remboursement du virement");
 
     const balanceBefore = store.balance;
     const balanceAfter = balanceBefore + payout.amount;
