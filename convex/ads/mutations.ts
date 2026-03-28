@@ -272,6 +272,39 @@ export const trackInteraction = mutation({
 });
 
 /**
+ * Admin met à jour les tarifs et le nombre de slots d'un espace
+ */
+export const updateAdSpacePricing = mutation({
+  args: {
+    ad_space_id: v.id("ad_spaces"),
+    max_slots: v.optional(v.number()),
+    base_price_daily: v.optional(v.number()),
+    base_price_weekly: v.optional(v.number()),
+    base_price_monthly: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const space = await ctx.db.get(args.ad_space_id);
+    if (!space) throw new ConvexError("Espace introuvable");
+
+    const updates: Record<string, number> = { updated_at: Date.now() };
+    if (args.max_slots !== undefined) {
+      if (args.max_slots < 1 || args.max_slots > 20) {
+        throw new ConvexError("Le nombre de slots doit être entre 1 et 20");
+      }
+      updates.max_slots = args.max_slots;
+    }
+    if (args.base_price_daily !== undefined) updates.base_price_daily = args.base_price_daily;
+    if (args.base_price_weekly !== undefined) updates.base_price_weekly = args.base_price_weekly;
+    if (args.base_price_monthly !== undefined) updates.base_price_monthly = args.base_price_monthly;
+
+    await ctx.db.patch(args.ad_space_id, updates);
+    return { success: true };
+  },
+});
+
+/**
  * Admin met à jour le demand_multiplier d'un espace
  */
 export const updateDemandMultiplier = mutation({

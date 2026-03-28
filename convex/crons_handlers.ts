@@ -5,8 +5,7 @@ import { promoteQueuedBookings } from "./ads/helpers";
 import { recalculateRatings } from "./reviews/helpers";
 import { restoreInventory } from "./orders/helpers";
 import { internal } from "./_generated/api";
-
-const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+import { getBalanceReleaseDelayMs } from "./lib/getConfig";
 const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -23,7 +22,8 @@ const FORTY_EIGHT_HOURS_NOTIF_MS = 48 * 60 * 60 * 1000;
 export const releaseBalances = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const cutoff = Date.now() - FORTY_EIGHT_HOURS_MS;
+    const balanceReleaseDelayMs = await getBalanceReleaseDelayMs(ctx);
+    const cutoff = Date.now() - balanceReleaseDelayMs;
 
     // Chercher toutes les commandes delivered avec delivered_at > 48h
     // qui n'ont pas encore été "released" (pas de transaction credit pour cette commande)

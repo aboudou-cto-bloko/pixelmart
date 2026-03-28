@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as admin_mutations from "../admin/mutations.js";
+import type * as admin_queries from "../admin/queries.js";
 import type * as ads_actions from "../ads/actions.js";
 import type * as ads_constants from "../ads/constants.js";
 import type * as ads_helpers from "../ads/helpers.js";
@@ -38,6 +40,7 @@ import type * as finance_helpers from "../finance/helpers.js";
 import type * as finance_queries from "../finance/queries.js";
 import type * as http from "../http.js";
 import type * as lib_constants from "../lib/constants.js";
+import type * as lib_getConfig from "../lib/getConfig.js";
 import type * as lib_ratelimits from "../lib/ratelimits.js";
 import type * as meta_helpers from "../meta/helpers.js";
 import type * as meta_index from "../meta/index.js";
@@ -104,6 +107,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "admin/mutations": typeof admin_mutations;
+  "admin/queries": typeof admin_queries;
   "ads/actions": typeof ads_actions;
   "ads/constants": typeof ads_constants;
   "ads/helpers": typeof ads_helpers;
@@ -134,6 +139,7 @@ declare const fullApi: ApiFromModules<{
   "finance/queries": typeof finance_queries;
   http: typeof http;
   "lib/constants": typeof lib_constants;
+  "lib/getConfig": typeof lib_getConfig;
   "lib/ratelimits": typeof lib_ratelimits;
   "meta/helpers": typeof meta_helpers;
   "meta/index": typeof meta_index;

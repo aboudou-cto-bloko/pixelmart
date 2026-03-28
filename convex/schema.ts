@@ -1101,4 +1101,27 @@ export default defineSchema({
   })
     .index("by_user", ["user_id"])
     .index("by_endpoint", ["endpoint"]),
+
+  // ============================================
+  // COUNTRY CONFIG — activation/désactivation pays
+  // ============================================
+  country_config: defineTable({
+    country_code: v.string(),  // "BJ", "SN", etc.
+    is_active: v.boolean(),
+    updated_at: v.number(),
+    updated_by: v.optional(v.id("users")),
+  })
+    .index("by_code", ["country_code"]),
+
+  // ============================================
+  // PLATFORM CONFIG — constantes éditables admin
+  // ============================================
+  platform_config: defineTable({
+    key: v.string(),        // identifiant unique, ex: "commission_free"
+    value: v.number(),      // valeur numérique (basis points, centimes ou ms)
+    label: v.string(),      // libellé lisible, ex: "Commission Free (bp)"
+    updated_at: v.number(),
+    updated_by: v.optional(v.id("users")),
+  })
+    .index("by_key", ["key"]),
 });
