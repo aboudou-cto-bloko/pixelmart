@@ -127,7 +127,7 @@ pixelmart/
 | `reviews` | queries, mutations | Avis produits (achat vérifié) |
 | `returns` | queries, mutations | Demandes de retour/remboursement |
 | `coupons` | queries, mutations | Codes promo vendeurs |
-| `delivery` | queries, mutations | Lots de livraison groupée |
+| `delivery` | queries, mutations | Lots de livraison groupée (standard + entrepôt `is_warehouse_batch`) |
 | `ads` | queries, mutations, actions | Espaces publicitaires, réservations |
 | `analytics` | queries | KPIs vendeur (GMV, conversion, AOV) |
 | `admin` | queries, mutations | Supervision plateforme, audit |
