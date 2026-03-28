@@ -25,6 +25,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ChatwayScript } from "@/components/atoms/ChatwayScript";
 
 function StoreSuspendedScreen() {
   return (
@@ -187,6 +188,7 @@ export default function VendorLayout({
         </SidebarInset>
       </SidebarProvider>
       </VendorStoreGuard>
+      <ChatwayScript />
     </AuthGuard>
   );
 }
