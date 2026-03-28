@@ -1,6 +1,7 @@
 // filepath: convex/admin/queries.ts
 
 import { query } from "../_generated/server";
+import { v } from "convex/values";
 import { requireAdmin } from "../users/helpers";
 
 // ─── getPlatformStats ────────────────────────────────────────
@@ -402,5 +403,294 @@ export const listStorageRequests = query({
         };
       }),
     );
+  },
+});
+
+// ─── getAnalytics ─────────────────────────────────────────────
+// Analytics plateforme avec comparaison de période
+
+export const getAnalytics = query({
+  args: {
+    period: v.union(v.literal("7d"), v.literal("30d"), v.literal("90d")),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const now = Date.now();
+    const periodMs = args.period === "7d" ? 7 * 86400000 : args.period === "30d" ? 30 * 86400000 : 90 * 86400000;
+    const periodStart = now - periodMs;
+    const prevPeriodStart = periodStart - periodMs;
+
+    const allOrders = await ctx.db.query("orders").collect();
+    const paidOrders = allOrders.filter((o) => o.payment_status === "paid");
+
+    // Période courante
+    const curOrders = paidOrders.filter((o) => o._creationTime >= periodStart);
+    const prevOrders = paidOrders.filter((o) => o._creationTime >= prevPeriodStart && o._creationTime < periodStart);
+
+    const gmv = curOrders.reduce((s, o) => s + o.total_amount, 0);
+    const prevGmv = prevOrders.reduce((s, o) => s + o.total_amount, 0);
+    const commissions = curOrders.reduce((s, o) => s + (o.commission_amount ?? 0), 0);
+    const prevCommissions = prevOrders.reduce((s, o) => s + (o.commission_amount ?? 0), 0);
+
+    // Utilisateurs
+    const allUsers = await ctx.db.query("users").collect();
+    const newUsers = allUsers.filter((u) => u._creationTime >= periodStart).length;
+    const prevNewUsers = allUsers.filter((u) => u._creationTime >= prevPeriodStart && u._creationTime < periodStart).length;
+
+    // Boutiques
+    const allStores = await ctx.db.query("stores").collect();
+    const newStores = allStores.filter((s) => s._creationTime >= periodStart).length;
+    const prevNewStores = allStores.filter((s) => s._creationTime >= prevPeriodStart && s._creationTime < periodStart).length;
+
+    // Revenus publicitaires
+    const allBookings = await ctx.db.query("ad_bookings").collect();
+    const paidBookings = allBookings.filter(
+      (b) =>
+        b.payment_status === "paid" &&
+        (b.status === "active" || b.status === "completed") &&
+        b._creationTime >= periodStart,
+    );
+    const adRevenue = paidBookings.reduce((s, b) => s + b.total_price, 0);
+
+    // Revenus stockage
+    const storageInvoices = await ctx.db.query("storage_invoices").collect();
+    const paidStorageInvoices = storageInvoices.filter((i) => i.status === "paid" && i._creationTime >= periodStart);
+    const storageRevenue = paidStorageInvoices.reduce((s, i) => s + i.amount, 0);
+
+    // Série temporelle journalière
+    const bucketMs = args.period === "7d" ? 86400000 : args.period === "30d" ? 86400000 : 7 * 86400000; // daily ou weekly pour 90d
+    const seriesMap: Record<string, { gmv: number; commissions: number; orders: number }> = {};
+
+    for (const o of curOrders) {
+      const bucket = Math.floor((o._creationTime - periodStart) / bucketMs);
+      const label = new Date(periodStart + bucket * bucketMs).toISOString().slice(0, 10);
+      if (!seriesMap[label]) seriesMap[label] = { gmv: 0, commissions: 0, orders: 0 };
+      seriesMap[label].gmv += o.total_amount;
+      seriesMap[label].commissions += o.commission_amount ?? 0;
+      seriesMap[label].orders += 1;
+    }
+
+    const series = Object.entries(seriesMap)
+      .map(([date, v]) => ({ date, ...v }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // Top 10 boutiques par GMV (période courante)
+    const storeGmv: Record<string, number> = {};
+    const storeOrders: Record<string, number> = {};
+    for (const o of curOrders) {
+      const sid = o.store_id as string;
+      storeGmv[sid] = (storeGmv[sid] ?? 0) + o.total_amount;
+      storeOrders[sid] = (storeOrders[sid] ?? 0) + 1;
+    }
+    const topStoreIds = Object.entries(storeGmv).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id]) => id);
+    const topStores = topStoreIds.map((sid) => {
+      const store = allStores.find((s) => (s._id as string) === sid);
+      return {
+        storeId: sid,
+        name: store?.name ?? "Inconnu",
+        tier: store?.subscription_tier ?? "free",
+        gmv: storeGmv[sid] ?? 0,
+        orders: storeOrders[sid] ?? 0,
+      };
+    });
+
+    // Répartition statuts commandes (période)
+    const statusDist: Record<string, number> = {};
+    for (const o of allOrders.filter((o) => o._creationTime >= periodStart)) {
+      statusDist[o.status] = (statusDist[o.status] ?? 0) + 1;
+    }
+    const ordersByStatus = Object.entries(statusDist).map(([status, count]) => ({ status, count }));
+
+    // Répartition abonnements boutiques
+    const tierDist: Record<string, number> = {};
+    for (const s of allStores) {
+      const t = s.subscription_tier ?? "free";
+      tierDist[t] = (tierDist[t] ?? 0) + 1;
+    }
+    const storesByTier = Object.entries(tierDist).map(([tier, count]) => ({ tier, count }));
+
+    // Taux de conversion (orders paid / orders total in period)
+    const ordersInPeriod = allOrders.filter((o) => o._creationTime >= periodStart);
+    const conversionRate = ordersInPeriod.length > 0
+      ? Math.round((curOrders.length / ordersInPeriod.length) * 100)
+      : 0;
+
+    // Panier moyen
+    const aov = curOrders.length > 0 ? Math.round(gmv / curOrders.length) : 0;
+    const prevAov = prevOrders.length > 0 ? Math.round(prevGmv / prevOrders.length) : 0;
+
+    return {
+      kpis: {
+        gmv, prevGmv,
+        commissions, prevCommissions,
+        orders: curOrders.length, prevOrders: prevOrders.length,
+        newUsers, prevNewUsers,
+        newStores, prevNewStores,
+        adRevenue,
+        storageRevenue,
+        aov, prevAov,
+        conversionRate,
+      },
+      series,
+      topStores,
+      ordersByStatus,
+      storesByTier,
+      totals: {
+        users: allUsers.length,
+        stores: allStores.length,
+        orders: allOrders.length,
+      },
+    };
+  },
+});
+
+// ─── getPlatformHealth ────────────────────────────────────────
+// Indicateurs de santé pour le monitoring temps réel
+
+export const getPlatformHealth = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 86400000;
+    const twoDaysAgo = now - 2 * 86400000;
+
+    // Retraits en attente
+    const pendingPayouts = await ctx.db
+      .query("payouts")
+      .withIndex("by_status_only", (q) => q.eq("status", "pending"))
+      .collect();
+    const oldestPayout = pendingPayouts.reduce((min, p) => Math.min(min, p.requested_at), Infinity);
+    const oldestPayoutAgeMs = pendingPayouts.length > 0 ? now - oldestPayout : 0;
+
+    // Boutiques non vérifiées
+    const unverifiedStores = await ctx.db
+      .query("stores")
+      .filter((q) => q.eq(q.field("is_verified"), false))
+      .collect();
+
+    // Factures stockage impayées
+    const unpaidInvoices = await ctx.db
+      .query("storage_invoices")
+      .filter((q) => q.eq(q.field("status"), "unpaid"))
+      .collect();
+    const unpaidInvoicesTotal = unpaidInvoices.reduce((s, i) => s + i.amount, 0);
+
+    // Factures impayées depuis > 30 jours (blocage F-06)
+    const thirtyDaysAgo = now - 30 * 86400000;
+    const overdueInvoices = unpaidInvoices.filter((i) => i._creationTime < thirtyDaysAgo);
+
+    // Boutiques bloquées (dette > 30j)
+    const blockedStoreIds = new Set(overdueInvoices.map((i) => i.store_id as string));
+
+    // Demandes stockage en attente de validation
+    const receivedStorage = await ctx.db
+      .query("storage_requests")
+      .withIndex("by_status", (q) => q.eq("status", "received"))
+      .collect();
+    const pendingDrop = await ctx.db
+      .query("storage_requests")
+      .withIndex("by_status", (q) => q.eq("status", "pending_drop_off"))
+      .collect();
+
+    // Commandes bloquées en "paid" depuis > 48h (vendor non-réactif)
+    const allPaidOrders = await ctx.db
+      .query("orders")
+      .filter((q) => q.eq(q.field("status"), "paid"))
+      .collect();
+    const staleOrders = allPaidOrders.filter((o) => o._creationTime < twoDaysAgo);
+
+    // Bookings pub actifs / total
+    const activeBookings = await ctx.db
+      .query("ad_bookings")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+    const queuedBookings = await ctx.db
+      .query("ad_bookings")
+      .filter((q) => q.eq(q.field("status"), "queued"))
+      .collect();
+    const pendingPaymentBookings = await ctx.db
+      .query("ad_bookings")
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    // Erreurs paiement récentes (7j) — commandes restées "pending" > 24h
+    const oneDayAgo = now - 86400000;
+    const stalePendingOrders = await ctx.db
+      .query("orders")
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+    const paymentFailures = stalePendingOrders.filter((o) => o._creationTime < oneDayAgo && o._creationTime >= sevenDaysAgo);
+
+    return {
+      payouts: {
+        pending: pendingPayouts.length,
+        totalAmount: pendingPayouts.reduce((s, p) => s + p.amount, 0),
+        oldestAgeMs: oldestPayoutAgeMs,
+      },
+      stores: {
+        unverified: unverifiedStores.length,
+        blocked: blockedStoreIds.size,
+      },
+      storage: {
+        receivedPendingValidation: receivedStorage.length,
+        pendingDropOff: pendingDrop.length,
+        unpaidInvoices: unpaidInvoices.length,
+        unpaidInvoicesTotal,
+        overdueInvoices: overdueInvoices.length,
+      },
+      orders: {
+        staleInPaid: staleOrders.length,
+        paymentFailures: paymentFailures.length,
+      },
+      ads: {
+        active: activeBookings.length,
+        queued: queuedBookings.length,
+        pendingPayment: pendingPaymentBookings.length,
+      },
+    };
+  },
+});
+
+// ─── listAuditLog ─────────────────────────────────────────────
+
+export const listAuditLog = query({
+  args: {
+    limit: v.optional(v.number()),
+    type: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const n = Math.min(args.limit ?? 100, 200);
+
+    let events;
+    if (args.type) {
+      events = await ctx.db
+        .query("platform_events")
+        .withIndex("by_type", (q) => q.eq("type", args.type!))
+        .order("desc")
+        .take(n);
+    } else {
+      events = await ctx.db
+        .query("platform_events")
+        .withIndex("by_created_at")
+        .order("desc")
+        .take(n);
+    }
+
+    return events.map((e) => ({
+      _id: e._id,
+      type: e.type,
+      actor_id: e.actor_id,
+      actor_name: e.actor_name ?? "Admin",
+      target_type: e.target_type,
+      target_id: e.target_id,
+      target_label: e.target_label,
+      metadata: e.metadata ? JSON.parse(e.metadata) as Record<string, unknown> : undefined,
+      created_at: e.created_at,
+    }));
   },
 });
