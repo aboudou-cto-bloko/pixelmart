@@ -1,9 +1,9 @@
 // filepath: src/app/shop/[storeSlug]/layout.tsx
 
-import Script from "next/script";
 import { preloadQuery, fetchQuery } from "convex/nextjs";
 import { api } from "../../../../convex/_generated/api";
 import { ShopLayoutClient } from "./ShopLayoutClient";
+import { ChatwayScript } from "@/components/atoms/ChatwayScript";
 import type { Metadata } from "next";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
@@ -83,11 +83,7 @@ export default async function ShopLayout({ children, params }: LayoutProps) {
       <ShopLayoutClient storeSlug={storeSlug} preloadedConfig={preloadedConfig}>
         {children}
       </ShopLayoutClient>
-      <Script
-        id="chatway"
-        src="https://cdn.chatway.app/widget.js?id=mpPjL88qvGok"
-        strategy="afterInteractive"
-      />
+      <ChatwayScript />
     </>
   );
 }
