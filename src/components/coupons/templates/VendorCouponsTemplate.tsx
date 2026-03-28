@@ -1,7 +1,7 @@
 // filepath: src/components/coupons/templates/VendorCouponsTemplate.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -46,8 +46,7 @@ import { formatPrice, formatDate } from "@/lib/format";
 import { Plus, Tag, Trash2, Power, PowerOff } from "lucide-react";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 
-// Snapshot du temps courant — calculé une fois au chargement du module (pur)
-const NOW = Date.now();
+// NOTE: NOW est calculé dans le composant via useMemo pour éviter les erreurs d'hydratation
 
 type Coupon = Doc<"coupons">;
 type CouponType = Coupon["type"];
@@ -59,9 +58,9 @@ interface VendorCouponsTemplateProps {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-function getCouponStatus(coupon: Coupon): "active" | "inactive" | "expired" {
+function getCouponStatus(coupon: Coupon, now: number): "active" | "inactive" | "expired" {
   if (!coupon.is_active) return "inactive";
-  if (coupon.expires_at && coupon.expires_at < NOW) return "expired";
+  if (coupon.expires_at && coupon.expires_at < now) return "expired";
   return "active";
 }
 
@@ -284,7 +283,7 @@ function CreateCouponDialog() {
               type="date"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
-              min={new Date().toISOString().slice(0, 10)}
+              suppressHydrationWarning
             />
           </div>
 
@@ -317,7 +316,7 @@ function CreateCouponDialog() {
 
 // ─── Row Actions ──────────────────────────────────────────────
 
-function CouponActions({ coupon }: { coupon: Coupon }) {
+function CouponActions({ coupon, now }: { coupon: Coupon; now: number }) {
   const [loadingToggle, setLoadingToggle] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
 
@@ -325,7 +324,7 @@ function CouponActions({ coupon }: { coupon: Coupon }) {
   const deactivate = useMutation(api.coupons.mutations.deactivate);
   const remove = useMutation(api.coupons.mutations.remove);
 
-  const status = getCouponStatus(coupon);
+  const status = getCouponStatus(coupon, now);
 
   async function handleToggle() {
     setLoadingToggle(true);
@@ -416,9 +415,11 @@ function CouponActions({ coupon }: { coupon: Coupon }) {
 function CouponsTable({
   coupons,
   isLoading,
+  now,
 }: {
   coupons: Coupon[];
   isLoading: boolean;
+  now: number;
 }) {
   if (isLoading) {
     return (
@@ -457,7 +458,7 @@ function CouponsTable({
       </TableHeader>
       <TableBody>
         {coupons.map((coupon) => {
-          const badge = STATUS_BADGE[getCouponStatus(coupon)];
+          const badge = STATUS_BADGE[getCouponStatus(coupon, now)];
           return (
             <TableRow
               key={coupon._id}
@@ -502,7 +503,7 @@ function CouponsTable({
                 <Badge variant={badge.variant}>{badge.label}</Badge>
               </TableCell>
               <TableCell>
-                <CouponActions coupon={coupon} />
+                <CouponActions coupon={coupon} now={now} />
               </TableCell>
             </TableRow>
           );
@@ -518,10 +519,12 @@ export function VendorCouponsTemplate({
   coupons,
   isLoading,
 }: VendorCouponsTemplateProps) {
+  // Stable timestamp per render cycle — avoids SSR/client hydration mismatch
+  const now = useMemo(() => Date.now(), []);
   const active = coupons.filter(
-    (c) => c.is_active && (!c.expires_at || c.expires_at >= NOW),
+    (c) => c.is_active && (!c.expires_at || c.expires_at >= now),
   );
-  const expired = coupons.filter((c) => c.expires_at && c.expires_at < NOW);
+  const expired = coupons.filter((c) => c.expires_at && c.expires_at < now);
   const totalUses = coupons.reduce((sum, c) => sum + c.used_count, 0);
 
   return (
@@ -586,7 +589,7 @@ export function VendorCouponsTemplate({
       </div>
 
       {/* Table */}
-      <CouponsTable coupons={coupons} isLoading={isLoading} />
+      <CouponsTable coupons={coupons} isLoading={isLoading} now={now} />
     </div>
   );
 }

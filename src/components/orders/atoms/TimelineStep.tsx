@@ -106,7 +106,7 @@ export function TimelineStep({
       <div className="pb-6 min-w-0">
         <p className="text-sm leading-snug">{description}</p>
         <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground" suppressHydrationWarning>
             {formatRelativeTime(createdAt)}
           </span>
           {actorType !== "system" && (

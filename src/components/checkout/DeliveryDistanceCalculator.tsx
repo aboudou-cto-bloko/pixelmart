@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { GeocodingResult, Coordinates } from "@/lib/geocoding";
 import {
   calculateDeliveryDistance,
@@ -37,7 +37,7 @@ const WEIGHT_SURCHARGE = {
   pricePerKg: 50,
 } as const;
 
-function isNightTime(): boolean {
+function checkIsNightTime(): boolean {
   const hour = new Date().getHours();
   return hour >= NIGHT_RATES.startHour || hour < NIGHT_RATES.endHour;
 }
@@ -48,7 +48,7 @@ function calculateDeliveryFee(
   weightKg: number = 0,
 ): number {
   const distance = Math.ceil(distanceKm);
-  const nightRate = isNightTime();
+  const nightRate = checkIsNightTime();
 
   let baseFee: number;
 
@@ -118,7 +118,9 @@ export function DeliveryDistanceCalculator({
     onDistanceCalculated,
   ]);
 
-  const isNight = isNightTime();
+  // Computed client-side only to avoid SSR/client mismatch on time-of-day
+  const [isNight, setIsNight] = useState(false);
+  useEffect(() => { setIsNight(checkIsNightTime()); }, []);
 
   if (!selectedAddress) {
     return (

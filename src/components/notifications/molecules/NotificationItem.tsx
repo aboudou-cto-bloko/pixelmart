@@ -65,7 +65,7 @@ export function NotificationItem({
         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
           {body}
         </p>
-        <p className="text-[10px] text-muted-foreground mt-1">
+        <p className="text-[10px] text-muted-foreground mt-1" suppressHydrationWarning>
           {timeAgo(createdAt)}
         </p>
       </div>

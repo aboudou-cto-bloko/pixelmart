@@ -72,16 +72,10 @@ export const CartContext = createContext<(CartState & CartActions) | null>(
 // ─── Provider ────────────────────────────────────────────────
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(loadFromStorage);
-  const [hydrated, setHydrated] = useState(() => typeof window !== "undefined");
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => { setHydrated(true); }, []);
 
   // Persist to localStorage on change (skip SSR)
-  useEffect(() => {
-    if (hydrated) {
-      saveToStorage(items);
-    }
-  }, [items, hydrated]);
-
-  // Persist to localStorage on change
   useEffect(() => {
     if (hydrated) {
       saveToStorage(items);

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { DeliveryType } from "@/constants/deliveryTypes";
 import { Card, CardContent } from "@/components/ui/card";
 import { Truck, Clock, AlertCircle } from "lucide-react";
@@ -32,7 +32,7 @@ const WEIGHT_SURCHARGE = {
   pricePerKg: 50,
 } as const;
 
-function isNightTime(): boolean {
+function checkIsNightTime(): boolean {
   const hour = new Date().getHours();
   return hour >= NIGHT_RATES.startHour || hour < NIGHT_RATES.endHour;
 }
@@ -43,7 +43,7 @@ function calculateDeliveryFeeClient(
   weightKg: number = 0,
 ): number {
   const distance = Math.ceil(distanceKm);
-  const nightRate = isNightTime();
+  const nightRate = checkIsNightTime();
 
   let baseFee: number;
 
@@ -89,12 +89,14 @@ export function DeliveryFeePreview({
   deliveryType,
   weightKg = 0,
 }: DeliveryFeePreviewProps) {
+  // Computed client-side only to avoid SSR/client mismatch on time-of-day
+  const [isNight, setIsNight] = useState(false);
+  useEffect(() => { setIsNight(checkIsNightTime()); }, []);
+
   const fee = useMemo(() => {
     if (!distanceKm) return null;
     return calculateDeliveryFeeClient(distanceKm, deliveryType, weightKg);
   }, [distanceKm, deliveryType, weightKg]);
-
-  const isNight = isNightTime();
 
   if (!zoneName || !distanceKm) {
     return (
