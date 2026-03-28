@@ -127,6 +127,30 @@ npx convex run seed/index:seedVendorStore '{"vendorEmail":"vendor2@pixel-mart.te
 
 ---
 
+### Seeder uniquement les commandes d'une boutique
+
+```bash
+# Seed 12 commandes pour TechShop Cotonou (customer@pixel-mart.test par défaut)
+npx convex run seed/index:seedOrders '{"storeSlug":"techshop-cotonou"}'
+
+# Avec un customer spécifique
+npx convex run seed/index:seedOrders '{"storeSlug":"techshop-cotonou","customerEmail":"ton@email.com"}'
+```
+
+Commandes créées à chaque appel :
+
+| Statut | Nb | Détail |
+|--------|----|--------|
+| `pending` | 2 | Attente paiement (récentes) |
+| `paid` | 2 | Payées, vendor doit traiter |
+| `processing` | 2 | Vendor en cours de préparation |
+| `shipped` | 2 | Expédiées avec numéro de suivi |
+| `delivered` | 3 | Livrées > 48h → balance créditée |
+| `cancelled` | 1 | Annulée |
+| **Total** | **12** | |
+
+---
+
 ### Seed des catégories seulement
 
 ```bash
@@ -188,6 +212,39 @@ npx convex run seed/index:seedAll
 # 6. /vendor/products → 5 produits listés
 # 7. /vendor/store/settings → config TechShop Cotonou
 # 8. /vendor/finance → solde et retraits
+```
+
+---
+
+## Scénario : tester le dashboard vendeur avec des données réelles
+
+```bash
+# Après seedAll, se connecter vendor@pixel-mart.test
+
+# /vendor/dashboard → métriques : ~7 commandes payées, solde pending + balance liquide
+# /vendor/orders → liste avec tous les statuts
+# /vendor/orders?status=paid → 2 commandes à traiter
+# /vendor/finance → balance disponible (commandes delivered) + pending (autres)
+# /vendor/analytics → graphiques avec données historiques (commandes vieilles de 1-20j)
+```
+
+---
+
+## Scénario : pipeline complet d'une commande
+
+```
+pending → paid → processing → shipped → delivered
+```
+
+```bash
+# Les commandes paid_1 et paid_2 sont prêtes à traiter
+# 1. Connecter vendor@pixel-mart.test → /vendor/orders
+# 2. Cliquer "Mettre en préparation" → status: processing
+# 3. Ajouter un numéro de suivi → status: shipped
+# 4. Attendre ou simuler la livraison → status: delivered
+# 5. Après 48h (ou la balance release manuelle via cron) :
+#    /vendor/finance → le montant passe de pending_balance à balance
+# 6. /vendor/finance/payouts → demander un retrait
 ```
 
 ---

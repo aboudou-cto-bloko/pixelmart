@@ -82,6 +82,7 @@ import type * as reviews_queries from "../reviews/queries.js";
 import type * as seed_data from "../seed/data.js";
 import type * as seed_index from "../seed/index.js";
 import type * as seed_mutations from "../seed/mutations.js";
+import type * as seed_queries from "../seed/queries.js";
 import type * as storage_actions from "../storage/actions.js";
 import type * as storage_helpers from "../storage/helpers.js";
 import type * as storage_mutations from "../storage/mutations.js";
@@ -177,6 +178,7 @@ declare const fullApi: ApiFromModules<{
   "seed/data": typeof seed_data;
   "seed/index": typeof seed_index;
   "seed/mutations": typeof seed_mutations;
+  "seed/queries": typeof seed_queries;
   "storage/actions": typeof storage_actions;
   "storage/helpers": typeof storage_helpers;
   "storage/mutations": typeof storage_mutations;
