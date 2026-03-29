@@ -55,6 +55,7 @@ export default function ShopCheckoutPage() {
   const { trackEvent, generateEventId } = useMetaPixel();
 
   const store = useQuery(api.stores.queries.getBySlug, { slug: storeSlug });
+  const warehouseCoords = useQuery(api.stores.queries.getWarehouseCoordinates);
   const createOrder = useMutation(api.orders.mutations.createOrder);
   const initializePayment = useAction(
     api.payments.moneroo.initializeShopPayment,
@@ -93,14 +94,23 @@ export default function ShopCheckoutPage() {
     store?.custom_pickup_lat !== undefined &&
     store?.custom_pickup_lon !== undefined;
 
-  // Show Pixel-Mart delivery section only when PM service is enabled
-  const showDeliverySection = store === undefined || usePmService;
+  // Scenario A: usePmService + hasStoragePlan → PM warehouse
+  // Scenario B: usePmService + !hasStoragePlan + hasCustomPickup → vendor pickup
+  // Scenario C: !usePmService OR (usePmService + !hasStoragePlan + !hasCustomPickup) → no delivery fee
+  const isScenarioA = usePmService && hasStoragePlan;
+  const isScenarioB = usePmService && !hasStoragePlan && hasCustomPickup;
+  const showDeliverySection = store === undefined || isScenarioA || isScenarioB;
 
-  // Collection point: vendor pickup in scenario B, PM warehouse otherwise
+  // Collection point for DeliverySection:
+  // Scenario A → PM warehouse (from admin config, with hardcoded fallback)
+  // Scenario B → vendor's custom pickup coords
+  // Scenario C → not shown
   const collectionPoint: Coordinates | undefined =
-    usePmService && !hasStoragePlan && hasCustomPickup && store
+    isScenarioB && store
       ? { lat: store.custom_pickup_lat!, lon: store.custom_pickup_lon! }
-      : undefined; // undefined → DeliveryDistanceCalculator uses DEFAULT_COLLECTION_POINT
+      : isScenarioA && warehouseCoords
+        ? warehouseCoords
+        : undefined;
 
   // Two-segment distances for storage in the order (scenario B only)
   const twoSegmentDistances = (() => {

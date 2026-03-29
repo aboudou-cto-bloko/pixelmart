@@ -462,14 +462,15 @@ See `docs/ADMIN_DASHBOARD_GUIDE.md` for full specification.
 
 ## Storage Module (Phases A–D ✅)
 
-### Fee Tiers (centimes)
+### Fee Tiers (XOF — 1 centime = 1 FCFA for XOF)
 ```typescript
-// convex/lib/constants.ts
-STORAGE_FEE_PER_UNIT     = 10_000  // 100 XOF/unit
-STORAGE_FEE_BULK_UNIT    = 6_000   // 60 XOF/unit if qty > 50
-STORAGE_FEE_MEDIUM_KG    = 500_000 // 5 000 XOF flat for 5–25 kg
-STORAGE_FEE_HEAVY_BASE   = 500_000 // 5 000 XOF base for >25 kg
-STORAGE_FEE_HEAVY_PER_KG = 25_000  // 250 XOF per kg above 25
+// convex/lib/constants.ts — raw XOF values (no ×100 for XOF)
+STORAGE_FEES.PER_UNIT          = 100    // 100 XOF/unit (≤50 units)
+STORAGE_FEES.PER_UNIT_BULK     = 60     // 60 XOF/unit (>50 units)
+STORAGE_FEES.BULK_THRESHOLD    = 50     // units threshold
+STORAGE_FEES.MEDIUM_KG_FLAT    = 5_000  // 5 000 XOF flat (5–25 kg)
+STORAGE_FEES.HEAVY_BASE        = 5_000  // 5 000 XOF base (>25 kg)
+STORAGE_FEES.HEAVY_PER_KG      = 250    // 250 XOF per kg above 25
 ```
 
 ### Storage Code Format

@@ -13,6 +13,7 @@ type StatusFilter = StorageStatus | "all";
 export default function VendorStoragePage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
+  const store = useQuery(api.stores.queries.getMyStore);
   const requests = useQuery(
     api.storage.queries.getByStore,
     statusFilter === "all" ? {} : { status: statusFilter },
@@ -40,6 +41,7 @@ export default function VendorStoragePage() {
       statusFilter={statusFilter}
       onStatusFilterChange={setStatusFilter}
       isLoading={isLoading}
+      usePmService={store?.use_pixelmart_service ?? true}
     />
   );
 }

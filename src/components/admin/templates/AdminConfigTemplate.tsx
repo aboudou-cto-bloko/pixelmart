@@ -92,22 +92,22 @@ export const CONFIG_DEFAULTS: ConfigEntry[] = [
     unit: "ms",
   },
 
-  // Tarifs stockage (centimes XOF)
+  // Tarifs stockage (XOF — 1 centime = 1 FCFA pour XOF)
   {
     key: "storage_fee_per_unit",
     label: "Tarif unité (≤50)",
-    defaultValue: 10000,
+    defaultValue: 100,
     group: "Stockage",
-    description: "Coût par unité déposée jusqu'à 50 unités — 10 000 c = 100 XOF",
-    unit: "centimes",
+    description: "Coût par unité déposée jusqu'à 50 unités — 100 = 100 XOF",
+    unit: "XOF",
   },
   {
     key: "storage_fee_per_unit_bulk",
     label: "Tarif unité bulk (>50)",
-    defaultValue: 6000,
+    defaultValue: 60,
     group: "Stockage",
-    description: "Coût par unité au-delà de 50 — 6 000 c = 60 XOF",
-    unit: "centimes",
+    description: "Coût par unité au-delà de 50 — 60 = 60 XOF",
+    unit: "XOF",
   },
   {
     key: "storage_fee_bulk_threshold",
@@ -120,26 +120,44 @@ export const CONFIG_DEFAULTS: ConfigEntry[] = [
   {
     key: "storage_fee_medium_kg_flat",
     label: "Forfait 5–25 kg",
-    defaultValue: 500000,
+    defaultValue: 5000,
     group: "Stockage",
-    description: "Forfait poids 5–25 kg — 500 000 c = 5 000 XOF",
-    unit: "centimes",
+    description: "Forfait poids 5–25 kg — 5 000 = 5 000 XOF",
+    unit: "XOF",
   },
   {
     key: "storage_fee_heavy_base",
     label: "Base >25 kg",
-    defaultValue: 500000,
+    defaultValue: 5000,
     group: "Stockage",
-    description: "Base pour dépôts >25 kg — 500 000 c = 5 000 XOF",
-    unit: "centimes",
+    description: "Base pour dépôts >25 kg — 5 000 = 5 000 XOF",
+    unit: "XOF",
   },
   {
     key: "storage_fee_heavy_per_kg",
     label: "Surcoût /kg >25 kg",
-    defaultValue: 25000,
+    defaultValue: 250,
     group: "Stockage",
-    description: "Tarif par kg supplémentaire au-delà de 25 kg — 25 000 c = 250 XOF",
-    unit: "centimes",
+    description: "Tarif par kg supplémentaire au-delà de 25 kg — 250 = 250 XOF",
+    unit: "XOF",
+  },
+
+  // Coordonnées entrepôt Pixel-Mart
+  {
+    key: "warehouse_lat",
+    label: "Latitude entrepôt",
+    defaultValue: 6.4106,
+    group: "Entrepôt",
+    description: "Latitude GPS de l'entrepôt Pixel-Mart (Cotonou) — ex : 6.4106",
+    unit: "°",
+  },
+  {
+    key: "warehouse_lon",
+    label: "Longitude entrepôt",
+    defaultValue: 2.329,
+    group: "Entrepôt",
+    description: "Longitude GPS de l'entrepôt Pixel-Mart (Cotonou) — ex : 2.3290",
+    unit: "°",
   },
 ];
 
@@ -179,7 +197,7 @@ function ConfigRow({
 
   const handleSave = async () => {
     const num = Number(draft);
-    if (isNaN(num) || num < 0) {
+    if (isNaN(num) || !isFinite(num)) {
       setError("Valeur invalide");
       return;
     }

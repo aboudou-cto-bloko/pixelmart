@@ -203,11 +203,20 @@ export default function CheckoutPage() {
     api.stores.queries.getDeliveryConfigBatch,
     storeIds.length > 0 ? { storeIds } : "skip",
   );
+  const warehouseCoords = useQuery(api.stores.queries.getWarehouseCoordinates);
 
-  // Show DeliverySection if at least one store uses PM service OR configs not loaded yet
-  const anyPmStore = storeIds.some(
-    (id) => storeDeliveryConfigs?.[id]?.use_pixelmart_service !== false,
-  );
+  // A store counts as "PM store" (delivery fee calculated) only when:
+  //   Scenario A: use_pixelmart_service=true AND has_storage_plan=true (products in PM warehouse)
+  //   Scenario B: use_pixelmart_service=true AND has custom pickup coords (PM collects from vendor)
+  // Otherwise scenario C: no delivery fee, vendor handles delivery
+  const anyPmStore = storeIds.some((id) => {
+    const cfg = storeDeliveryConfigs?.[id];
+    if (!cfg) return true; // configs not loaded yet → optimistic
+    if (!cfg.use_pixelmart_service) return false;
+    const hasCoords =
+      cfg.custom_pickup_lat !== undefined && cfg.custom_pickup_lon !== undefined;
+    return cfg.has_storage_plan || hasCoords;
+  });
   const showDeliverySection = !storeDeliveryConfigs || anyPmStore;
 
   // ── State ──
@@ -328,8 +337,13 @@ export default function CheckoutPage() {
       // 1. Créer toutes les commandes
       for (const store of stores) {
         const coupon = storeCoupons[store.storeId];
-        const storePmService =
-          storeDeliveryConfigs?.[store.storeId]?.use_pixelmart_service !== false;
+        const storeCfg = storeDeliveryConfigs?.[store.storeId];
+        const storePmService = storeCfg
+          ? storeCfg.use_pixelmart_service &&
+            (storeCfg.has_storage_plan ||
+              (storeCfg.custom_pickup_lat !== undefined &&
+                storeCfg.custom_pickup_lon !== undefined))
+          : true;
 
         const result = await createOrder({
           storeId: store.storeId,
@@ -483,6 +497,7 @@ export default function CheckoutPage() {
               value={deliveryConfig}
               onChange={handleDeliveryConfigChange}
               addressError={deliveryAddressError ?? undefined}
+              collectionPoint={warehouseCoords ?? undefined}
             />
           ) : (
             <Card>
@@ -522,8 +537,13 @@ export default function CheckoutPage() {
         {/* Right — Order Summary */}
         <div className="lg:col-span-2 space-y-6">
           {stores.map((store) => {
-            const isPm =
-              storeDeliveryConfigs?.[store.storeId]?.use_pixelmart_service !== false;
+            const cfg = storeDeliveryConfigs?.[store.storeId];
+            const isPm = cfg
+              ? cfg.use_pixelmart_service &&
+                (cfg.has_storage_plan ||
+                  (cfg.custom_pickup_lat !== undefined &&
+                    cfg.custom_pickup_lon !== undefined))
+              : true;
             return (
               <StoreOrderCard
                 key={store.storeId}
