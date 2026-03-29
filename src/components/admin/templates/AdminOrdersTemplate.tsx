@@ -3,6 +3,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ShoppingBag, Search, X } from "lucide-react";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -44,6 +45,7 @@ type OrderItem = {
   _id: string;
   order_number: string;
   store_name: string;
+  customer_id: string;
   customer_name: string;
   customer_email: string;
   customer_phone?: string;
@@ -106,6 +108,7 @@ export function AdminOrdersTemplate({ orders }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const bulk = useBulkSelection();
+  const router = useRouter();
 
   const filtered = orders.filter((o) => {
     const q = search.trim().toLowerCase();
@@ -237,9 +240,14 @@ export function AdminOrdersTemplate({ orders }: Props) {
                 <TableRow
                   key={order._id}
                   data-selected={bulk.selectedIds.has(order._id)}
-                  className="data-[selected=true]:bg-muted/40"
+                  className="data-[selected=true]:bg-muted/40 cursor-pointer hover:bg-muted/50"
+                  onClick={(e) => {
+                    // Don't navigate if clicking checkbox
+                    if ((e.target as HTMLElement).closest('[role="checkbox"]')) return;
+                    router.push(`/admin/orders/${order._id}`);
+                  }}
                 >
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={bulk.selectedIds.has(order._id)}
                       onCheckedChange={() => bulk.toggle(order._id)}
@@ -252,11 +260,28 @@ export function AdminOrdersTemplate({ orders }: Props) {
                   <TableCell className="text-sm font-medium">
                     {order.store_name}
                   </TableCell>
-                  <TableCell>
-                    <div className="text-sm">{order.customer_name}</div>
-                    <div className="text-xs text-muted-foreground">{order.customer_email}</div>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="text-sm font-medium hover:text-primary transition-colors cursor-pointer"
+                      onClick={() => router.push(`/admin/users/${order.customer_id}`)}
+                    >
+                      {order.customer_name}
+                    </div>
+                    <a
+                      href={`mailto:${order.customer_email}`}
+                      className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {order.customer_email}
+                    </a>
                     {order.customer_phone && (
-                      <div className="text-xs text-muted-foreground">{order.customer_phone}</div>
+                      <a
+                        href={`tel:${order.customer_phone}`}
+                        className="block text-xs text-muted-foreground hover:text-primary transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {order.customer_phone}
+                      </a>
                     )}
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium whitespace-nowrap">

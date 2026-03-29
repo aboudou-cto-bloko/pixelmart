@@ -682,6 +682,7 @@ export const listOrders = query({
           _id: order._id,
           order_number: order.order_number,
           store_name: store?.name ?? "Boutique inconnue",
+          customer_id: order.customer_id,
           customer_name: customer?.name ?? "Client inconnu",
           customer_email: customer?.email ?? "—",
           customer_phone: customer?.phone ?? undefined,
@@ -697,6 +698,118 @@ export const listOrders = query({
     );
 
     return enriched;
+  },
+});
+
+// ─── getAdminOrderDetail ─────────────────────────────────────
+
+export const getAdminOrderDetail = query({
+  args: { orderId: v.id("orders") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) return null;
+
+    const store = await ctx.db.get(order.store_id);
+    const customer = await ctx.db.get(order.customer_id);
+
+    // Resolve item images
+    const itemsWithImages = await Promise.all(
+      order.items.map(async (item) => {
+        let resolvedUrl: string | null = null;
+        if (item.image_url) {
+          try {
+            resolvedUrl = await ctx.storage.getUrl(item.image_url as string);
+          } catch {
+            resolvedUrl = null;
+          }
+        }
+        return { ...item, resolved_image_url: resolvedUrl };
+      }),
+    );
+
+    return {
+      ...order,
+      items: itemsWithImages,
+      store_name: store?.name ?? "Boutique inconnue",
+      store_slug: store?.slug ?? null,
+      customer: customer
+        ? {
+            _id: customer._id,
+            name: customer.name ?? "—",
+            email: customer.email,
+            phone: customer.phone ?? null,
+            avatar_url: customer.avatar_url ?? null,
+            role: customer.role,
+            is_banned: customer.is_banned ?? false,
+            _creationTime: customer._creationTime,
+          }
+        : null,
+    };
+  },
+});
+
+// ─── getAdminUserDetail ──────────────────────────────────────
+
+export const getAdminUserDetail = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+
+    // Their orders (as customer)
+    const orders = await ctx.db
+      .query("orders")
+      .withIndex("by_customer", (q) => q.eq("customer_id", args.userId))
+      .order("desc")
+      .take(50);
+
+    const ordersEnriched = await Promise.all(
+      orders.map(async (order) => {
+        const store = await ctx.db.get(order.store_id);
+        return {
+          _id: order._id,
+          order_number: order.order_number,
+          store_name: store?.name ?? "—",
+          total_amount: order.total_amount,
+          currency: order.currency,
+          status: order.status,
+          payment_status: order.payment_status,
+          _creationTime: order._creationTime,
+        };
+      }),
+    );
+
+    // Their store (if vendor)
+    const store = user.active_store_id
+      ? await ctx.db.get(user.active_store_id)
+      : null;
+
+    return {
+      _id: user._id,
+      name: user.name ?? "—",
+      email: user.email,
+      phone: user.phone ?? null,
+      role: user.role,
+      is_banned: user.is_banned ?? false,
+      is_verified: user.is_verified ?? false,
+      avatar_url: user.avatar_url ?? null,
+      _creationTime: user._creationTime,
+      last_login_at: user.last_login_at ?? null,
+      orders: ordersEnriched,
+      store: store
+        ? {
+            _id: store._id,
+            name: store.name,
+            slug: store.slug,
+            status: store.status,
+            subscription_tier: store.subscription_tier,
+          }
+        : null,
+    };
   },
 });
 
