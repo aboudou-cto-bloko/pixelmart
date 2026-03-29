@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPrice, formatDate } from "@/lib/format";
-import { Plus, Package, Clock, AlertCircle, CheckCircle2, ArrowDownToLine } from "lucide-react";
+import { Plus, Package, Clock, AlertCircle, CheckCircle2, ArrowDownToLine, Lock } from "lucide-react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 type StorageStatus = Doc<"storage_requests">["status"];
@@ -62,6 +62,7 @@ interface VendorStorageTemplateProps {
   statusFilter: StatusFilter;
   onStatusFilterChange: (s: StatusFilter) => void;
   isLoading: boolean;
+  usePmService?: boolean;
 }
 
 const STATUS_TABS: Array<{ value: StatusFilter; label: string }> = [
@@ -464,6 +465,7 @@ export function VendorStorageTemplate({
   statusFilter,
   onStatusFilterChange,
   isLoading,
+  usePmService = true,
 }: VendorStorageTemplateProps) {
   return (
     <div className="space-y-6">
@@ -477,8 +479,38 @@ export function VendorStorageTemplate({
             Gérez vos demandes de mise en stock à l&apos;entrepôt Pixel-Mart
           </p>
         </div>
-        <NewRequestDialog />
+        {usePmService && <NewRequestDialog />}
       </div>
+
+      {/* Hard block: PM delivery service required */}
+      {!usePmService && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="rounded-full bg-destructive/10 p-2 shrink-0">
+                <Lock className="size-5 text-destructive" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-destructive">
+                  Service de stockage non disponible
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Le service de stockage Pixel-Mart est réservé aux boutiques
+                  qui utilisent le service de livraison Pixel-Mart. Activez le
+                  service de livraison dans vos{" "}
+                  <a
+                    href="/vendor/settings"
+                    className="underline text-foreground hover:text-primary"
+                  >
+                    paramètres boutique
+                  </a>{" "}
+                  pour accéder au stockage.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

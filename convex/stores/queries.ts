@@ -5,6 +5,34 @@ import { v } from "convex/values";
 import { resolveImageUrl } from "../products/helpers";
 import { getVendorStore } from "../users/helpers";
 
+// Default Pixel-Mart warehouse coordinates (Cotonou)
+const DEFAULT_WAREHOUSE_LAT = 6.4105682373046875;
+const DEFAULT_WAREHOUSE_LON = 2.328976631164551;
+
+/**
+ * Retourne les coordonnées GPS de l'entrepôt Pixel-Mart.
+ * Lues depuis platform_config (warehouse_lat / warehouse_lon).
+ * Utilise les coordonnées hardcodées de Cotonou par défaut.
+ * PUBLIC — utilisé par les pages checkout.
+ */
+export const getWarehouseCoordinates = query({
+  args: {},
+  handler: async (ctx) => {
+    const latRow = await ctx.db
+      .query("platform_config")
+      .withIndex("by_key", (q) => q.eq("key", "warehouse_lat"))
+      .first();
+    const lonRow = await ctx.db
+      .query("platform_config")
+      .withIndex("by_key", (q) => q.eq("key", "warehouse_lon"))
+      .first();
+    return {
+      lat: latRow?.value ?? DEFAULT_WAREHOUSE_LAT,
+      lon: lonRow?.value ?? DEFAULT_WAREHOUSE_LON,
+    };
+  },
+});
+
 /**
  * Vérifie si la boutique a des commandes actives (non terminées, non annulées).
  * Utilisé pour bloquer la modification des paramètres de livraison.
@@ -263,6 +291,7 @@ export const getDeliveryConfigBatch = query({
         if (store) {
           acc[store._id] = {
             use_pixelmart_service: store.use_pixelmart_service ?? true,
+            has_storage_plan: store.has_storage_plan ?? false,
             custom_pickup_lat: store.custom_pickup_lat,
             custom_pickup_lon: store.custom_pickup_lon,
           };
@@ -273,6 +302,7 @@ export const getDeliveryConfigBatch = query({
         string,
         {
           use_pixelmart_service: boolean;
+          has_storage_plan: boolean;
           custom_pickup_lat?: number;
           custom_pickup_lon?: number;
         }

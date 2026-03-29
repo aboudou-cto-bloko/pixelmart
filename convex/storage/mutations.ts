@@ -20,6 +20,13 @@ export const createRequest = mutation({
   handler: async (ctx, args) => {
     const { user, store } = await getVendorStore(ctx);
 
+    // Service de stockage réservé aux boutiques avec le service Pixel-Mart activé
+    if (!store.use_pixelmart_service) {
+      throw new ConvexError(
+        "Le service de stockage Pixel-Mart nécessite d'activer le service de livraison Pixel-Mart. Activez-le dans vos paramètres boutique.",
+      );
+    }
+
     if (args.product_name.trim().length < 2) {
       throw new ConvexError("Le nom du produit est trop court");
     }
