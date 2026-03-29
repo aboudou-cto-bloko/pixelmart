@@ -8,6 +8,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { OrderStatusBadge } from "../atoms/OrderStatusBadge";
 import { TrackingLink } from "../atoms/TrackingLink";
 import { OrderTimeline } from "../molecules/OrderTimeline";
@@ -17,6 +18,7 @@ import { OrderSummaryCard } from "../molecules/OrderSummaryCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/lib/format";
 import Image from "next/image";
+import { Mail, Phone, MapPin } from "lucide-react";
 
 interface OrderItem {
   product_id: string;
@@ -35,6 +37,7 @@ interface OrderDetail {
   order_number: string;
   status: Doc<"orders">["status"];
   payment_status: string;
+  source?: "marketplace" | "vendor_shop";
   items: OrderItem[];
   subtotal: number;
   shipping_amount: number;
@@ -47,6 +50,12 @@ interface OrderDetail {
   carrier?: string;
   estimated_delivery?: number;
   delivered_at?: number;
+  payment_mode?: "online" | "cod";
+  delivery_type?: "standard" | "urgent" | "fragile";
+  delivery_fee?: number;
+  delivery_distance_km?: number;
+  delivery_lat?: number;
+  delivery_lon?: number;
   shipping_address: {
     full_name: string;
     line1: string;
@@ -153,7 +162,24 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
             })}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <OrderStatusBadge status={order.status} />
+          {order.payment_status === "failed" && (
+            <Badge className="bg-red-100 text-red-700 border-red-300">
+              Paiement échoué
+            </Badge>
+          )}
+          {order.payment_mode === "cod" && (
+            <Badge variant="outline" className="text-xs">
+              Paiement à la livraison
+            </Badge>
+          )}
+          {order.source && (
+            <Badge variant="outline" className="text-xs">
+              {order.source === "marketplace" ? "Marketplace" : "Boutique"}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Actions */}
@@ -281,25 +307,90 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
       <Separator />
 
+      {/* Infos livraison */}
+      {(order.delivery_type || order.delivery_distance_km || order.payment_mode === "cod") && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium">Livraison</h3>
+          <div className="rounded-lg border p-3 text-sm space-y-1.5">
+            {order.delivery_type && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <span className="capitalize">
+                  {{ standard: "Standard", urgent: "Urgent", fragile: "Fragile" }[order.delivery_type]}
+                </span>
+              </div>
+            )}
+            {order.delivery_distance_km !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Distance</span>
+                <span>{order.delivery_distance_km.toFixed(1)} km</span>
+              </div>
+            )}
+            {order.delivery_fee !== undefined && order.delivery_fee > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Frais de livraison</span>
+                <span>{formatPrice(order.delivery_fee, order.currency)}</span>
+              </div>
+            )}
+            {order.payment_mode && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Mode de paiement</span>
+                <span>{order.payment_mode === "cod" ? "À la livraison" : "En ligne"}</span>
+              </div>
+            )}
+            {order.delivery_lat !== undefined && order.delivery_lon !== undefined && (
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Localisation GPS</span>
+                <a
+                  href={`https://www.openstreetmap.org/?mlat=${order.delivery_lat}&mlon=${order.delivery_lon}&zoom=16`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline flex items-center gap-1 text-xs"
+                >
+                  <MapPin className="size-3" />
+                  Voir sur la carte
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Client info */}
       <div className="space-y-2">
         <h3 className="text-sm font-medium">Client</h3>
-        {order.customer && (
-          <div className="text-sm space-y-0.5">
-            <p className="font-medium">{order.customer.name}</p>
-            <p className="text-muted-foreground">{order.customer.email}</p>
-            {order.customer.phone && (
-              <p className="text-muted-foreground">{order.customer.phone}</p>
-            )}
+        {order.customer ? (
+          <div className="rounded-lg border p-3 space-y-2">
+            <p className="text-sm font-medium">{order.customer.name}</p>
+            <div className="space-y-1.5">
+              <a
+                href={`mailto:${order.customer.email}`}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Mail className="size-3.5 shrink-0" />
+                <span className="truncate">{order.customer.email}</span>
+              </a>
+              {order.customer.phone && (
+                <a
+                  href={`tel:${order.customer.phone}`}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Phone className="size-3.5 shrink-0" />
+                  <span>{order.customer.phone}</span>
+                </a>
+              )}
+            </div>
           </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Client introuvable</p>
         )}
       </div>
 
       {/* Adresse livraison */}
       <div className="space-y-2">
         <h3 className="text-sm font-medium">Adresse de livraison</h3>
-        <div className="text-sm text-muted-foreground leading-relaxed">
-          <p>{addr.full_name}</p>
+        <div className="rounded-lg border p-3 text-sm text-muted-foreground leading-relaxed">
+          <p className="font-medium text-foreground">{addr.full_name}</p>
           <p>{addr.line1}</p>
           {addr.line2 && <p>{addr.line2}</p>}
           <p>
@@ -308,7 +399,15 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
             {addr.postal_code ? ` ${addr.postal_code}` : ""}
           </p>
           <p>{addr.country}</p>
-          {addr.phone && <p>{addr.phone}</p>}
+          {addr.phone && (
+            <a
+              href={`tel:${addr.phone}`}
+              className="flex items-center gap-1 mt-1 text-foreground hover:text-primary transition-colors"
+            >
+              <Phone className="size-3.5" />
+              {addr.phone}
+            </a>
+          )}
         </div>
       </div>
 

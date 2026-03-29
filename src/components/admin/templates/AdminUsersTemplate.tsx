@@ -3,6 +3,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -328,6 +329,7 @@ function BulkDeleteDialog({
 export function AdminUsersTemplate({ users }: Props) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  const router = useRouter();
   const [roleTarget, setRoleTarget] = useState<UserItem | null>(null);
   const [banTarget, setBanTarget] = useState<UserItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserItem | null>(null);
@@ -461,8 +463,15 @@ export function AdminUsersTemplate({ users }: Props) {
             </TableHeader>
             <TableBody>
               {filtered.map((user) => (
-                <TableRow key={user._id} className={user.is_banned ? "opacity-60" : ""}>
-                  <TableCell>
+                <TableRow
+                  key={user._id}
+                  className={`${user.is_banned ? "opacity-60" : ""} cursor-pointer hover:bg-muted/50`}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).closest('[role="checkbox"], [role="menuitem"], button')) return;
+                    router.push(`/admin/users/${user._id}`);
+                  }}
+                >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={selectedIds.has(user._id)}
                       onCheckedChange={() => toggle(user._id)}
@@ -485,7 +494,7 @@ export function AdminUsersTemplate({ users }: Props) {
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {user.last_login_at ? formatDate(user.last_login_at) : "—"}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-7 px-2">•••</Button>
