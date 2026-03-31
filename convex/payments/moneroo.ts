@@ -1,6 +1,6 @@
 // filepath: convex/payments/moneroo.ts
 
-import { action } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { centimesToMonerooAmount, monerooAmountToCentimes } from "./helpers";
@@ -303,5 +303,76 @@ export const verifyPayment = action({
     }
 
     return { status: monerooStatus };
+  },
+});
+
+/**
+ * Demande un remboursement auprès de Moneroo pour une commande déjà payée.
+ *
+ * Appelé depuis cancelOrder (via ctx.scheduler) quand payment_status === "paid".
+ * IDEMPOTENT : si la commande a déjà payment_status === "refunded", ne fait rien.
+ *
+ * Pattern : internalAction (appel API externe) → ctx.runMutation pour update DB.
+ */
+export const requestRefund = internalAction({
+  args: {
+    orderId: v.id("orders"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const secretKey = process.env.MONEROO_SECRET_KEY;
+    if (!secretKey) throw new Error("MONEROO_SECRET_KEY non configurée");
+
+    const order = await ctx.runQuery(
+      internal.payments.queries.getOrderForPayment,
+      { orderId: args.orderId },
+    );
+
+    if (!order) throw new Error("Commande introuvable");
+
+    // Idempotence
+    if (order.payment_status === "refunded") return { alreadyRefunded: true };
+
+    if (!order.payment_reference) {
+      // Pas de référence Moneroo — marquer remboursé sans appel API (ex: COD annulé avant collecte)
+      await ctx.runMutation(internal.payments.mutations.markRefunded, {
+        orderId: args.orderId,
+        reason: args.reason ?? "Annulation sans référence de paiement",
+      });
+      return { refunded: true, method: "manual" };
+    }
+
+    let response: Response;
+    try {
+      response = await fetchWithTimeout(
+        `${MONEROO_API_URL}/payments/${order.payment_reference}/refund`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${secretKey}`,
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            reason: args.reason ?? "Commande annulée par le client",
+          }),
+        },
+      );
+    } catch (err) {
+      handleMonerooFetchError(err, "remboursement");
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `Erreur Moneroo (${response.status}) : impossible d'initialiser le remboursement`,
+      );
+    }
+
+    await ctx.runMutation(internal.payments.mutations.markRefunded, {
+      orderId: args.orderId,
+      reason: args.reason,
+    });
+
+    return { refunded: true, method: "moneroo" };
   },
 });

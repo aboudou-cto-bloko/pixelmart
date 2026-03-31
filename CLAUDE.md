@@ -339,15 +339,30 @@ On payout request, outstanding `storage_debt` is deducted **first**, before fee 
 ### F-06: Storage Blocking
 A vendor with `fee_status: "unpaid"` on any invoice older than 30 days cannot withdraw products.
 
+### F-07: COD Order Payment Status
+COD orders (`payment_mode = "cod"`) are created with `payment_status = "paid"` (not "pending"). The `confirmPayment` mutation is never called for COD — F-01 transactions (sale + fee) and vendor/customer notifications are generated **inline in `createOrder`**.
+
+### F-08: Refund Flow
+When `cancelOrder` is called on a `payment_status = "paid"` order, it schedules `internal.payments.moneroo.requestRefund`. That action calls Moneroo's refund endpoint and then calls `markRefunded` mutation (F-01: debit pending_balance, create "refund" transaction). For COD orders with no `payment_reference`, the refund is marked directly without API call.
+
+### F-09: Balance Release Guard
+`releaseBalances` cron uses `releasableAmount = Math.min(netAmount, store.pending_balance)` to prevent over-crediting if `pending_balance` was already depleted. If `releasableAmount <= 0`, the order is skipped.
+
+### F-10: Expired Orders — Verify Before Cancel
+`expirePendingOrders` cron: if an order has a `payment_reference`, it schedules `verifyPayment` (Moneroo check) instead of cancelling immediately. If no `payment_reference`, the order is cancelled directly (user never initiated payment).
+
 ### Order Status Transitions (STRICT)
 ```
-pending → paid              (Moneroo webhook: payment.success)
+pending → paid              (Moneroo webhook: payment.success OR COD inline in createOrder)
 paid → processing           (vendor action)
 processing → shipped        (vendor adds tracking)
+processing → ready_for_delivery  (vendor action)
 shipped → delivered         (customer confirmation OR auto +7 days cron)
+shipped → delivery_failed   (vendor action — notifies vendor + customer)
+delivery_failed → shipped   (vendor retry)
 pending → cancelled         (customer, within 2h)
-paid → cancelled            (customer, within 2h — triggers auto-refund)
-processing → cancelled      (vendor only — triggers auto-refund)
+paid → cancelled            (customer, within 2h — triggers requestRefund action)
+processing → cancelled      (vendor only — triggers requestRefund action)
 paid/delivered → refunded   (admin or vendor)
 
 FORBIDDEN: delivered→cancelled, shipped→paid, refunded→any, cancelled→any
@@ -442,11 +457,13 @@ Sender: `Pixel-Mart <noreply@pixel-mart-bj.com>` — defined as `EMAIL_FROM` in 
 | Route | Purpose | Status |
 |-------|---------|--------|
 | `/admin/dashboard` | Platform overview | ✅ |
-| `/admin/users` | User management | ✅ |
+| `/admin/users` | User management list | ✅ |
+| `/admin/users/[id]` | User profile + order history | ✅ |
 | `/admin/stores` | Store verification | ✅ |
 | `/admin/categories` | Category management | ✅ |
 | `/admin/payouts` | Payout approvals | ✅ |
-| `/admin/orders` | Order management | ✅ |
+| `/admin/orders` | Order management list | ✅ |
+| `/admin/orders/[id]` | Order detail + customer card | ✅ |
 | `/admin/storage` | Storage management | ✅ |
 | `/admin/delivery` | Delivery batches | ✅ |
 

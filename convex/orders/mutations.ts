@@ -260,7 +260,7 @@ export const createOrder = mutation({
     // COD = "paid" directement (le paiement sera collecté à la livraison)
     // Online = "pending" (en attente de confirmation Moneroo)
     const initialStatus = paymentMode === "cod" ? "paid" : "pending";
-    const initialPaymentStatus = "pending";
+    const initialPaymentStatus = paymentMode === "cod" ? "paid" : "pending";
 
     // 12. Créer la commande
     const orderId = await ctx.db.insert("orders", {
@@ -315,6 +315,139 @@ export const createOrder = mutation({
       actorType: "customer",
       actorId: user._id,
     });
+
+    // 16. COD : F-01 transactions + credit pending_balance + notifications
+    // Pour les commandes en ligne, ces étapes sont déclenchées par le webhook Moneroo.
+    // Pour COD, le paiement est "confirmé" à la création (collecté à la livraison).
+    if (paymentMode === "cod") {
+      const netAmount = totalAmount - commissionAmount;
+
+      // F-01 : Transaction "sale" — crédit pour le vendeur
+      const balanceBefore = store.pending_balance;
+      const balanceAfter = balanceBefore + netAmount;
+
+      await ctx.db.insert("transactions", {
+        store_id: store._id,
+        order_id: orderId,
+        type: "sale",
+        direction: "credit",
+        amount: netAmount,
+        currency,
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        status: "completed",
+        description: `Vente COD commande ${orderNumber}`,
+        processed_at: Date.now(),
+      });
+
+      // F-01 : Transaction "fee" — commission Pixel-Mart
+      if (commissionAmount > 0) {
+        await ctx.db.insert("transactions", {
+          store_id: store._id,
+          order_id: orderId,
+          type: "fee",
+          direction: "debit",
+          amount: commissionAmount,
+          currency,
+          balance_before: balanceAfter,
+          balance_after: balanceAfter,
+          status: "completed",
+          description: `Commission Pixel-Mart COD commande ${orderNumber}`,
+          processed_at: Date.now(),
+        });
+      }
+
+      // Créditer le pending_balance (libéré après 48h par cron)
+      await ctx.db.patch(store._id, {
+        pending_balance: balanceAfter,
+        total_orders: store.total_orders + 1,
+        updated_at: Date.now(),
+      });
+
+      // Notification + email au client
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.createInAppNotification,
+        {
+          userId: user._id,
+          type: "order_status",
+          title: `Commande ${orderNumber} confirmée`,
+          body: `Votre commande est confirmée. ${store.name} prépare votre colis — paiement à la livraison.`,
+          link: `/orders`,
+          channels: ["in_app"],
+          sentVia: ["in_app"],
+          metadata: undefined,
+        },
+      );
+
+      if (user.email) {
+        const addrStr = `${args.shippingAddress.full_name}, ${args.shippingAddress.line1}, ${args.shippingAddress.city}, ${args.shippingAddress.country}`;
+        await ctx.scheduler.runAfter(
+          0,
+          internal.emails.send.sendOrderConfirmation,
+          {
+            customerEmail: user.email,
+            customerName: user.name ?? "Client",
+            orderNumber,
+            orderId,
+            storeName: store.name,
+            items: validatedItems.map((i) => ({
+              title: i.title,
+              quantity: i.quantity,
+              unit_price: i.unit_price,
+              total_price: i.total_price,
+            })),
+            subtotal,
+            discountAmount: discountAmount > 0 ? discountAmount : undefined,
+            shippingAmount,
+            totalAmount,
+            currency,
+            shippingAddress: addrStr,
+            paymentMethod: "cod",
+          },
+        );
+      }
+
+      // Email + notification in-app au vendeur
+      const vendor = await ctx.db.get(store.owner_id);
+      if (vendor?.email) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.emails.send.sendNewOrderNotification,
+          {
+            vendorEmail: vendor.email,
+            vendorName: vendor.name ?? "Vendeur",
+            orderNumber,
+            orderId,
+            customerName: user.name ?? "Client",
+            items: validatedItems.map((i) => ({
+              title: i.title,
+              quantity: i.quantity,
+              total_price: i.total_price,
+              sku: i.sku,
+            })),
+            totalAmount,
+            commissionAmount,
+            currency,
+            shippingAddress: `${args.shippingAddress.full_name}, ${args.shippingAddress.line1}, ${args.shippingAddress.city}`,
+          },
+        );
+      }
+
+      if (vendor) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyNewOrderInApp,
+          {
+            vendorUserId: vendor._id,
+            orderNumber,
+            customerName: user.name ?? "Client",
+            totalAmount,
+            currency,
+          },
+        );
+      }
+    }
 
     return {
       orderId,
@@ -484,6 +617,52 @@ export const updateStatus = mutation({
       }
     }
 
+    // ── delivery_failed : notifier le vendeur ──
+    if (args.status === "delivery_failed") {
+      await logOrderEvent(ctx, {
+        orderId: order._id,
+        storeId: store._id,
+        type: "note",
+        description: "Tentative de livraison échouée",
+        actorType: "vendor",
+        actorId: user._id,
+      });
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.createInAppNotification,
+        {
+          userId: user._id,
+          type: "order_status",
+          title: `Échec de livraison — Commande ${order.order_number}`,
+          body: `La livraison de la commande ${order.order_number} a échoué. Veuillez contacter le client pour replanifier.`,
+          link: `/vendor/orders/${order._id}`,
+          channels: ["in_app"],
+          sentVia: ["in_app"],
+          metadata: undefined,
+        },
+      );
+
+      // Notifier le client de l'échec de livraison
+      const customer = await ctx.db.get(order.customer_id);
+      if (customer) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.createInAppNotification,
+          {
+            userId: customer._id,
+            type: "order_status",
+            title: `Échec de livraison — Commande ${order.order_number}`,
+            body: `La livraison de votre commande ${order.order_number} n'a pas pu être effectuée. Votre vendeur va vous recontacter.`,
+            link: `/orders`,
+            channels: ["in_app"],
+            sentVia: ["in_app"],
+            metadata: undefined,
+          },
+        );
+      }
+    }
+
     await ctx.db.patch(args.orderId, updates);
 
     return { success: true };
@@ -587,12 +766,16 @@ export const cancelOrder = mutation({
     // Restaurer le stock
     await restoreInventory(ctx, order.items);
 
-    // Si déjà payé, marquer pour remboursement
+    // Si déjà payé, déclencher le remboursement via Moneroo
     if (order.payment_status === "paid") {
-      await ctx.db.patch(args.orderId, {
-        payment_status: "refunded",
-      });
-      // TODO: Step 0.11 — déclencher le remboursement via Moneroo/Stripe
+      await ctx.scheduler.runAfter(
+        0,
+        internal.payments.moneroo.requestRefund,
+        {
+          orderId: order._id,
+          reason: args.reason ?? "Commande annulée",
+        },
+      );
     }
 
     return { success: true };

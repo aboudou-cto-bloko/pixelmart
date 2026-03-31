@@ -450,4 +450,70 @@ NEXT_PUBLIC_APP_URL
 
 ---
 
+---
+
+## 12. Paiement COD — règle spéciale (F-07)
+
+Les commandes COD (`payment_mode = "cod"`) sont créées avec `payment_status = "paid"` directement. Le webhook Moneroo n'est **jamais** appelé pour ces commandes. Il faut donc créer les transactions F-01 et envoyer les notifications **inline dans `createOrder`** :
+
+```typescript
+// Dans createOrder, après insertion en DB
+if (paymentMode === "cod") {
+  // F-01 : transaction "sale" + "fee"
+  await ctx.db.insert("transactions", { type: "sale", direction: "credit", ... });
+  await ctx.db.insert("transactions", { type: "fee", direction: "debit", ... });
+
+  // Créditer le pending_balance (libéré après 48h par cron)
+  await ctx.db.patch(store._id, { pending_balance: balanceAfter, total_orders: ... });
+
+  // Notifications : email client + email vendeur + in-app
+  await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderConfirmation, { ... });
+  await ctx.scheduler.runAfter(0, internal.emails.send.sendNewOrderNotification, { ... });
+  await ctx.scheduler.runAfter(0, internal.notifications.send.notifyNewOrderInApp, { ... });
+}
+```
+
+---
+
+## 13. Remboursement — pattern action + mutation (F-08)
+
+Le remboursement est déclenché depuis `cancelOrder` (mutation) via le scheduler, et réalisé par une action (appel API Moneroo) :
+
+```typescript
+// cancelOrder mutation — ne peut pas appeler l'API Moneroo directement
+if (order.payment_status === "paid") {
+  await ctx.scheduler.runAfter(0, internal.payments.moneroo.requestRefund, {
+    orderId: order._id,
+    reason: args.reason,
+  });
+}
+
+// requestRefund internalAction — appelle Moneroo puis markRefunded mutation
+// Si pas de payment_reference (ex: COD non encore collecté) → markRefunded sans API call
+await ctx.runMutation(internal.payments.mutations.markRefunded, { orderId, reason });
+
+// markRefunded internalMutation — F-01 : débit pending_balance + transaction "refund"
+await ctx.db.insert("transactions", { type: "refund", direction: "debit", ... });
+await ctx.db.patch(store._id, { pending_balance: store.pending_balance - deductFromPending });
+```
+
+---
+
+## 14. Release de balance — garde contre le sous-débit (F-09)
+
+Dans `releaseBalances` cron, toujours utiliser `Math.min` pour éviter de créditer plus que le pending disponible :
+
+```typescript
+// ✅ Montant libérable = min(netAmount, pending_balance)
+const releasableAmount = Math.min(netAmount, store.pending_balance);
+if (releasableAmount <= 0) continue; // skip — évite over-credit
+
+await ctx.db.patch(store._id, {
+  balance: store.balance + releasableAmount,
+  pending_balance: store.pending_balance - releasableAmount,
+});
+```
+
+---
+
 *Voir aussi : `CONTRIBUTING.md` (workflow git), `CODE_STYLE_GUIDE.md` (conventions TypeScript), `ATOMIC_DESIGN_GUIDE.md` (composants UI)*
