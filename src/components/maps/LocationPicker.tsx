@@ -71,9 +71,18 @@ export function LocationPicker({
             number,
           ]);
 
+      // Limit map to Benin bounding box
+      const BENIN_BOUNDS = L.latLngBounds(
+        L.latLng(5.7, 0.78),   // SW corner
+        L.latLng(12.4, 3.85),  // NE corner
+      );
+
       const map = L.map(mapContainerRef.current!, {
         center: initialCenter,
         zoom: MAP_DEFAULT_ZOOM,
+        minZoom: 7,
+        maxBounds: BENIN_BOUNDS,
+        maxBoundsViscosity: 1.0,
         zoomControl: true,
         scrollWheelZoom: !readOnly,
         dragging: !readOnly,

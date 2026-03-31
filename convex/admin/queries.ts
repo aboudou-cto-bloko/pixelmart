@@ -938,3 +938,61 @@ export const listAuditLog = query({
     }));
   },
 });
+
+
+// ─── listStorageInvoices ──────────────────────────────────────
+
+/**
+ * Liste toutes les factures de stockage pour le dashboard admin.
+ * Enrichies avec le nom du store et les infos du produit depuis storage_requests.
+ */
+export const listStorageInvoices = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const invoices = await ctx.db
+      .query("storage_invoices")
+      .order("desc")
+      .take(500);
+
+    const enriched = await Promise.all(
+      invoices.map(async (inv) => {
+        const store = await ctx.db.get(inv.store_id);
+        const request = await ctx.db.get(inv.request_id);
+
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+        const isOverdue =
+          inv.status === "unpaid" && inv.created_at < thirtyDaysAgo;
+
+        return {
+          _id: inv._id,
+          amount: inv.amount,
+          currency: inv.currency,
+          status: inv.status,
+          payment_method: inv.payment_method,
+          paid_at: inv.paid_at,
+          created_at: inv.created_at,
+          isOverdue,
+          storeName: store?.name ?? "Boutique inconnue",
+          storeId: inv.store_id,
+          productName: request?.product_name ?? "Produit inconnu",
+          storageCode: request?.storage_code ?? "",
+          actualQty: request?.actual_qty,
+          actualWeightKg: request?.actual_weight_kg,
+          measurementType: request?.measurement_type,
+        };
+      }),
+    );
+
+    const totalRevenue = enriched
+      .filter((i) => i.status !== "unpaid")
+      .reduce((s, i) => s + i.amount, 0);
+    const totalUnpaid = enriched
+      .filter((i) => i.status === "unpaid")
+      .reduce((s, i) => s + i.amount, 0);
+    const overdueCount = enriched.filter((i) => i.isOverdue).length;
+
+    return { invoices: enriched, totalRevenue, totalUnpaid, overdueCount };
+  },
+});

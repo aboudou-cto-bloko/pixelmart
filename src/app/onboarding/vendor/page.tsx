@@ -39,22 +39,23 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
-  Info,
+  Package,
+  X,
 } from "lucide-react";
 import {
   LocationPicker,
   type PickedLocation,
 } from "@/components/maps/LocationPicker";
 import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
-import { Switch } from "@/components/ui/switch";
 
-// ---- Types extraits pour éviter le conflit JSX/generics ----
+// ---- Types ----
 type FieldErrors = Partial<Record<keyof VendorOnboardingValues, string>>;
+type ServiceMode = "full" | "delivery_only" | "none";
 
 const STEPS = [
   { id: 1, title: "Votre boutique", icon: Store },
-  { id: 2, title: "Localisation", icon: MapPin },
-  { id: 3, title: "Livraison", icon: Truck },
+  { id: 2, title: "Services", icon: Truck },
+  { id: 3, title: "Localisation", icon: MapPin },
   { id: 4, title: "Finalisation", icon: FileText },
 ] as const;
 
@@ -74,11 +75,9 @@ export default function VendorOnboardingPage() {
     country: "BJ",
   });
 
-  // Delivery step state
-  const [usePixelmartService, setUsePixelmartService] = useState(true);
-  const [customPickup, setCustomPickup] = useState<
-    PickedLocation | undefined
-  >();
+  // Service config
+  const [serviceMode, setServiceMode] = useState<ServiceMode>("full");
+  const [customPickup, setCustomPickup] = useState<PickedLocation | undefined>();
 
   // ---- Guards ----
   if (isUserLoading) {
@@ -88,21 +87,9 @@ export default function VendorOnboardingPage() {
       </div>
     );
   }
-
-  if (!user) {
-    router.replace("/login");
-    return null;
-  }
-
-  if (user.role === "vendor") {
-    router.replace("/vendor/dashboard");
-    return null;
-  }
-
-  if (user.role === "admin") {
-    router.replace("/admin/dashboard");
-    return null;
-  }
+  if (!user) { router.replace("/login"); return null; }
+  if (user.role === "vendor") { router.replace("/vendor/dashboard"); return null; }
+  if (user.role === "admin") { router.replace("/admin/dashboard"); return null; }
 
   // ---- Handlers ----
   function updateField<K extends keyof VendorOnboardingValues>(
@@ -119,17 +106,19 @@ export default function VendorOnboardingPage() {
 
     if (step === 1) {
       const trimmed = formData.store_name.trim();
-      if (trimmed.length < 3) {
-        errors.store_name = "Le nom doit contenir au moins 3 caractères";
-      } else if (trimmed.length > 60) {
-        errors.store_name = "Le nom ne peut pas dépasser 60 caractères";
-      }
+      if (trimmed.length < 3) errors.store_name = "Le nom doit contenir au moins 3 caractères";
+      else if (trimmed.length > 60) errors.store_name = "Le nom ne peut pas dépasser 60 caractères";
     }
 
     if (step === 2) {
-      if (!formData.country) {
-        errors.country = "Sélectionnez un pays";
+      if (serviceMode === "delivery_only" && !customPickup) {
+        setError("Définissez votre adresse de retrait pour continuer.");
+        return false;
       }
+    }
+
+    if (step === 3) {
+      if (!formData.country) errors.country = "Sélectionnez un pays";
     }
 
     setFieldErrors(errors);
@@ -137,7 +126,7 @@ export default function VendorOnboardingPage() {
   }
 
   function handleNext() {
-    if (step !== 3 && !validateCurrentStep()) return;
+    if (!validateCurrentStep()) return;
     setStep((s) => Math.min(s + 1, 4));
   }
 
@@ -163,38 +152,36 @@ export default function VendorOnboardingPage() {
     }
 
     setIsSubmitting(true);
-
     try {
-      const country = SUPPORTED_COUNTRIES.find(
-        (c) => c.code === result.data.country,
-      );
+      const country = SUPPORTED_COUNTRIES.find((c) => c.code === result.data.country);
 
       await becomeVendor({
         store_name: result.data.store_name.trim(),
         country: result.data.country,
         currency: country?.currency ?? "XOF",
         description: result.data.description ?? undefined,
-        use_pixelmart_service: usePixelmartService,
-        custom_pickup_lat: !usePixelmartService ? customPickup?.lat : undefined,
-        custom_pickup_lon: !usePixelmartService ? customPickup?.lon : undefined,
-        custom_pickup_label: !usePixelmartService
-          ? customPickup?.label
-          : undefined,
+        use_pixelmart_service: serviceMode !== "none",
+        custom_pickup_lat: serviceMode === "delivery_only" ? customPickup?.lat : undefined,
+        custom_pickup_lon: serviceMode === "delivery_only" ? customPickup?.lon : undefined,
+        custom_pickup_label: serviceMode === "delivery_only" ? customPickup?.label : undefined,
       });
 
       router.push("/vendor/dashboard");
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Une erreur est survenue";
-      setError(message);
+      setError(err instanceof Error ? err.message : "Une erreur est survenue");
       setIsSubmitting(false);
     }
   }
 
   // ---- Derived ----
-  const selectedCountry = SUPPORTED_COUNTRIES.find(
-    (c) => c.code === formData.country,
-  );
+  const selectedCountry = SUPPORTED_COUNTRIES.find((c) => c.code === formData.country);
+
+  const serviceModeLabel =
+    serviceMode === "full"
+      ? "Livraison + Stockage Pixel-Mart"
+      : serviceMode === "delivery_only"
+        ? "Livraison uniquement (point perso)"
+        : "Aucun service";
 
   // ---- Render ----
   return (
@@ -210,11 +197,7 @@ export default function VendorOnboardingPage() {
             return (
               <div key={s.id} className="flex items-center gap-2">
                 {index > 0 && (
-                  <div
-                    className={`h-px w-6 transition-colors ${
-                      isCompleted ? "bg-primary" : "bg-border"
-                    }`}
-                  />
+                  <div className={`h-px w-6 transition-colors ${isCompleted ? "bg-primary" : "bg-border"}`} />
                 )}
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors ${
@@ -225,11 +208,7 @@ export default function VendorOnboardingPage() {
                         : "border-border text-muted-foreground"
                   }`}
                 >
-                  {isCompleted ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Icon className="h-4 w-4" />
-                  )}
+                  {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </div>
               </div>
             );
@@ -241,19 +220,15 @@ export default function VendorOnboardingPage() {
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">
               {step === 1 && "Nommez votre boutique"}
-              {step === 2 && "Où êtes-vous basé ?"}
-              {step === 3 && "Service de livraison"}
+              {step === 2 && "Configurez vos services"}
+              {step === 3 && "Où êtes-vous basé ?"}
               {step === 4 && "Prêt à lancer ?"}
             </CardTitle>
             <CardDescription>
-              {step === 1 &&
-                "Ce nom sera visible par vos clients. Vous pourrez le modifier plus tard."}
-              {step === 2 &&
-                "Votre pays détermine la devise et les modes de paiement disponibles."}
-              {step === 3 &&
-                "Activez ou non le service de livraison Pixel-Mart. Vous pourrez modifier ce choix dans Boutique → Paramètres."}
-              {step === 4 &&
-                "Vérifiez les informations et lancez votre boutique."}
+              {step === 1 && "Ce nom sera visible par vos clients. Vous pourrez le modifier plus tard."}
+              {step === 2 && "Définissez comment Pixel-Mart intervient dans votre activité."}
+              {step === 3 && "Votre pays détermine la devise et les modes de paiement disponibles."}
+              {step === 4 && "Vérifiez les informations et lancez votre boutique."}
             </CardDescription>
           </CardHeader>
 
@@ -272,29 +247,137 @@ export default function VendorOnboardingPage() {
                     autoFocus
                   />
                   {fieldErrors.store_name && (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.store_name}
-                    </p>
+                    <p className="text-sm text-destructive">{fieldErrors.store_name}</p>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    {formData.store_name.length}/60 caractères
-                  </p>
+                  <p className="text-xs text-muted-foreground">{formData.store_name.length}/60 caractères</p>
                 </div>
               </div>
             )}
 
-            {/* Step 2 — Country */}
+            {/* Step 2 — Service config */}
             {step === 2 && (
+              <div className="space-y-4">
+                {/* 3 option cards */}
+                <div className="grid gap-3">
+                  {/* Option 1 — Full */}
+                  <button
+                    type="button"
+                    onClick={() => { setServiceMode("full"); setCustomPickup(undefined); setError(null); }}
+                    className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
+                      serviceMode === "full"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:border-muted-foreground/40"
+                    }`}
+                  >
+                    {serviceMode === "full" && (
+                      <span className="absolute top-3 right-3"><Check className="size-4 text-primary" /></span>
+                    )}
+                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <Package className="size-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Livraison + Stockage</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Pixel-Mart stocke vos produits et gère les livraisons depuis son entrepôt ({PIXELMART_WAREHOUSE.label}).
+                        Le stock est mis à jour automatiquement à chaque commande.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Option 2 — Delivery only */}
+                  <button
+                    type="button"
+                    onClick={() => { setServiceMode("delivery_only"); setError(null); }}
+                    className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
+                      serviceMode === "delivery_only"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:border-muted-foreground/40"
+                    }`}
+                  >
+                    {serviceMode === "delivery_only" && (
+                      <span className="absolute top-3 right-3"><Check className="size-4 text-primary" /></span>
+                    )}
+                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                      <Truck className="size-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Livraison uniquement</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Pixel-Mart livre vos commandes depuis votre adresse. Vous gérez votre stock vous-même.
+                        Une adresse de retrait est obligatoire.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Option 3 — None */}
+                  <button
+                    type="button"
+                    onClick={() => { setServiceMode("none"); setCustomPickup(undefined); setError(null); }}
+                    className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
+                      serviceMode === "none"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:border-muted-foreground/40"
+                    }`}
+                  >
+                    {serviceMode === "none" && (
+                      <span className="absolute top-3 right-3"><Check className="size-4 text-primary" /></span>
+                    )}
+                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <X className="size-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Aucun service</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Vous gérez stock et livraison hors plateforme. Aucun frais de livraison appliqué au checkout.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Address picker for delivery_only */}
+                {serviceMode === "delivery_only" && (
+                  <div className="space-y-3 rounded-lg border p-4 bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="size-4 text-primary" />
+                      <p className="text-sm font-medium">
+                        Adresse de retrait <span className="text-destructive">*</span>
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Cliquez sur la carte ou recherchez votre adresse pour définir votre point de retrait.
+                    </p>
+                    <LocationPicker
+                      value={customPickup}
+                      onChange={(loc) => { setCustomPickup(loc); setError(null); }}
+                      height={240}
+                    />
+                    {!customPickup && (
+                      <p className="text-xs text-destructive font-medium">
+                        ⚠ Adresse obligatoire pour passer à l&apos;étape suivante.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Warehouse info for full mode */}
+                {serviceMode === "full" && (
+                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
+                    <MapPin className="size-4 shrink-0 mt-0.5 text-primary" />
+                    <p className="text-xs text-muted-foreground">{PIXELMART_WAREHOUSE.label}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3 — Country */}
+            {step === 3 && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="country">Pays</Label>
                   <Select
                     value={formData.country}
                     onValueChange={(value) =>
-                      updateField(
-                        "country",
-                        value as VendorOnboardingValues["country"],
-                      )
+                      updateField("country", value as VendorOnboardingValues["country"])
                     }
                   >
                     <SelectTrigger id="country">
@@ -309,9 +392,7 @@ export default function VendorOnboardingPage() {
                     </SelectContent>
                   </Select>
                   {fieldErrors.country && (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.country}
-                    </p>
+                    <p className="text-sm text-destructive">{fieldErrors.country}</p>
                   )}
                 </div>
 
@@ -319,151 +400,39 @@ export default function VendorOnboardingPage() {
                   <div className="rounded-lg border bg-muted/50 p-4">
                     <p className="text-sm text-muted-foreground">
                       Devise :{" "}
-                      <span className="font-medium text-foreground">
-                        {selectedCountry.currency}
-                      </span>
+                      <span className="font-medium text-foreground">{selectedCountry.currency}</span>
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Les prix seront affichés en {selectedCountry.currency}.
-                      Tous les montants sont stockés en centimes.
+                      Les prix seront affichés en {selectedCountry.currency}. Tous les montants sont stockés en centimes.
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Step 3 — Delivery service */}
-            {step === 3 && (
-              <div className="space-y-5">
-                {/* Toggle */}
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold">
-                      Utiliser le service de livraison Pixel-Mart
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {usePixelmartService
-                        ? "Pixel-Mart gère la livraison de vos commandes."
-                        : "Vous gérez vous-même la livraison. Pixel-Mart ne calcule aucun frais de livraison pour vos commandes."}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={usePixelmartService}
-                    onCheckedChange={(val) => {
-                      setUsePixelmartService(val);
-                      if (!val) setCustomPickup(undefined);
-                    }}
-                  />
-                </div>
-
-                {/* Service ON — pickup section */}
-                {usePixelmartService && (
-                  <div className="space-y-4">
-                    {/* Info banner */}
-                    <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
-                      <Info className="size-4 shrink-0 mt-0.5 text-muted-foreground" />
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        {customPickup ? (
-                          <p>
-                            Pixel-Mart collectera depuis votre point de retrait.{" "}
-                            <span className="font-medium text-foreground">
-                              Seule la livraison sera facturée
-                            </span>{" "}
-                            (pas de stockage).
-                          </p>
-                        ) : (
-                          <p>
-                            Par défaut, notre entrepôt{" "}
-                            <span className="font-medium text-foreground">
-                              {PIXELMART_WAREHOUSE.label}
-                            </span>{" "}
-                            sera utilisé.{" "}
-                            <span className="font-medium text-foreground">
-                              Le stockage et la livraison seront facturés.
-                            </span>{" "}
-                            Définissez un point de collecte ci-dessous pour
-                            n&apos;être facturé que pour la livraison.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Optional pickup map */}
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="size-4 text-primary" />
-                        <p className="text-sm font-medium">
-                          Point de collecte{" "}
-                          <span className="text-muted-foreground font-normal">
-                            (optionnel)
-                          </span>
-                        </p>
-                        {customPickup && (
-                          <button
-                            type="button"
-                            onClick={() => setCustomPickup(undefined)}
-                            className="ml-auto text-xs text-destructive hover:underline"
-                          >
-                            Retirer
-                          </button>
-                        )}
-                      </div>
-                      <LocationPicker
-                        value={customPickup}
-                        onChange={setCustomPickup}
-                        height={240}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 4 — Review + optional description */}
+            {/* Step 4 — Review */}
             {step === 4 && (
               <div className="space-y-4">
                 <div className="rounded-lg border p-4 space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Boutique
-                    </span>
-                    <span className="text-sm font-medium">
-                      {formData.store_name}
-                    </span>
+                    <span className="text-sm text-muted-foreground">Boutique</span>
+                    <span className="text-sm font-medium">{formData.store_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Services</span>
+                    <span className="text-sm font-medium">{serviceModeLabel}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Pays</span>
-                    <span className="text-sm font-medium">
-                      {selectedCountry?.name}
-                    </span>
+                    <span className="text-sm font-medium">{selectedCountry?.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Devise
-                    </span>
-                    <span className="text-sm font-medium">
-                      {selectedCountry?.currency}
-                    </span>
+                    <span className="text-sm text-muted-foreground">Devise</span>
+                    <span className="text-sm font-medium">{selectedCountry?.currency}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Commission
-                    </span>
-                    <span className="text-sm font-medium">
-                      5% (plan gratuit)
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Livraison
-                    </span>
-                    <span className="text-sm font-medium">
-                      {usePixelmartService
-                        ? customPickup
-                          ? "Pixel-Mart livre (point perso)"
-                          : "Pixel-Mart stocke & livre"
-                        : "Gestion autonome"}
-                    </span>
+                    <span className="text-sm text-muted-foreground">Commission</span>
+                    <span className="text-sm font-medium">5% (plan gratuit)</span>
                   </div>
                 </div>
 
@@ -497,12 +466,7 @@ export default function VendorOnboardingPage() {
             {/* Navigation */}
             <div className="flex gap-3">
               {step > 1 && (
-                <Button
-                  variant="outline"
-                  onClick={handleBack}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
+                <Button variant="outline" onClick={handleBack} disabled={isSubmitting} className="flex-1">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Retour
                 </Button>
@@ -514,11 +478,7 @@ export default function VendorOnboardingPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
+                <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1">
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -537,8 +497,7 @@ export default function VendorOnboardingPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          Vous pourrez modifier ces informations à tout moment dans les
-          paramètres de votre boutique.
+          Vous pourrez modifier ces informations à tout moment dans les paramètres de votre boutique.
         </p>
       </div>
     </div>
