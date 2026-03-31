@@ -2,10 +2,12 @@
 
 "use client";
 
-import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useState, useCallback } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { pdf } from "@react-pdf/renderer";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { DeliveryBatchPDF } from "@/components/delivery/pdf/DeliveryBatchPDF";
 import {
   Package,
   Truck,
@@ -15,6 +17,9 @@ import {
   X,
   ChevronDown,
   Warehouse,
+  Download,
+  Phone,
+  MapPin,
 } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { formatRelativeTime } from "@/lib/format";
@@ -241,31 +246,90 @@ function TransitionDialog({
 // ─── Batch Detail Sheet ───────────────────────────────────────
 
 function BatchDetailSheet({
+  batchId,
   batch,
   onClose,
 }: {
+  batchId: Id<"delivery_batches">;
   batch: Batch | null;
   onClose: () => void;
 }) {
+  const detail = useQuery(api.admin.queries.getBatchDetailAdmin, { batchId });
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadPDF = useCallback(async () => {
+    if (!detail) return;
+    setDownloading(true);
+    try {
+      const ordersForPDF = detail.orders.map((o) => ({
+        order_number: o.order_number,
+        customer_name: o.customer_name,
+        customer_phone: o.customer_phone,
+        address_line1: o.shipping_address.line1,
+        address_city: o.shipping_address.city,
+        payment_mode: o.payment_mode as "online" | "cod",
+        total_amount: o.total_amount,
+        delivery_fee: o.delivery_fee,
+        items_count: o.items.reduce((s, i) => s + i.quantity, 0),
+        notes: o.notes,
+      }));
+      const blob = await pdf(
+        <DeliveryBatchPDF
+          data={{
+            batch_number: detail.batch_number,
+            created_at: new Date(detail._creationTime).toLocaleDateString("fr-FR"),
+            store_name: detail.store_name,
+            zone_name: detail.zone_name,
+            orders: ordersForPDF,
+            total_delivery_fee: detail.total_delivery_fee,
+            total_to_collect: detail.total_to_collect,
+            currency: detail.currency,
+          }}
+        />,
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${detail.batch_number}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloading(false);
+    }
+  }, [detail]);
+
   if (!batch) return null;
 
   return (
     <Sheet open onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-sm">{batch.batch_number}</span>
-            <StatusBadge status={batch.status} />
-            {batch.is_warehouse_batch && (
-              <Badge className="bg-teal-100 text-teal-700 border-teal-300 gap-1 text-xs">
-                <Warehouse className="size-3" />
-                Entrepôt
-              </Badge>
-            )}
-          </SheetTitle>
+          <div className="flex items-center justify-between gap-3 flex-wrap pr-6">
+            <SheetTitle className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono text-sm">{batch.batch_number}</span>
+              <StatusBadge status={batch.status} />
+              {batch.is_warehouse_batch && (
+                <Badge className="bg-teal-100 text-teal-700 border-teal-300 gap-1 text-xs">
+                  <Warehouse className="size-3" />
+                  Entrepôt
+                </Badge>
+              )}
+            </SheetTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={downloadPDF}
+              disabled={downloading || !detail}
+              className="gap-1.5 text-xs h-7"
+            >
+              <Download className="size-3.5" />
+              {downloading ? "Génération…" : "PDF"}
+            </Button>
+          </div>
         </SheetHeader>
 
-        <div className="mt-6 space-y-5">
+        <div className="mt-6 space-y-6">
+          {/* Résumé lot */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-muted-foreground text-xs">Boutique</p>
@@ -319,14 +383,94 @@ function BatchDetailSheet({
             )}
           </div>
 
-          <div>
-            <p className="text-xs text-muted-foreground mb-2">
-              {batch.order_count} commande{batch.order_count !== 1 ? "s" : ""} dans ce lot
+          {/* Détail commandes */}
+          <div className="space-y-3">
+            <p className="text-sm font-semibold">
+              Commandes ({batch.order_count})
             </p>
-            <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
-              IDs: {batch.order_ids.slice(0, 5).join(", ")}
-              {batch.order_ids.length > 5 && ` + ${batch.order_ids.length - 5} autres`}
-            </div>
+            {!detail ? (
+              <p className="text-xs text-muted-foreground">Chargement…</p>
+            ) : detail.orders.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Aucune commande</p>
+            ) : (
+              <div className="space-y-3">
+                {detail.orders.map((order) => (
+                  <div
+                    key={order._id}
+                    className="rounded-lg border p-3 text-sm space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-mono font-semibold text-xs">
+                        #{order.order_number}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {order.payment_mode === "cod" && (
+                          <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs py-0">
+                            COD
+                          </Badge>
+                        )}
+                        <span className="font-semibold text-xs">
+                          {formatPrice(order.total_amount, order.currency)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="font-medium">{order.customer_name}</p>
+                      {order.customer_phone && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Phone className="size-3 shrink-0" />
+                          <a
+                            href={`tel:${order.customer_phone}`}
+                            className="text-xs hover:text-foreground"
+                          >
+                            {order.customer_phone}
+                          </a>
+                        </div>
+                      )}
+                      <div className="flex items-start gap-1.5 text-muted-foreground">
+                        <MapPin className="size-3 shrink-0 mt-0.5" />
+                        <span className="text-xs">
+                          {order.shipping_address.line1}
+                          {order.shipping_address.line2
+                            ? `, ${order.shipping_address.line2}`
+                            : ""}
+                          {" — "}
+                          {order.shipping_address.city}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-2 space-y-0.5">
+                      {order.items.map((item, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between gap-2 text-xs"
+                        >
+                          <span className="text-muted-foreground truncate max-w-48">
+                            {item.quantity}× {item.title}
+                            {item.storage_code && (
+                              <span className="ml-1 font-mono text-teal-600">
+                                [{item.storage_code}]
+                              </span>
+                            )}
+                          </span>
+                          <span className="shrink-0 font-medium">
+                            {formatPrice(item.total_price, order.currency)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {order.notes && (
+                      <p className="text-xs text-muted-foreground italic border-t pt-2">
+                        Note : {order.notes}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </SheetContent>
@@ -593,10 +737,13 @@ export function AdminDeliveryBatchesTemplate({ batches, stats }: Props) {
         </div>
       )}
 
-      <BatchDetailSheet
-        batch={detailBatch}
-        onClose={() => setDetailBatch(null)}
-      />
+      {detailBatch && (
+        <BatchDetailSheet
+          batchId={detailBatch._id}
+          batch={detailBatch}
+          onClose={() => setDetailBatch(null)}
+        />
+      )}
 
       <TransitionDialog
         batch={transitionBatch}
