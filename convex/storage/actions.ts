@@ -19,6 +19,15 @@ function getSiteUrl(): string {
   return process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
 }
 
+/** Split a display name into first / last name for Moneroo's required fields. */
+function splitName(name: string): { first_name: string; last_name: string } {
+  const parts = name.trim().split(/\s+/);
+  return {
+    first_name: parts[0] ?? "Vendeur",
+    last_name: parts.slice(1).join(" ") || "Pixel-Mart",
+  };
+}
+
 // ─── Initiate Invoice Payment (Public — vendor action) ───────
 
 export const initiateInvoicePayment = action({
@@ -56,11 +65,17 @@ export const initiateInvoicePayment = action({
     });
 
     const monerooAmount = centimesToMonerooAmount(invoice.amount, invoice.currency);
+    const { first_name, last_name } = splitName(stores.name);
 
     const body = {
       amount: monerooAmount,
       currency: invoice.currency,
       description: `Frais de stockage — facture ${args.invoiceId}`,
+      customer: {
+        email: identity.email ?? `vendor+${stores._id}@pixel-mart-bj.com`,
+        first_name,
+        last_name,
+      },
       return_url: `${siteUrl}/vendor/billing?payment=storage&invoice=${args.invoiceId}`,
       metadata: {
         type: "storage_payment",
@@ -119,12 +134,24 @@ export const initializeStoragePayment = internalAction({
     const apiKey = getMonerooKey();
     const siteUrl = getSiteUrl();
 
+    // Fetch store + owner to build customer object required by Moneroo
+    const storeOwner = await ctx.runQuery(
+      internal.storage.queries.getStoreOwnerForPayment,
+      { storeId: args.storeId },
+    );
+
     const monerooAmount = centimesToMonerooAmount(args.amount, args.currency);
+    const { first_name, last_name } = splitName(storeOwner?.storeName ?? "Vendeur");
 
     const body = {
       amount: monerooAmount,
       currency: args.currency,
       description: `Frais de stockage — facture ${args.invoiceId}`,
+      customer: {
+        email: storeOwner?.ownerEmail ?? `vendor+${args.storeId}@pixel-mart-bj.com`,
+        first_name,
+        last_name,
+      },
       return_url: `${siteUrl}/vendor/billing?payment=storage&invoice=${args.invoiceId}`,
       metadata: {
         type: "storage_payment",

@@ -19,6 +19,7 @@ export const getOrderForPayment = internalQuery({
       ...order,
       customer_email: customer?.email ?? "",
       customer_name: customer?.name ?? "Client",
+      customer_phone: customer?.phone ?? order.shipping_address.phone ?? null,
     };
   },
 });

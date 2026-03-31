@@ -969,3 +969,94 @@ export const bulkSuspendStores = mutation({
     return { count };
   },
 });
+
+// ─── adminUpdateOrderStatus ───────────────────────────────────
+
+/**
+ * Permet à l'admin de mettre à jour le statut d'une commande.
+ * Utilisé quand l'admin est responsable du stockage et/ou de la livraison.
+ */
+export const adminUpdateOrderStatus = mutation({
+  args: {
+    orderId: v.id("orders"),
+    status: v.union(
+      v.literal("processing"),
+      v.literal("shipped"),
+      v.literal("ready_for_delivery"),
+      v.literal("delivered"),
+      v.literal("delivery_failed"),
+    ),
+    note: v.optional(v.string()),
+    trackingNumber: v.optional(v.string()),
+    carrier: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Commande introuvable");
+
+    // Validate transition
+    const ALLOWED: Partial<Record<string, string[]>> = {
+      paid:                ["processing"],
+      processing:          ["shipped", "ready_for_delivery"],
+      ready_for_delivery:  ["shipped"],
+      shipped:             ["delivered", "delivery_failed"],
+      delivery_failed:     ["shipped"],
+    };
+    if (!ALLOWED[order.status]?.includes(args.status)) {
+      throw new Error(
+        `Transition invalide : ${order.status} → ${args.status}`,
+      );
+    }
+
+    const updates: Record<string, unknown> = {
+      status: args.status,
+      updated_at: Date.now(),
+    };
+    if (args.trackingNumber) updates.tracking_number = args.trackingNumber;
+    if (args.carrier) updates.carrier = args.carrier;
+    if (args.status === "delivered") updates.delivered_at = Date.now();
+
+    await ctx.db.patch(args.orderId, updates);
+
+    // Log event in order timeline
+    const eventTypeMap: Record<string, string> = {
+      processing: "processing",
+      shipped: "shipped",
+      delivered: "delivered",
+      ready_for_delivery: "note",
+      delivery_failed: "note",
+    };
+    const defaultDesc: Record<string, string> = {
+      processing: "Commande prise en charge par l'admin",
+      shipped: args.trackingNumber
+        ? `Colis expédié — ${args.carrier ?? "transporteur"} : ${args.trackingNumber}`
+        : "Colis expédié (admin)",
+      ready_for_delivery: "Commande prête pour la livraison",
+      delivered: "Commande livrée (confirmé par admin)",
+      delivery_failed: "Échec de livraison",
+    };
+
+    await ctx.db.insert("order_events", {
+      order_id: args.orderId,
+      store_id: order.store_id,
+      type: eventTypeMap[args.status] as
+        | "processing"
+        | "shipped"
+        | "delivered"
+        | "note",
+      description: args.note ?? defaultDesc[args.status] ?? args.status,
+      actor_type: "admin",
+      actor_id: admin._id,
+    });
+
+    // Audit log
+    await logEvent(ctx, admin._id, admin.name, "order_status_updated", {
+      target_type: "order",
+      target_id: args.orderId,
+      target_label: order.order_number,
+      metadata: { from: order.status, to: args.status },
+    });
+  },
+});

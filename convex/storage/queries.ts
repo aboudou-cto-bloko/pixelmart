@@ -367,3 +367,18 @@ export const getInvoiceForPayment = internalQuery({
     return invoice;
   },
 });
+
+// ─── getStoreOwnerForPayment ──────────────────────────────────
+
+export const getStoreOwnerForPayment = internalQuery({
+  args: { storeId: v.id("stores") },
+  handler: async (ctx, args) => {
+    const store = await ctx.db.get(args.storeId);
+    if (!store) return null;
+    const owner = store.owner_id ? await ctx.db.get(store.owner_id) : null;
+    return {
+      storeName: store.name,
+      ownerEmail: owner?.email ?? null,
+    };
+  },
+});

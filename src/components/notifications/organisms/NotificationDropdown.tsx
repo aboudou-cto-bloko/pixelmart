@@ -9,7 +9,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { NotificationBadge } from "../atoms/NotificationBadge";
 import { NotificationItem } from "../molecules/NotificationItem";
@@ -67,7 +66,7 @@ export function NotificationDropdown({
         </div>
         <Separator />
 
-        <ScrollArea className="max-h-[400px]">
+        <div className="max-h-[400px] overflow-y-auto">
           {notifications.length === 0 ? (
             <NotificationEmptyState />
           ) : (
@@ -86,7 +85,7 @@ export function NotificationDropdown({
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         {notifications.length > 0 && (
           <>

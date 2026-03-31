@@ -307,7 +307,26 @@ export const verifyPayment = action({
 });
 
 /**
- * Demande un remboursement auprès de Moneroo pour une commande déjà payée.
+ * Maps Pixel-Mart payment_method values to Moneroo payout method IDs.
+ * Falls back to "mtn_bj" (most common in Benin) if the method is unknown.
+ */
+function resolvePayoutMethod(paymentMethod: string | undefined | null): string {
+  const map: Record<string, string> = {
+    moneroo_mtn: "mtn_bj",
+    mtn_bj: "mtn_bj",
+    moneroo_orange: "orange_bj",
+    orange_bj: "orange_bj",
+    moneroo_moov: "moov_bj",
+    moov_bj: "moov_bj",
+    moneroo_wave: "wave_ci",
+    wave_ci: "wave_ci",
+  };
+  return map[paymentMethod ?? ""] ?? "mtn_bj";
+}
+
+/**
+ * Demande un remboursement via l'API Payout de Moneroo.
+ * (Moneroo ne dispose pas d'endpoint /refund — on utilise /v1/payouts/initialize)
  *
  * Appelé depuis cancelOrder (via ctx.scheduler) quand payment_status === "paid".
  * IDEMPOTENT : si la commande a déjà payment_status === "refunded", ne fait rien.
@@ -334,7 +353,7 @@ export const requestRefund = internalAction({
     if (order.payment_status === "refunded") return { alreadyRefunded: true };
 
     if (!order.payment_reference) {
-      // Pas de référence Moneroo — marquer remboursé sans appel API (ex: COD annulé avant collecte)
+      // Pas de référence Moneroo (ex: COD annulé avant collecte) — marquer remboursé directement
       await ctx.runMutation(internal.payments.mutations.markRefunded, {
         orderId: args.orderId,
         reason: args.reason ?? "Annulation sans référence de paiement",
@@ -342,10 +361,40 @@ export const requestRefund = internalAction({
       return { refunded: true, method: "manual" };
     }
 
+    // Construire le customer requis par Moneroo
+    const nameParts = (order.customer_name ?? "Client").trim().split(/\s+/);
+    const customerPayload = {
+      email: order.customer_email || `customer+${order.customer_id}@pixel-mart-bj.com`,
+      first_name: nameParts[0] ?? "Client",
+      last_name: nameParts.slice(1).join(" ") || "Pixel-Mart",
+    };
+
+    const payoutMethod = resolvePayoutMethod(order.payment_method);
+    const monerooAmount = centimesToMonerooAmount(order.total_amount, order.currency);
+
+    const payload: Record<string, unknown> = {
+      amount: monerooAmount,
+      currency: order.currency,
+      description: args.reason ?? `Remboursement commande ${order.order_number}`,
+      method: payoutMethod,
+      customer: customerPayload,
+      metadata: {
+        order_id: order._id,
+        order_number: order.order_number,
+        original_payment_ref: order.payment_reference,
+      },
+    };
+
+    // recipient.msisdn requis pour les méthodes mobile money
+    const phone = order.customer_phone;
+    if (phone) {
+      payload.recipient = { msisdn: phone.replace(/^\+/, "") };
+    }
+
     let response: Response;
     try {
       response = await fetchWithTimeout(
-        `${MONEROO_API_URL}/payments/${order.payment_reference}/refund`,
+        `${MONEROO_API_URL}/payouts/initialize`,
         {
           method: "POST",
           headers: {
@@ -353,26 +402,26 @@ export const requestRefund = internalAction({
             Authorization: `Bearer ${secretKey}`,
             Accept: "application/json",
           },
-          body: JSON.stringify({
-            reason: args.reason ?? "Commande annulée par le client",
-          }),
+          body: JSON.stringify(payload),
         },
       );
     } catch (err) {
-      handleMonerooFetchError(err, "remboursement");
+      handleMonerooFetchError(err, "remboursement (payout)");
     }
 
     if (!response.ok) {
+      const errBody = await response.text().catch(() => "");
       throw new Error(
-        `Erreur Moneroo (${response.status}) : impossible d'initialiser le remboursement`,
+        `Erreur Moneroo payout (${response.status}) : ${errBody || "impossible d'initialiser le remboursement"}`,
       );
     }
 
+    // Payout initialisé — marquer la commande comme remboursée
     await ctx.runMutation(internal.payments.mutations.markRefunded, {
       orderId: args.orderId,
       reason: args.reason,
     });
 
-    return { refunded: true, method: "moneroo" };
+    return { refunded: true, method: "moneroo_payout" };
   },
 });
