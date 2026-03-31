@@ -7,12 +7,13 @@ import { api } from "../../../../../convex/_generated/api";
 import { AdminStorageTemplate } from "@/components/admin/templates/AdminStorageTemplate";
 
 export default function AdminStoragePage() {
-  const requests = useQuery(api.admin.queries.listStorageRequests);
-  const pendingWithdrawals = useQuery(api.storage.queries.getPendingWithdrawals);
+  const data = useQuery(api.admin.queries.listStorageInvoices);
   return (
     <AdminStorageTemplate
-      requests={requests ?? []}
-      pendingWithdrawals={pendingWithdrawals ?? []}
+      invoices={data?.invoices ?? []}
+      totalRevenue={data?.totalRevenue ?? 0}
+      totalUnpaid={data?.totalUnpaid ?? 0}
+      overdueCount={data?.overdueCount ?? 0}
     />
   );
 }

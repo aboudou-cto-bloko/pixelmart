@@ -10,7 +10,7 @@ import {
   useMapEvents,
   useMap,
 } from "react-leaflet";
-import type { Marker as LeafletMarker } from "leaflet";
+import type { Marker as LeafletMarker, LatLngBoundsExpression } from "leaflet";
 import L from "leaflet";
 import { reverseGeocode } from "@/lib/geocoding";
 import type { GeocodingResult } from "@/lib/geocoding";
@@ -80,6 +80,11 @@ export interface MapPickerProps {
   value?: { lat: number; lon: number };
   onLocationSelect: (result: GeocodingResult) => void;
 }
+
+const BENIN_BOUNDS: LatLngBoundsExpression = [
+  [5.7, 0.78],   // SW corner
+  [12.4, 3.85],  // NE corner
+];
 
 export function MapPicker({ value, onLocationSelect }: MapPickerProps) {
   const defaultCenter: [number, number] = [
@@ -173,6 +178,9 @@ export function MapPicker({ value, onLocationSelect }: MapPickerProps) {
       <MapContainer
         center={position}
         zoom={MAP_DEFAULT_ZOOM}
+        minZoom={7}
+        maxBounds={BENIN_BOUNDS}
+        maxBoundsViscosity={1.0}
         scrollWheelZoom={false}
         style={{ height: "260px", width: "100%" }}
       >
