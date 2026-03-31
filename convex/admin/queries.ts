@@ -996,3 +996,71 @@ export const listStorageInvoices = query({
     return { invoices: enriched, totalRevenue, totalUnpaid, overdueCount };
   },
 });
+
+// ─── getBatchDetailAdmin ───────────────────────────────────────
+
+/**
+ * Détail complet d'un lot pour le dashboard admin.
+ * Inclut toutes les commandes avec infos client (nom, téléphone, adresse, articles).
+ */
+export const getBatchDetailAdmin = query({
+  args: { batchId: v.id("delivery_batches") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) return null;
+
+    const store = await ctx.db.get(batch.store_id);
+
+    const orders = await Promise.all(
+      batch.order_ids.map(async (orderId) => {
+        const order = await ctx.db.get(orderId);
+        if (!order) return null;
+
+        const customer = await ctx.db.get(order.customer_id);
+
+        return {
+          _id: order._id,
+          order_number: order.order_number,
+          status: order.status,
+          payment_mode: order.payment_mode ?? "online",
+          payment_status: order.payment_status,
+          total_amount: order.total_amount,
+          delivery_fee: order.delivery_fee ?? 0,
+          currency: order.currency,
+          notes: order.notes,
+          items: order.items,
+          shipping_address: order.shipping_address,
+          customer_name: customer?.name ?? order.shipping_address.full_name,
+          customer_phone:
+            customer?.phone ??
+            order.shipping_address.phone ??
+            undefined,
+          delivery_lat: order.delivery_lat,
+          delivery_lon: order.delivery_lon,
+          delivery_distance_km: order.delivery_distance_km,
+        };
+      }),
+    );
+
+    const validOrders = orders.filter(
+      (o): o is NonNullable<typeof o> => o !== null,
+    );
+
+    const total_to_collect = validOrders
+      .filter((o) => o.payment_mode === "cod")
+      .reduce((sum, o) => sum + o.total_amount, 0);
+
+    const zone_name = validOrders[0]?.shipping_address.city;
+
+    return {
+      ...batch,
+      store_name: store?.name ?? "Boutique inconnue",
+      store_phone: store?.contact_phone,
+      zone_name,
+      orders: validOrders,
+      total_to_collect,
+    };
+  },
+});

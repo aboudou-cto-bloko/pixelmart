@@ -39,6 +39,7 @@ import {
   Truck,
   ChevronDown,
   ChevronUp,
+  ArrowDownToLine,
 } from "lucide-react";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -813,6 +814,198 @@ function DispatchTab() {
   );
 }
 
+// ─── Withdrawals Tab ──────────────────────────────────────────
+
+type PendingWithdrawal = {
+  _id: Id<"storage_withdrawals">;
+  store_id: Id<"stores">;
+  request_id: Id<"storage_requests">;
+  quantity: number;
+  reason?: string;
+  status: string;
+  requested_by: Id<"users">;
+  created_at: number;
+  product_name: string;
+  storage_code: string;
+  store_name: string;
+};
+
+function WithdrawalRow({ withdrawal }: { withdrawal: PendingWithdrawal }) {
+  const processWithdrawal = useMutation(api.storage.mutations.processWithdrawal);
+  const [notes, setNotes] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handle(status: "approved" | "processed" | "cancelled") {
+    setLoading(true);
+    setError(null);
+    try {
+      await processWithdrawal({
+        withdrawalId: withdrawal._id,
+        status,
+        notes: notes.trim() || undefined,
+      });
+      setShowNotes(false);
+      setNotes("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const isPending = withdrawal.status === "pending";
+  const isApproved = withdrawal.status === "approved";
+
+  return (
+    <>
+      <TableRow>
+        <TableCell>
+          <Badge variant="outline" className="font-mono tracking-wider text-xs">
+            {withdrawal.storage_code}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-sm font-medium">{withdrawal.store_name}</TableCell>
+        <TableCell className="text-sm max-w-36 truncate">{withdrawal.product_name}</TableCell>
+        <TableCell className="text-right font-semibold">{withdrawal.quantity}</TableCell>
+        <TableCell className="text-xs text-muted-foreground max-w-32 truncate">
+          {withdrawal.reason ?? "—"}
+        </TableCell>
+        <TableCell>
+          <Badge
+            variant="outline"
+            className={
+              isPending
+                ? "bg-amber-50 text-amber-700 border-amber-300"
+                : "bg-purple-50 text-purple-700 border-purple-300"
+            }
+          >
+            {isPending ? "En attente" : "Approuvé"}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-right">
+          <div className="flex items-center justify-end gap-1.5">
+            {isPending && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 text-xs bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                  onClick={() => handle("approved")}
+                  disabled={loading}
+                >
+                  Approuver
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 text-xs text-destructive border-destructive/40 hover:bg-destructive hover:text-white"
+                  onClick={() => handle("cancelled")}
+                  disabled={loading}
+                >
+                  Refuser
+                </Button>
+              </>
+            )}
+            {isApproved && (
+              <>
+                <Button
+                  size="sm"
+                  className="h-7 px-2.5 text-xs bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => handle("processed")}
+                  disabled={loading}
+                >
+                  Marquer remis
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={() => setShowNotes((v) => !v)}
+                >
+                  {showNotes ? (
+                    <ChevronUp className="size-3.5" />
+                  ) : (
+                    <ChevronDown className="size-3.5" />
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+      {showNotes && isApproved && (
+        <TableRow>
+          <TableCell colSpan={7} className="py-2 px-4 bg-muted/30">
+            <div className="flex gap-2 items-end">
+              <Textarea
+                placeholder="Notes (optionnel)"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                className="text-xs"
+              />
+            </div>
+            {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
+function WithdrawalsTab() {
+  const withdrawals = useQuery(api.storage.queries.getPendingWithdrawals);
+
+  if (!withdrawals) {
+    return (
+      <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+        Chargement…
+      </div>
+    );
+  }
+
+  if (withdrawals.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border py-16 gap-3 text-muted-foreground">
+        <ArrowDownToLine className="size-10 opacity-25" />
+        <p className="text-sm">Aucune demande de retrait en attente</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary" className="text-sm px-3 py-1">
+          {withdrawals.length} demande{withdrawals.length !== 1 ? "s" : ""}
+        </Badge>
+      </div>
+      <div className="rounded-md border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Code PM</TableHead>
+              <TableHead>Boutique</TableHead>
+              <TableHead>Produit</TableHead>
+              <TableHead className="text-right">Qté</TableHead>
+              <TableHead>Motif</TableHead>
+              <TableHead>Statut</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {withdrawals.map((w) => (
+              <WithdrawalRow key={w._id} withdrawal={w} />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Template ────────────────────────────────────────────
 
 export function AgentStorageTemplate() {
@@ -844,6 +1037,10 @@ export function AgentStorageTemplate() {
             <Truck className="h-4 w-4" />
             Expéditions
           </TabsTrigger>
+          <TabsTrigger value="withdrawals" className="flex items-center gap-2">
+            <ArrowDownToLine className="h-4 w-4" />
+            Retraits
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="scan" className="mt-4">
@@ -874,6 +1071,10 @@ export function AgentStorageTemplate() {
 
         <TabsContent value="dispatch" className="mt-4">
           <DispatchTab />
+        </TabsContent>
+
+        <TabsContent value="withdrawals" className="mt-4">
+          <WithdrawalsTab />
         </TabsContent>
       </Tabs>
     </div>
