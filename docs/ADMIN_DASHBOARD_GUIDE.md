@@ -115,8 +115,20 @@ Liste des 500 derniers utilisateurs. Pour chaque utilisateur :
 
 - **Banning** : cliquer sur le bouton `Ban` → confirmation → le statut passe à `banned`. Le toggle de debannissement restaure le statut `active`.
 - **Changement de rôle** : via le menu déroulant dans la colonne Rôle. Rôles disponibles : `customer`, `vendor`, `agent`, `admin`.
+- **Clic sur une ligne** → navigue vers `/admin/users/[id]` (profil détaillé).
 
 > ⚠️ Un admin ne peut pas changer son propre rôle ni se bannir lui-même (protection backend `requireAdmin`).
+
+---
+
+### Plateforme — Profil client (`/admin/users/[id]`)
+
+Page de détail d'un utilisateur. Contient :
+
+- **Profil** : nom, email cliquable (`mailto:`), téléphone cliquable (`tel:`), rôle, statut (banni/actif), date d'inscription, date de dernière connexion.
+- **Statistiques commandes** : nombre total, nombre livrées, montant total dépensé.
+- **Historique des 50 dernières commandes** : tableau cliquable → `/admin/orders/[id]`.
+- **Informations boutique** (si vendor) : nom, statut, tier d'abonnement.
 
 ---
 
@@ -138,6 +150,26 @@ CRUD complet. Les catégories peuvent être imbriquées (champ `parent_id`). Les
 
 - **Approuver** un retrait : déclenche le paiement via Moneroo (action `processPayout`).
 - **Rejeter** : avec raison optionnelle — le solde est restauré au vendeur.
+
+---
+
+### Plateforme — Commandes (`/admin/orders`)
+
+Liste des commandes de la plateforme avec filtres (recherche texte, filtre statut). Chaque ligne est cliquable → `/admin/orders/[id]`. Le nom du client dans la liste est un lien vers `/admin/users/[id]`. L'email et le téléphone sont des liens `mailto:`/`tel:`.
+
+---
+
+### Plateforme — Détail commande (`/admin/orders/[id]`)
+
+Page de détail d'une commande. Contient :
+
+- **En-tête** : statut, statut de paiement, source (marketplace/boutique), mode de paiement (COD/en ligne).
+- **Articles** : images résolues (URL Convex Storage), quantité, prix unitaire, total.
+- **Totaux** : sous-total, remise, frais de livraison, commission Pixel-Mart.
+- **Livraison** : type (standard/urgent/fragile), distance, frais, lien GPS OpenStreetMap, numéro de suivi, transporteur.
+- **Carte client** : nom/email (`mailto:`)/téléphone (`tel:`) cliquables + bouton "Voir le profil →" → `/admin/users/[id]`.
+- **Adresse de livraison** : téléphone en lien `tel:`.
+- **Informations boutique** : nom, statut.
 
 ---
 
@@ -210,14 +242,27 @@ Les valeurs sont en **centimes XOF**.
 
 | Clé | Unité | Défaut | Description |
 |-----|-------|--------|-------------|
-| `storage_fee_per_unit` | centimes | `10 000` | 100 XOF par unité stockée (≤ 50 unités) |
-| `storage_fee_per_unit_bulk` | centimes | `6 000` | 60 XOF par unité (> 50 unités — tarif bulk) |
+| `storage_fee_per_unit` | XOF (=centimes) | `100` | 100 XOF par unité stockée (≤ 50 unités) |
+| `storage_fee_per_unit_bulk` | XOF (=centimes) | `60` | 60 XOF par unité (> 50 unités — tarif bulk) |
 | `storage_fee_bulk_threshold` | nombre | `50` | Seuil de basculement vers le tarif bulk |
-| `storage_fee_medium_kg_flat` | centimes | `500 000` | Forfait 5 000 XOF pour 5–25 kg |
-| `storage_fee_heavy_base` | centimes | `500 000` | Base > 25 kg : 5 000 XOF |
-| `storage_fee_heavy_per_kg` | centimes | `25 000` | Surcoût > 25 kg : 250 XOF par kg supplémentaire |
+| `storage_fee_medium_kg_flat` | XOF (=centimes) | `5 000` | Forfait 5 000 XOF pour 5–25 kg |
+| `storage_fee_heavy_base` | XOF (=centimes) | `5 000` | Base > 25 kg : 5 000 XOF |
+| `storage_fee_heavy_per_kg` | XOF (=centimes) | `250` | Surcoût > 25 kg : 250 XOF par kg supplémentaire |
 
+> **Rappel XOF** : 1 centime XOF = 1 FCFA — les valeurs saisies ici sont directement en FCFA (pas de division par 100).
+>
 > Les seuils de poids (5 kg, 25 kg) ne sont pas modifiables depuis l'UI actuellement. Ils sont définis dans `convex/lib/constants.ts : STORAGE_FEES.FREE_MAX_KG` et `MEDIUM_MAX_KG`.
+
+### Groupe : Entrepôt
+
+Coordonnées GPS de l'entrepôt Pixel-Mart. Utilisées pour le calcul de la distance de livraison en **Scénario A** (vendeur avec plan de stockage).
+
+| Clé | Unité | Défaut | Description |
+|-----|-------|--------|-------------|
+| `warehouse_lat` | degrés décimaux | `6.4106` | Latitude de l'entrepôt (Cotonou par défaut) |
+| `warehouse_lon` | degrés décimaux | `2.3290` | Longitude de l'entrepôt (Cotonou par défaut) |
+
+> Ces valeurs sont lues par `getWarehouseCoordinates` query (avec fallback hardcodé = Cotonou). Si non renseignées, les valeurs par défaut s'appliquent automatiquement.
 
 ---
 

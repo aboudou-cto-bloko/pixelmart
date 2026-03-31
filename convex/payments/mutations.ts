@@ -314,3 +314,56 @@ export const failPayment = internalMutation({
     return { success: true };
   },
 });
+
+/**
+ * Marque une commande comme remboursée après traitement Moneroo.
+ * Appelée depuis requestRefund action.
+ */
+export const markRefunded = internalMutation({
+  args: {
+    orderId: v.id("orders"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Commande introuvable");
+
+    // Idempotence
+    if (order.payment_status === "refunded") return { alreadyProcessed: true };
+
+    await ctx.db.patch(args.orderId, {
+      payment_status: "refunded",
+      updated_at: Date.now(),
+    });
+
+    // F-01 : débit de la pending_balance du store si le montant est encore en attente
+    const store = await ctx.db.get(order.store_id);
+    if (store) {
+      const netAmount = order.total_amount - (order.commission_amount ?? 0);
+      const deductFromPending = Math.min(netAmount, store.pending_balance);
+
+      if (deductFromPending > 0) {
+        await ctx.db.insert("transactions", {
+          store_id: store._id,
+          order_id: order._id,
+          type: "refund",
+          direction: "debit",
+          amount: deductFromPending,
+          currency: order.currency,
+          balance_before: store.pending_balance,
+          balance_after: store.pending_balance - deductFromPending,
+          status: "completed",
+          description: `Remboursement commande ${order.order_number}${args.reason ? ` — ${args.reason}` : ""}`,
+          processed_at: Date.now(),
+        });
+
+        await ctx.db.patch(store._id, {
+          pending_balance: store.pending_balance - deductFromPending,
+          updated_at: Date.now(),
+        });
+      }
+    }
+
+    return { success: true };
+  },
+});

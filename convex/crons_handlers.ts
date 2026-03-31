@@ -4,7 +4,7 @@ import { internalMutation } from "./_generated/server";
 import { promoteQueuedBookings } from "./ads/helpers";
 import { recalculateRatings } from "./reviews/helpers";
 import { restoreInventory } from "./orders/helpers";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { getBalanceReleaseDelayMs } from "./lib/getConfig";
 import { formatAmountText } from "./lib/format";
 const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
@@ -67,16 +67,21 @@ export const releaseBalances = internalMutation({
 
       const netAmount = order.total_amount - (order.commission_amount ?? 0);
 
+      // Sécurité : ne jamais créditer plus que ce qui est en pending_balance
+      // (évite un over-credit si pending_balance a été réduit entre-temps)
+      const releasableAmount = Math.min(netAmount, store.pending_balance);
+      if (releasableAmount <= 0) continue;
+
       // F-01 : Transaction de release
       const balanceBefore = store.balance;
-      const balanceAfter = balanceBefore + netAmount;
+      const balanceAfter = balanceBefore + releasableAmount;
 
       await ctx.db.insert("transactions", {
         store_id: store._id,
         order_id: order._id,
         type: "credit",
         direction: "credit",
-        amount: netAmount,
+        amount: releasableAmount,
         currency: order.currency,
         balance_before: balanceBefore,
         balance_after: balanceAfter,
@@ -86,7 +91,7 @@ export const releaseBalances = internalMutation({
       });
 
       // Transférer : pending_balance → balance
-      const newPending = Math.max(0, store.pending_balance - netAmount);
+      const newPending = store.pending_balance - releasableAmount;
 
       await ctx.db.patch(store._id, {
         balance: balanceAfter,
@@ -293,8 +298,22 @@ export const expirePendingOrders = internalMutation({
       .collect();
 
     let cancelledCount = 0;
+    let verifyingCount = 0;
 
     for (const order of pendingOrders) {
+      // Si la commande a une référence Moneroo, vérifier d'abord le statut réel
+      // avant d'annuler (le webhook a peut-être été perdu).
+      if (order.payment_reference) {
+        await ctx.scheduler.runAfter(
+          0,
+          api.payments.moneroo.verifyPayment,
+          { orderId: order._id },
+        );
+        verifyingCount++;
+        continue;
+      }
+
+      // Pas de référence → annuler directement (l'utilisateur n'a jamais initié le paiement)
       const now = Date.now();
 
       await ctx.db.patch(order._id, {
@@ -326,7 +345,7 @@ export const expirePendingOrders = internalMutation({
       cancelledCount++;
     }
 
-    return { cancelledCount };
+    return { cancelledCount, verifyingCount };
   },
 });
 
