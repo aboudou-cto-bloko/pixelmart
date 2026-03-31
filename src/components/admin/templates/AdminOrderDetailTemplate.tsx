@@ -1,15 +1,19 @@
 // filepath: src/components/admin/templates/AdminOrderDetailTemplate.tsx
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Mail, Phone, Store, User, MapPin, Package, Clock, Truck, CreditCard } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Store, User, MapPin, Package, Clock, Truck, CreditCard, CheckCircle2, Circle, AlertTriangle } from "lucide-react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatPrice, formatDate } from "@/lib/format";
+import { formatPrice, formatDate, formatRelativeTime } from "@/lib/format";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -83,6 +87,128 @@ interface AdminOrderDetail {
 interface Props {
   order: AdminOrderDetail | null | undefined;
   onBack: () => void;
+}
+
+// ─── Timeline ─────────────────────────────────────────────────
+
+type TimelineEvent = {
+  _id: string;
+  type: string;
+  description: string;
+  actorType: string;
+  createdAt: number;
+};
+
+const EVENT_ICONS: Record<string, React.ReactNode> = {
+  created:     <Circle className="size-3.5 text-muted-foreground" />,
+  paid:        <CheckCircle2 className="size-3.5 text-green-500" />,
+  processing:  <Clock className="size-3.5 text-violet-500" />,
+  shipped:     <Truck className="size-3.5 text-cyan-500" />,
+  delivered:   <CheckCircle2 className="size-3.5 text-green-600" />,
+  cancelled:   <AlertTriangle className="size-3.5 text-red-500" />,
+  refunded:    <AlertTriangle className="size-3.5 text-slate-500" />,
+  note:        <Circle className="size-3.5 text-muted-foreground" />,
+};
+
+function OrderTimeline({ orderId }: { orderId: Id<"orders"> }) {
+  const events = useQuery(api.orders.events.getTimeline, { orderId });
+
+  if (!events) return null;
+  if (events.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Clock className="size-4 text-muted-foreground" />
+          Historique
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ol className="relative border-l border-border ml-2 space-y-4">
+          {events.map((event) => (
+            <li key={event._id} className="pl-5 relative">
+              <span className="absolute -left-[9px] top-0.5 flex items-center justify-center bg-background">
+                {EVENT_ICONS[event.type] ?? EVENT_ICONS.note}
+              </span>
+              <p className="text-sm leading-snug">{event.description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {formatRelativeTime(event.createdAt)}
+                {event.actorType !== "system" && (
+                  <span className="capitalize"> · {event.actorType}</span>
+                )}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Admin Status Actions ─────────────────────────────────────
+
+const NEXT_STATUSES: Partial<Record<string, { status: string; label: string; variant: "default" | "outline" | "destructive" }[]>> = {
+  paid:               [{ status: "processing", label: "Prendre en charge", variant: "default" }],
+  processing:         [
+    { status: "ready_for_delivery", label: "Prêt à livrer", variant: "outline" },
+    { status: "shipped", label: "Expédier", variant: "default" },
+  ],
+  ready_for_delivery: [{ status: "shipped", label: "Expédier", variant: "default" }],
+  shipped:            [
+    { status: "delivered", label: "Marquer livré", variant: "default" },
+    { status: "delivery_failed", label: "Échec livraison", variant: "destructive" },
+  ],
+  delivery_failed:    [{ status: "shipped", label: "Réexpédier", variant: "outline" }],
+};
+
+function AdminStatusActions({ orderId, currentStatus }: { orderId: Id<"orders">; currentStatus: string }) {
+  const updateStatus = useMutation(api.admin.mutations.adminUpdateOrderStatus);
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const actions = NEXT_STATUSES[currentStatus];
+  if (!actions || actions.length === 0) return null;
+
+  async function handle(status: string) {
+    setLoading(status);
+    setError(null);
+    try {
+      await updateStatus({ orderId, status: status as Parameters<typeof updateStatus>[0]["status"] });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Truck className="size-4 text-muted-foreground" />
+          Actions admin
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="flex flex-wrap gap-2">
+          {actions.map((action) => (
+            <Button
+              key={action.status}
+              size="sm"
+              variant={action.variant}
+              disabled={!!loading}
+              onClick={() => handle(action.status)}
+              className={action.variant === "destructive" ? "" : action.variant === "default" ? "bg-primary" : ""}
+            >
+              {loading === action.status ? "…" : action.label}
+            </Button>
+          ))}
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </CardContent>
+    </Card>
+  );
 }
 
 // ─── Badge styles ─────────────────────────────────────────────
@@ -491,6 +617,15 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
               </CardContent>
             </Card>
           )}
+
+          {/* Admin status actions */}
+          <AdminStatusActions
+            orderId={order._id as Id<"orders">}
+            currentStatus={order.status}
+          />
+
+          {/* Timeline */}
+          <OrderTimeline orderId={order._id as Id<"orders">} />
         </div>
       </div>
     </div>
