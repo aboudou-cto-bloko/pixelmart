@@ -763,6 +763,33 @@ export const cancelOrder = mutation({
       );
     }
 
+    // Notifier le vendeur de l'annulation
+    if (store) {
+      const vendor = await ctx.db.get(store.owner_id);
+      if (vendor) {
+        const customerName = customer?.name ?? "Client";
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.createInAppNotification,
+          {
+            userId: vendor._id,
+            type: "order_status",
+            title: `Commande ${order.order_number} annulée`,
+            body: `${customerName} a annulé la commande ${order.order_number}`,
+            link: "/vendor/orders",
+            channels: ["in_app", "push"],
+            sentVia: ["in_app"],
+          },
+        );
+        await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+          userId: vendor._id,
+          title: `Commande ${order.order_number} annulée`,
+          body: `${customerName} a annulé la commande ${order.order_number}`,
+          url: "/vendor/orders",
+        });
+      }
+    }
+
     // Restaurer le stock
     await restoreInventory(ctx, order.items);
 

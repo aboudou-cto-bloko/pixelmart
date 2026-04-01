@@ -28,8 +28,13 @@ function getSiteUrl(): string {
 
 // ─── Helper : formater un montant pour les emails ──────────
 
+// XOF/XAF/GNF/CDF : centimes = valeur d'affichage (pas de division par 100)
+const NO_SUBUNIT_CURRENCIES = ["XOF", "XAF", "GNF", "CDF"];
+
 function formatAmount(centimes: number, currency: string): string {
-  const amount = centimes / 100;
+  const amount = NO_SUBUNIT_CURRENCIES.includes(currency)
+    ? centimes
+    : centimes / 100;
   return new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency,
