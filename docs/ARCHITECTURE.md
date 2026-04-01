@@ -119,7 +119,7 @@ pixelmart/
 | `payments` | webhooks, mutations, helpers, actions | Moneroo, confirmations, refunds |
 | `payouts` | queries, mutations, actions | Retraits vendeurs vers Mobile Money |
 | `products` | queries, mutations | Catalogue produits, variantes, specs |
-| `stores` | queries, mutations | Boutiques, thèmes, settings |
+| `stores` | queries, mutations | Boutiques, thèmes, settings, progression onboarding |
 | `storage` | queries, mutations | Module entrepôt Pixel-Mart |
 | `notifications` | send, mutations, queries, helpers | Dispatch dual-channel in-app + email |
 | `push` | actions, mutations, queries | Web Push notifications |
@@ -127,7 +127,7 @@ pixelmart/
 | `reviews` | queries, mutations | Avis produits (achat vérifié) |
 | `returns` | queries, mutations | Demandes de retour/remboursement |
 | `coupons` | queries, mutations | Codes promo vendeurs |
-| `delivery` | queries, mutations | Lots de livraison groupée (standard + entrepôt `is_warehouse_batch`) |
+| `delivery` | queries, mutations | Lots de livraison groupée (standard + entrepôt `is_warehouse_batch`), grille tarifaire DB |
 | `ads` | queries, mutations, actions | Espaces publicitaires, réservations |
 | `analytics` | queries | KPIs vendeur (GMV, conversion, AOV) |
 | `admin` | queries, mutations | Supervision plateforme, audit |
@@ -232,6 +232,66 @@ Point d'entrée unique pour tous les événements de paiement. **La signature HM
 | `cronJobs().interval(...)` | Tâches périodiques | Appelle internalMutations/Actions |
 
 **Règle absolue** : les mutations ne font JAMAIS d'appels API externes. Elles utilisent `ctx.scheduler.runAfter` pour planifier une action qui fera l'appel.
+
+---
+
+## Tarifs de livraison — source de vérité DB
+
+Les tarifs de livraison sont stockés dans la table `delivery_rates` et configurés via le dashboard admin (`/admin/delivery`). Ils servent de **source de vérité principale** pour le calcul des frais.
+
+```
+Admin configure delivery_rates (DB)
+    │
+    ├── Backend (createOrder)  →  delivery/mutations.ts → ctx.db.query("delivery_rates")
+    │       └── calculateDeliveryFeeFromRates(distanceKm, type, weightKg, isNight, dbRates)
+    │
+    └── Frontend (checkout)    →  useDeliveryRates() hook → api.delivery.queries.getActiveRates
+            └── computeFee(distanceKm, type, weightKg)
+```
+
+**Fallback** : si aucun taux DB actif ne correspond à la distance / type, `calculateDeliveryFee()` sur les constantes de `convex/lib/constants.ts` est utilisé automatiquement.
+
+Hook exposé : `src/hooks/useDeliveryRates.ts` — partagé par `DeliveryFeePreview`, `DeliveryDistanceCalculator`, et `checkout`.
+
+---
+
+## Guide de configuration vendeur (Onboarding)
+
+Un guide d'onboarding contextuel (style Stripe/Linear) s'affiche automatiquement aux nouveaux vendeurs sur `/vendor/dashboard` et dans la sidebar.
+
+### Composants
+
+| Fichier | Rôle |
+|---------|------|
+| `convex/stores/queries.getOnboardingProgress` | Query réactive — calcule 6 étapes depuis les champs existants de `stores` |
+| `src/hooks/useOnboardingProgress.ts` | Hook : wraps la query + état dismissed (localStorage par boutique) |
+| `src/components/onboarding/SetupGuide.tsx` | Card accordion Stripe-style — barre de progression, étapes, CTA |
+| `src/components/layout/VendorSidebar.tsx` | `SetupProgress` — mini widget sidebar (masqué si sidebar collapsée) |
+
+### 6 étapes dérivées (sans migration schéma)
+
+| ID | Critère de complétion |
+|----|----------------------|
+| `store_created` | Toujours vrai |
+| `logo` | `store.logo_url != null` |
+| `delivery` | `store.has_storage_plan != null` |
+| `first_product` | Produits actifs > 0 |
+| `contact` | `contact_phone \| contact_whatsapp \| contact_email` |
+| `theme` | `theme_id !== "default" \|\| primary_color != null` |
+
+**Dismiss** : clé localStorage `pm_setup_guide_dismissed_{storeId}` par boutique. Le guide réapparaît si l'onboarding est réouvert depuis la sidebar.
+
+---
+
+## Mode de service vendeur (tri-état)
+
+Le champ `use_pixelmart_service` + `has_storage_plan` sur `stores` forme un **tri-état** configuré dans `/vendor/settings` :
+
+| Mode | `use_pixelmart_service` | `has_storage_plan` | Description |
+|------|------------------------|-------------------|-------------|
+| `full` | `true` | `true` | Livraison + entrepôt Pixel-Mart |
+| `delivery_only` | `true` | `false` | Livraison Pixel-Mart, stockage chez le vendeur (pickup custom requis) |
+| `none` | `false` | `false` | Tout géré par le vendeur (livraison + stock) |
 
 ---
 

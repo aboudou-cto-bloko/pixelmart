@@ -294,7 +294,11 @@ Les méthodes de paiement (MTN Money, Orange Money, Wave, etc.) affichées sur c
 
 ## Gestion des tarifs de livraison (`/admin/delivery`)
 
-La page `/admin/delivery` permet de configurer les grilles tarifaires de livraison par course.
+La page `/admin/delivery` permet de configurer les grilles tarifaires de livraison par course. Les tarifs configurés ici sont **stockés en base de données** (table `delivery_rates`) et utilisés directement dans :
+- La création de commande (`orders/mutations.createOrder`) pour calculer les frais de livraison côté serveur
+- L'aperçu de frais en checkout (`useDeliveryRates()` hook → `api.delivery.queries.getActiveRates`)
+
+> **Fallback** : si aucun taux actif en DB ne couvre la distance / le type demandé, les constantes de `convex/lib/constants.ts` s'appliquent automatiquement. Configurer les tarifs en DB remplace les constantes sans nécessiter de déploiement.
 
 ### Structure d'un tarif
 

@@ -474,6 +474,23 @@ Connecte le Facebook/Meta Pixel du vendeur pour tracker les performances publici
 - Badge orange : commandes `paid` non traitées depuis > 24h
 - Alerte rouge : produits avec `quantity ≤ low_stock_threshold`
 
+**Guide de configuration (Setup Guide) :**
+
+Le tableau de bord affiche automatiquement un guide d'onboarding contextuel aux vendeurs qui n'ont pas encore complété toutes les étapes de configuration. Il disparaît définitivement une fois les 6 étapes terminées, ou peut être masqué manuellement.
+
+| Étape | Condition de complétion | Action suggérée |
+|-------|------------------------|-----------------|
+| Boutique créée | Toujours vrai | — |
+| Logo | `store.logo_url != null` | `/vendor/store/settings` |
+| Livraison | `store.has_storage_plan != null` | `/vendor/store/settings` |
+| Premier produit | Produits actifs > 0 | `/vendor/products/new` |
+| Contact | `contact_phone \| contact_whatsapp \| contact_email` | `/vendor/store/settings` |
+| Thème | `theme_id ≠ "default" \| primary_color != null` | `/vendor/store/theme` |
+
+Un widget de progression est également affiché dans la sidebar (masqué si la sidebar est réduite). Les deux composants utilisent `useOnboardingProgress()` qui lit `api.stores.queries.getOnboardingProgress` (réactif — se met à jour automatiquement quand le vendeur complète une étape).
+
+> **Dismiss :** Le guide peut être masqué via le bouton ✕. L'état est stocké dans `localStorage` avec la clé `pm_setup_guide_dismissed_{storeId}`.
+
 > **Dépendance :** Le solde disponible (`stores.balance`) ne bouge que lorsque le cron `releaseBalances` (toutes les heures) libère les fonds après 48h. Le solde en attente (`stores.pending_balance`) est crédité instantanément à la confirmation du paiement.
 
 ### 6.2 Catalogue produits — `/vendor/products`
@@ -695,11 +712,25 @@ Historique de toutes les transactions, regroupées par mois. Téléchargement PD
 
 Le service de stockage permet aux vendeurs de déposer leurs produits à l'entrepôt Pixel-Mart. Les commandes sont ensuite préparées et expédiées depuis l'entrepôt.
 
-### 8.1 Activation
+### 8.0 Mode de service Pixel-Mart
 
-**Route :** `/vendor/store/settings` → activer "Utiliser l'entrepôt Pixel-Mart"
+**Route :** `/vendor/settings` → section "Services Pixel-Mart"
 
-> **Dépendance :** Active `stores.has_storage_plan: true`. Sans ce flag, les demandes de stockage ne sont pas accessibles.
+Le vendeur choisit l'un de trois modes via un sélecteur à 3 cartes :
+
+| Mode | Description | Champs DB |
+|------|-------------|-----------|
+| **Complet** (`full`) | Livraison + entrepôt Pixel-Mart | `use_pixelmart_service: true`, `has_storage_plan: true` |
+| **Livraison uniquement** (`delivery_only`) | Livraison Pixel-Mart, stock chez le vendeur | `use_pixelmart_service: true`, `has_storage_plan: false` + point de collecte requis |
+| **Aucun** (`none`) | Tout géré par le vendeur | `use_pixelmart_service: false`, `has_storage_plan: false` |
+
+> En mode `delivery_only`, le vendeur doit renseigner son **point de collecte** (lat/lon/label) : les livreurs viennent chercher les colis chez lui.
+
+### 8.1 Activation de l'entrepôt
+
+**Route :** `/vendor/settings` → sélectionner le mode "Complet"
+
+> **Dépendance :** `stores.has_storage_plan: true` requis. Sans ce flag, les demandes de stockage ne sont pas accessibles.
 
 ### 8.2 Créer une demande — `/vendor/storage`
 
