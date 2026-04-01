@@ -30,7 +30,7 @@ import {
   validateCouponCode,
   type OrderItemInput,
 } from "./helpers";
-import { calculateDeliveryFee } from "../delivery/constants";
+import { calculateDeliveryFeeFromRates } from "../delivery/constants";
 import { rateLimiter } from "../lib/ratelimits";
 
 // ─── Create Order ────────────────────────────────────────────
@@ -234,10 +234,19 @@ export const createOrder = mutation({
     let shippingAmount = args.deliveryFee ?? 0;
 
     if (!shippingAmount && effectiveDistanceKm) {
-      shippingAmount = calculateDeliveryFee(
+      // Récupérer les tarifs actifs depuis la DB (fallback sur constantes si vide)
+      const dbRates = await ctx.db
+        .query("delivery_rates")
+        .withIndex("by_type")
+        .collect()
+        .then((rates) => rates.filter((r) => r.is_active));
+
+      shippingAmount = calculateDeliveryFeeFromRates(
         effectiveDistanceKm,
         deliveryType,
         args.estimatedWeightKg ?? 0,
+        undefined,
+        dbRates,
       );
     }
 

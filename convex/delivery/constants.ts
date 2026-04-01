@@ -12,6 +12,19 @@
 export type DeliveryType = "standard" | "urgent" | "fragile";
 export type PaymentMode = "online" | "cod";
 
+/** Shape of a delivery_rates document (subset used for calculation). */
+export type DbDeliveryRate = {
+  delivery_type: DeliveryType;
+  is_night_rate: boolean;
+  distance_min_km: number;
+  distance_max_km?: number;
+  base_price: number;
+  price_per_km?: number;
+  weight_threshold_kg: number;
+  weight_surcharge_per_kg: number;
+  is_active: boolean;
+};
+
 // ─── Tarification Course Urgente/Fragile ─────────────────────
 
 export const URGENT_FRAGILE_RATES = {
@@ -124,6 +137,72 @@ export function calculateDeliveryFee(
   if (weightKg > WEIGHT_SURCHARGE.thresholdKg) {
     const extraKg = weightKg - WEIGHT_SURCHARGE.thresholdKg;
     weightSurcharge = extraKg * WEIGHT_SURCHARGE.pricePerKg;
+  }
+
+  return Math.round(baseFee + weightSurcharge);
+}
+
+/**
+ * Calcule les frais de livraison en utilisant les tarifs stockés en DB.
+ * Si `dbRates` est vide ou undefined, retombe sur `calculateDeliveryFee` (constantes).
+ *
+ * @param distanceKm - Distance en kilomètres
+ * @param deliveryType - Type de course
+ * @param weightKg - Poids total en kg
+ * @param isNight - Tarification de nuit (auto-détecté si non fourni)
+ * @param dbRates - Tarifs actifs issus de la table delivery_rates (fallback = constantes)
+ */
+export function calculateDeliveryFeeFromRates(
+  distanceKm: number,
+  deliveryType: DeliveryType,
+  weightKg: number = 0,
+  isNight?: boolean,
+  dbRates?: DbDeliveryRate[],
+): number {
+  // Fallback sur les constantes si aucun tarif DB n'est disponible
+  if (!dbRates || dbRates.length === 0) {
+    return calculateDeliveryFee(distanceKm, deliveryType, weightKg, isNight);
+  }
+
+  const distance = Math.ceil(distanceKm);
+  const nightRate = isNight ?? isNightTime();
+
+  // Filtrer les tarifs correspondant au type et à la période
+  const matchingType: DeliveryType = nightRate ? deliveryType : deliveryType;
+  const candidates = dbRates.filter(
+    (r) => r.delivery_type === matchingType && r.is_night_rate === nightRate,
+  );
+
+  // Si pas de tarif DB pour ce type/période, fallback constantes
+  if (candidates.length === 0) {
+    return calculateDeliveryFee(distanceKm, deliveryType, weightKg, isNight);
+  }
+
+  // Trouver le palier correspondant à la distance
+  const tier = candidates
+    .sort((a, b) => a.distance_min_km - b.distance_min_km)
+    .find(
+      (r) =>
+        distance >= r.distance_min_km &&
+        (r.distance_max_km === undefined || distance <= r.distance_max_km),
+    );
+
+  // Aucun palier ne correspond → fallback constantes
+  if (!tier) {
+    return calculateDeliveryFee(distanceKm, deliveryType, weightKg, isNight);
+  }
+
+  // Calcul du prix de base
+  const baseFee =
+    tier.price_per_km !== undefined
+      ? distance * tier.price_per_km
+      : tier.base_price;
+
+  // Supplément poids (utilise les valeurs du premier tarif du type comme référence)
+  let weightSurcharge = 0;
+  if (weightKg > tier.weight_threshold_kg) {
+    const extraKg = weightKg - tier.weight_threshold_kg;
+    weightSurcharge = extraKg * tier.weight_surcharge_per_kg;
   }
 
   return Math.round(baseFee + weightSurcharge);
