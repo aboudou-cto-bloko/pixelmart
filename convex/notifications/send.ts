@@ -8,7 +8,6 @@ import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { formatAmountText } from "../lib/format";
 
-// ── Seuls les NOUVEAUX templates ──
 import LowStockAlert from "../../emails/LowStockAlert";
 import PayoutCompleted from "../../emails/PayoutCompleted";
 import OrderStatusUpdate from "../../emails/OrderStatusUpdate";
@@ -18,6 +17,8 @@ import StorageRejected from "../../emails/StorageRejected";
 import StorageInvoiceCreated from "../../emails/StorageInvoiceCreated";
 import StorageDebtDeducted from "../../emails/StorageDebtDeducted";
 import StorageInvoicePaid from "../../emails/StorageInvoicePaid";
+import ReturnStatusUpdate from "../../emails/ReturnStatusUpdate";
+import NewReview from "../../emails/NewReview";
 
 const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
@@ -289,7 +290,6 @@ export const notifyNewOrderInApp = internalAction({
 export const notifyPaymentFailed = internalAction({
   args: {
     vendorUserId: v.id("users"),
-    vendorEmail: v.string(),
     customerName: v.string(),
     orderNumber: v.string(),
     storeName: v.string(),
@@ -302,7 +302,7 @@ export const notifyPaymentFailed = internalAction({
     // In-app → vendor
     await ctx.runMutation(internal.notifications.mutations.create, {
       userId: args.vendorUserId,
-      type: "order_new",
+      type: "payment",
       title: "Paiement échoué",
       body: `${args.customerName} — ${args.orderNumber} (${formatted}) — paiement non abouti`,
       link: "/vendor/orders",
@@ -447,17 +447,9 @@ export const notifyReturnStatus = internalAction({
     // 2. Email via Resend
     if (args.recipientEmail) {
       try {
-        const { Resend } = await import("resend");
-        const resend = new Resend(process.env.RESEND_API_KEY);
-
-        const { default: ReturnStatusUpdate } =
-          await import("../../emails/ReturnStatusUpdate");
-
-        await resend.emails.send({
-          from: EMAIL_FROM ?? "Pixel-Mart <noreply@pixel-mart-bj.com>",
-          to: args.recipientEmail,
-          subject: `${titleMap[args.returnStatus]} — Commande ${args.orderNumber}`,
-          react: ReturnStatusUpdate({
+        const resend = getResend();
+        const html = await render(
+          ReturnStatusUpdate({
             recipientName: args.recipientName,
             orderNumber: args.orderNumber,
             storeName: args.storeName,
@@ -467,6 +459,12 @@ export const notifyReturnStatus = internalAction({
             customerName: args.customerName,
             isVendorNotification: args.isVendorNotification,
           }),
+        );
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: args.recipientEmail,
+          subject: `${titleMap[args.returnStatus]} — Commande ${args.orderNumber}`,
+          html,
         });
       } catch (error) {
         console.error("Failed to send return status email:", error);
@@ -899,8 +897,6 @@ export const notifyNewReview = internalAction({
     // 2. Email notification
     try {
       const resend = getResend();
-      const { default: NewReview } = await import("../../emails/NewReview");
-
       const html = await render(
         NewReview({
           vendorName: args.vendorName,
