@@ -94,9 +94,9 @@ export function CountdownPage() {
         <Image
           src="/Pixel-Mart.png"
           alt="Pixel-Mart"
-          width={120}
-          height={40}
-          className="h-10 w-auto"
+          width={240}
+          height={80}
+          className="h-16 w-auto"
           priority
         />
       </motion.div>
