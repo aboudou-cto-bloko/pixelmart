@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import Image from "next/image";
 
-// 1er avril 2026 à 16h00 heure de Cotonou (UTC+1)
-const LAUNCH_AT = new Date("2026-04-01T15:00:00.000Z").getTime();
+// 1er avril 2026 à 20h00 heure de Cotonou (UTC+1)
+const LAUNCH_AT = new Date("2026-04-01T19:00:00.000Z").getTime();
 
 function getTimeLeft() {
   const diff = LAUNCH_AT - Date.now();
@@ -117,7 +117,7 @@ export function CountdownPage() {
         <p className="mb-8 sm:mb-10 text-sm text-muted-foreground/60 max-w-xs px-2">
           La marketplace pensée pour le Bénin ouvre ses portes le&nbsp;
           <span className="text-foreground/80 font-medium">
-            1er avril à 16h
+            1er avril à 20h
           </span>
           .
         </p>
