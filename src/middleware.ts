@@ -48,11 +48,12 @@ export function middleware(request: NextRequest) {
     request.cookies.get("better-auth.session_token")?.value ||
     request.cookies.get("__Secure-better-auth.session_token")?.value;
 
-  // Avant le lancement : seuls les admins/agents connectés accèdent à leurs routes
+  // Avant le lancement : admin et agent contournent toujours le gate
+  // (l'auth gate ci-dessous redirige vers /login si session absente)
   const isAdminRoute =
     pathname.startsWith("/admin") || pathname.startsWith("/agent");
 
-  if (!isLaunched && !isPrelaunchPublic && !(isAdminRoute && sessionToken)) {
+  if (!isLaunched && !isPrelaunchPublic && !isAdminRoute) {
     return NextResponse.redirect(new URL("/access", request.url));
   }
 
