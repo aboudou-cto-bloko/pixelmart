@@ -132,77 +132,55 @@ export type PasswordResetRequestData = z.infer<
 export type PasswordResetData = z.infer<typeof passwordResetSchema>;
 
 /**
- * Safe error message mapping for auth errors
+ * Safe error message mapping for auth errors.
+ * Keys correspond to Better Auth's actual error codes.
  */
 export const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  // Registration errors
-  EMAIL_ALREADY_EXISTS: "Cet email est déjà utilisé",
-  WEAK_PASSWORD: "Le mot de passe ne respecte pas les critères de sécurité",
-  INVALID_EMAIL: "Format d'email invalide",
-  USER_CREATION_FAILED: "Erreur lors de la création du compte",
+  // Registration errors (Better Auth codes)
+  USER_ALREADY_EXISTS: "Un compte existe déjà avec cet email.",
+  WEAK_PASSWORD: "Le mot de passe ne respecte pas les critères de sécurité.",
+  USER_CREATION_FAILED: "Erreur lors de la création du compte. Réessayez.",
 
-  // Login errors
-  INVALID_CREDENTIALS: "Email ou mot de passe incorrect",
-  EMAIL_NOT_VERIFIED: "Email non vérifié. Vérifiez votre boîte de réception.",
+  // Login errors (Better Auth codes)
+  INVALID_EMAIL_OR_PASSWORD: "Email ou mot de passe incorrect.",
+  EMAIL_NOT_VERIFIED:
+    "Email non vérifié. Consultez votre boîte mail et cliquez sur le lien de vérification.",
+  ACCOUNT_NOT_FOUND: "Aucun compte associé à cet email.",
   ACCOUNT_LOCKED:
-    "Compte temporairement verrouillé après plusieurs tentatives de connexion échouées",
+    "Compte temporairement verrouillé suite à trop de tentatives. Réessayez dans quelques minutes.",
   TOO_MANY_REQUESTS:
-    "Trop de tentatives. Veuillez réessayer dans quelques minutes.",
+    "Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.",
 
-  // Password reset errors
-  USER_NOT_FOUND: "Aucun compte associé à cet email",
-  INVALID_TOKEN: "Lien de réinitialisation invalide ou expiré",
-  TOKEN_EXPIRED: "Lien de réinitialisation expiré",
+  // Password reset errors (Better Auth codes)
+  INVALID_TOKEN: "Lien de réinitialisation invalide ou expiré.",
+  TOKEN_EXPIRED: "Ce lien de réinitialisation a expiré. Demandez-en un nouveau.",
 
   // Generic fallback
   UNKNOWN_ERROR: "Une erreur inattendue est survenue. Veuillez réessayer.",
 };
 
 /**
- * Get safe error message for display
+ * Get safe error message for display.
+ * Reads Better Auth's error.code first, then falls back to status code.
  */
 export function getSafeErrorMessage(error: unknown): string {
   if (!error) return AUTH_ERROR_MESSAGES.UNKNOWN_ERROR;
 
-  // Type guard for error-like objects
   const isErrorLike = (
     err: unknown,
-  ): err is {
-    code?: string;
-    type?: string;
-    message?: string;
-    status?: number;
-  } => typeof err === "object" && err !== null;
+  ): err is { code?: string; message?: string; status?: number } =>
+    typeof err === "object" && err !== null;
 
-  if (!isErrorLike(error)) {
-    return AUTH_ERROR_MESSAGES.UNKNOWN_ERROR;
+  if (!isErrorLike(error)) return AUTH_ERROR_MESSAGES.UNKNOWN_ERROR;
+
+  // Better Auth sets a typed `code` — use it directly
+  if (error.code && AUTH_ERROR_MESSAGES[error.code]) {
+    return AUTH_ERROR_MESSAGES[error.code];
   }
 
-  // Check if error has a known code/type
-  const errorCode = error.code || error.type || error.message;
+  // HTTP status fallbacks
+  if (error.status === 429) return AUTH_ERROR_MESSAGES.TOO_MANY_REQUESTS;
+  if (error.status === 403) return AUTH_ERROR_MESSAGES.EMAIL_NOT_VERIFIED;
 
-  // Map specific error codes to safe messages
-  if (errorCode && AUTH_ERROR_MESSAGES[errorCode]) {
-    return AUTH_ERROR_MESSAGES[errorCode];
-  }
-
-  // Handle specific error patterns
-  if (error.status === 403) {
-    return AUTH_ERROR_MESSAGES.EMAIL_NOT_VERIFIED;
-  }
-
-  if (error.status === 429) {
-    return AUTH_ERROR_MESSAGES.TOO_MANY_REQUESTS;
-  }
-
-  if (error.message && error.message.toLowerCase().includes("email")) {
-    return AUTH_ERROR_MESSAGES.EMAIL_ALREADY_EXISTS;
-  }
-
-  if (error.message && error.message.toLowerCase().includes("password")) {
-    return AUTH_ERROR_MESSAGES.WEAK_PASSWORD;
-  }
-
-  // Generic fallback for security
   return AUTH_ERROR_MESSAGES.UNKNOWN_ERROR;
 }
