@@ -227,10 +227,16 @@ export const updateStore = mutation({
 /**
  * Met à jour les paramètres de livraison / point de retrait.
  * Bloqué si le store a des commandes actives.
+ *
+ * Modes:
+ *   "full"          → use_pixelmart_service=true,  has_storage_plan=true,  no custom pickup
+ *   "delivery_only" → use_pixelmart_service=true,  has_storage_plan=false, custom pickup required
+ *   "none"          → use_pixelmart_service=false, has_storage_plan=false, no custom pickup
  */
 export const updateDeliverySettings = mutation({
   args: {
     use_pixelmart_service: v.boolean(),
+    has_storage_plan: v.boolean(),
     custom_pickup_lat: v.optional(v.number()),
     custom_pickup_lon: v.optional(v.number()),
     custom_pickup_label: v.optional(v.string()),
@@ -238,20 +244,27 @@ export const updateDeliverySettings = mutation({
   handler: async (ctx, args) => {
     const { store } = await getVendorStore(ctx);
 
-    // ---- Validate delivery settings ----
-    if (!args.use_pixelmart_service) {
-      // Self-delivery mode: require custom pickup location
+    // ---- Validate state ----
+    if (!args.use_pixelmart_service && args.has_storage_plan) {
+      throw new ConvexError(
+        "État invalide : impossible d'avoir un plan de stockage sans le service Pixel-Mart.",
+      );
+    }
+
+    // delivery_only: use_pixelmart_service=true + has_storage_plan=false → custom pickup required
+    const isDeliveryOnly = args.use_pixelmart_service && !args.has_storage_plan;
+
+    if (isDeliveryOnly) {
       if (
         args.custom_pickup_lat === undefined ||
         args.custom_pickup_lon === undefined ||
         !args.custom_pickup_label?.trim()
       ) {
         throw new ConvexError(
-          "L'adresse de retrait personnalisée est requise en mode livraison autonome.",
+          "L'adresse de retrait personnalisée est requise en mode livraison uniquement.",
         );
       }
 
-      // Validate coordinates
       if (
         args.custom_pickup_lat < -90 ||
         args.custom_pickup_lat > 90 ||
@@ -261,7 +274,6 @@ export const updateDeliverySettings = mutation({
         throw new ConvexError("Coordonnées géographiques invalides.");
       }
 
-      // Validate label length and content
       if (
         args.custom_pickup_label.trim().length < 5 ||
         args.custom_pickup_label.trim().length > 200
@@ -271,7 +283,6 @@ export const updateDeliverySettings = mutation({
         );
       }
 
-      // Check for dangerous characters in label
       if (/[<>"'&]/.test(args.custom_pickup_label)) {
         throw new ConvexError(
           "L'adresse contient des caractères non autorisés.",
@@ -294,26 +305,15 @@ export const updateDeliverySettings = mutation({
       }
     }
 
-    // ---- Derive has_storage_plan ----
-    // Mode A: use_pixelmart_service=true  → uses warehouse (storage plan)
-    // Mode B: use_pixelmart_service=false → uses custom pickup (no storage plan)
-    const hasCustomPickup =
-      !args.use_pixelmart_service && args.custom_pickup_lat !== undefined;
-    const hasStoragePlan = args.use_pixelmart_service;
-
     await ctx.db.patch(store._id, {
       use_pixelmart_service: args.use_pixelmart_service,
-      // Save custom pickup data only when NOT using Pixelmart service
-      custom_pickup_lat: !args.use_pixelmart_service
-        ? args.custom_pickup_lat
-        : undefined,
-      custom_pickup_lon: !args.use_pixelmart_service
-        ? args.custom_pickup_lon
-        : undefined,
-      custom_pickup_label: !args.use_pixelmart_service
+      has_storage_plan: args.has_storage_plan,
+      // Custom pickup saved only for delivery_only mode
+      custom_pickup_lat: isDeliveryOnly ? args.custom_pickup_lat : undefined,
+      custom_pickup_lon: isDeliveryOnly ? args.custom_pickup_lon : undefined,
+      custom_pickup_label: isDeliveryOnly
         ? args.custom_pickup_label?.trim()
         : undefined,
-      has_storage_plan: hasStoragePlan,
       updated_at: Date.now(),
     });
 
@@ -439,6 +439,7 @@ export const createAdditionalStore = mutation({
     const usePixelmartService = args.use_pixelmart_service ?? true;
     const hasCustomPickup = args.custom_pickup_lat !== undefined;
     const hasStoragePlan = usePixelmartService && !hasCustomPickup;
+    const isDeliveryOnly = usePixelmartService && !hasStoragePlan;
 
     const storeId = await ctx.db.insert("stores", {
       owner_id: user._id,
@@ -458,15 +459,9 @@ export const createAdditionalStore = mutation({
       is_verified: false,
       country: args.country ?? "BJ",
       use_pixelmart_service: usePixelmartService,
-      custom_pickup_lat: !usePixelmartService
-        ? args.custom_pickup_lat
-        : undefined,
-      custom_pickup_lon: !usePixelmartService
-        ? args.custom_pickup_lon
-        : undefined,
-      custom_pickup_label: !usePixelmartService
-        ? args.custom_pickup_label
-        : undefined,
+      custom_pickup_lat: isDeliveryOnly ? args.custom_pickup_lat : undefined,
+      custom_pickup_lon: isDeliveryOnly ? args.custom_pickup_lon : undefined,
+      custom_pickup_label: isDeliveryOnly ? args.custom_pickup_label : undefined,
       has_storage_plan: hasStoragePlan,
       contact_phone: args.contact_phone || undefined,
       contact_whatsapp: args.contact_whatsapp || undefined,

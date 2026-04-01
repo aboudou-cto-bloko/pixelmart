@@ -22,6 +22,7 @@ import {
   BarChart3,
   ScrollText,
   Megaphone,
+  Truck,
   Settings2,
   RefreshCw,
   Shield,
@@ -277,8 +278,14 @@ function AnalyticsTab({ period, onPeriodChange }: { period: Period; onPeriodChan
           <KpiCard
             label="Revenus plateforme (net)"
             value={formatPrice(data.kpis.netRevenue, "XOF")}
-            sub="commissions + pub + stockage"
+            sub="commissions + pub + stockage + livraison"
             icon={TrendingUp}
+          />
+          <KpiCard
+            label="Frais de livraison"
+            value={formatPrice(data.kpis.deliveryFees, "XOF")}
+            trend={<Trend current={data.kpis.deliveryFees} previous={data.kpis.prevDeliveryFees} />}
+            icon={Truck}
           />
           <KpiCard
             label="Revenus publicitaires"

@@ -209,6 +209,7 @@ export default function StoreSettingsPage() {
     try {
       await updateDeliverySettings({
         use_pixelmart_service: serviceMode !== "none",
+        has_storage_plan: serviceMode === "full",
         custom_pickup_lat:
           serviceMode === "delivery_only" ? customPickup?.lat : undefined,
         custom_pickup_lon:

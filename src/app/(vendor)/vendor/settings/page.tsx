@@ -209,6 +209,7 @@ export default function StoreSettingsPage() {
       // Validate delivery settings
       const deliveryData: DeliverySettingsData = {
         use_pixelmart_service: usePixelmartService,
+        has_storage_plan: usePixelmartService,
         custom_pickup_lat: customPickup?.lat,
         custom_pickup_lon: customPickup?.lon,
         custom_pickup_label: customPickup?.label,

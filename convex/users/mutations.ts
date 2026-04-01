@@ -79,12 +79,11 @@ export const becomeVendor = mutation({
     const hasCustomPickup = args.custom_pickup_lat !== undefined;
     const hasStoragePlan = usePixelmartService && !hasCustomPickup;
 
-    // Custom pickup only when NOT using Pixelmart service
-    const pickupLat = !usePixelmartService ? args.custom_pickup_lat : undefined;
-    const pickupLon = !usePixelmartService ? args.custom_pickup_lon : undefined;
-    const pickupLabel = !usePixelmartService
-      ? args.custom_pickup_label
-      : undefined;
+    // Custom pickup only for delivery_only mode (service=true, storage=false)
+    const isDeliveryOnly = usePixelmartService && !hasStoragePlan;
+    const pickupLat = isDeliveryOnly ? args.custom_pickup_lat : undefined;
+    const pickupLon = isDeliveryOnly ? args.custom_pickup_lon : undefined;
+    const pickupLabel = isDeliveryOnly ? args.custom_pickup_label : undefined;
 
     // ---- Insert store ----
     const storeId = await ctx.db.insert("stores", {
