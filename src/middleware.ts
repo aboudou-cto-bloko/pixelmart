@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // ── Lancement : 1er avril 2026 à 16h00 heure de Cotonou (UTC+1)
-const LAUNCH_AT = new Date("2026-04-01T15:00:00.000Z").getTime();
+const LAUNCH_AT = new Date("2026-04-01T19:30:00.000Z").getTime();
 
 // Routes accessibles avant le lancement (page countdown + auth + login)
 const PRELAUNCH_PUBLIC = [
@@ -40,7 +40,9 @@ export function middleware(request: NextRequest) {
 
   // ── 1. Launch gate ───────────────────────────────────────────────────────────
   const isLaunched = Date.now() >= LAUNCH_AT;
-  const isPrelaunchPublic = PRELAUNCH_PUBLIC.some((p) => pathname.startsWith(p));
+  const isPrelaunchPublic = PRELAUNCH_PUBLIC.some((p) =>
+    pathname.startsWith(p),
+  );
 
   const sessionToken =
     request.cookies.get("better-auth.session_token")?.value ||
