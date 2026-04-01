@@ -92,11 +92,11 @@ export function CountdownPage() {
         className="mb-14"
       >
         <Image
-          src="/Pixel-Mart.png"
+          src="/Pixel-Mart-1.png"
           alt="Pixel-Mart"
-          width={240}
-          height={80}
-          className="h-16 w-auto"
+          width={500}
+          height={500}
+          className="w-72 sm:w-96 h-auto max-w-[85vw]"
           priority
         />
       </motion.div>
