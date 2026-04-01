@@ -23,6 +23,9 @@ export interface CartItem {
   storeName: string;
   storeSlug: string;
 
+  /** Poids unitaire en grammes (snapshot, undefined si non renseigné) */
+  weight?: number;
+
   /** Quantité */
   quantity: number;
 

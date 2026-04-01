@@ -22,6 +22,7 @@ export interface ShopProductCardData {
   images: string[];
   is_digital: boolean;
   quantity?: number;
+  weight?: number; // grammes
 }
 
 interface ShopProductCardProps {
@@ -73,6 +74,7 @@ export function ShopProductCard({
         storeId,
         storeName,
         storeSlug,
+        weight: product.weight,
         quantity: 1,
         maxQuantity: quantity ?? 99,
         isDigital: is_digital,
