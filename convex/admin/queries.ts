@@ -432,6 +432,8 @@ export const getAnalytics = query({
     const prevGmv = prevOrders.reduce((s, o) => s + o.total_amount, 0);
     const commissions = curOrders.reduce((s, o) => s + (o.commission_amount ?? 0), 0);
     const prevCommissions = prevOrders.reduce((s, o) => s + (o.commission_amount ?? 0), 0);
+    const deliveryFees = curOrders.reduce((s, o) => s + (o.delivery_fee ?? 0), 0);
+    const prevDeliveryFees = prevOrders.reduce((s, o) => s + (o.delivery_fee ?? 0), 0);
 
     // Utilisateurs
     const allUsers = await ctx.db.query("users").collect();
@@ -529,7 +531,8 @@ export const getAnalytics = query({
         newStores, prevNewStores,
         adRevenue,
         storageRevenue,
-        netRevenue: commissions + adRevenue + storageRevenue,
+        deliveryFees, prevDeliveryFees,
+        netRevenue: commissions + adRevenue + storageRevenue + deliveryFees,
         aov, prevAov,
         conversionRate,
       },

@@ -155,6 +155,7 @@ export const storeSettingsSchema = z.object({
 export const deliverySettingsSchema = z
   .object({
     use_pixelmart_service: z.boolean(),
+    has_storage_plan: z.boolean(),
 
     custom_pickup_lat: z
       .number()
@@ -176,8 +177,9 @@ export const deliverySettingsSchema = z
   })
   .refine(
     (data) => {
-      // If not using Pixelmart service, custom pickup is required
-      if (!data.use_pixelmart_service) {
+      // delivery_only mode (service=true, storage=false) requires custom pickup
+      const isDeliveryOnly = data.use_pixelmart_service && !data.has_storage_plan;
+      if (isDeliveryOnly) {
         return (
           data.custom_pickup_lat !== undefined &&
           data.custom_pickup_lon !== undefined &&
