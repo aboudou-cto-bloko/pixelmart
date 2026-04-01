@@ -16,6 +16,9 @@ import {
   Truck,
   MapPin,
   AlertTriangle,
+  Package,
+  Check,
+  Info,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -41,7 +44,6 @@ import { Separator } from "@/components/ui/separator";
 import { SUPPORTED_COUNTRIES } from "@/constants/countries";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { formatPrice } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
 import {
   LocationPicker,
   type PickedLocation,
@@ -80,8 +82,9 @@ export default function StoreSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Delivery settings
-  const [usePixelmartService, setUsePixelmartService] = useState(true);
+  // Delivery settings — tri-state
+  type ServiceMode = "full" | "delivery_only" | "none";
+  const [serviceMode, setServiceMode] = useState<ServiceMode>("full");
   const [customPickup, setCustomPickup] = useState<
     PickedLocation | undefined
   >();
@@ -120,11 +123,19 @@ export default function StoreSettingsPage() {
       setLogoStorageId(store.logo_url); // store.logo_url est le storageId
       setBannerStorageId(store.banner_url);
 
-      // Delivery settings — default is true if field not yet set
+      // Delivery settings — derive tri-state from DB fields
       const usePM = store.use_pixelmart_service ?? true;
-      setUsePixelmartService(usePM);
+      const hasSP = store.has_storage_plan ?? usePM;
+      if (!usePM) {
+        setServiceMode("none");
+      } else if (usePM && !hasSP) {
+        setServiceMode("delivery_only");
+      } else {
+        setServiceMode("full");
+      }
+      const isDeliveryOnly = usePM && !hasSP;
       if (
-        !usePM &&
+        isDeliveryOnly &&
         store.custom_pickup_lat !== undefined &&
         store.custom_pickup_lon !== undefined &&
         store.custom_pickup_label
@@ -208,11 +219,11 @@ export default function StoreSettingsPage() {
     try {
       // Validate delivery settings
       const deliveryData: DeliverySettingsData = {
-        use_pixelmart_service: usePixelmartService,
-        has_storage_plan: usePixelmartService,
-        custom_pickup_lat: customPickup?.lat,
-        custom_pickup_lon: customPickup?.lon,
-        custom_pickup_label: customPickup?.label,
+        use_pixelmart_service: serviceMode !== "none",
+        has_storage_plan: serviceMode === "full",
+        custom_pickup_lat: serviceMode === "delivery_only" ? customPickup?.lat : undefined,
+        custom_pickup_lon: serviceMode === "delivery_only" ? customPickup?.lon : undefined,
+        custom_pickup_label: serviceMode === "delivery_only" ? customPickup?.label : undefined,
       };
 
       const validatedData = deliverySettingsSchema.parse(deliveryData);
@@ -581,72 +592,117 @@ export default function StoreSettingsPage() {
             </div>
           )}
 
-          {/* Toggle */}
+          {/* 3 service option cards */}
           <div
-            className={`flex items-start justify-between gap-4 ${hasPendingOrders ? "opacity-50 pointer-events-none select-none" : ""}`}
+            className={`grid gap-3 ${hasPendingOrders ? "opacity-50 pointer-events-none select-none" : ""}`}
           >
-            <div className="space-y-1">
-              <p className="text-sm font-medium">
-                Utiliser le service Pixel-Mart
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Activé : vos produits sont stockés et expédiés depuis notre
-                entrepôt ({PIXELMART_WAREHOUSE.label}).
-                <br />
-                Désactivé : vous gérez vous-même le stockage et définissez votre
-                propre point de retrait.
-              </p>
-            </div>
-            <Switch
-              checked={usePixelmartService}
-              onCheckedChange={(val) => {
-                setUsePixelmartService(val);
-                if (val) setCustomPickup(undefined);
+            {/* Option 1 — Livraison + Stockage */}
+            <button
+              type="button"
+              onClick={() => {
+                setServiceMode("full");
+                setCustomPickup(undefined);
               }}
-              disabled={!!hasPendingOrders}
-            />
+              className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
+                serviceMode === "full"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                  : "border-border hover:border-muted-foreground/40"
+              }`}
+            >
+              {serviceMode === "full" && (
+                <span className="absolute top-3 right-3">
+                  <Check className="size-4 text-primary" />
+                </span>
+              )}
+              <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Package className="size-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">Livraison + Stockage</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pixel-Mart stocke vos produits et gère les livraisons depuis
+                  son entrepôt. Les distances sont calculées depuis{" "}
+                  {PIXELMART_WAREHOUSE.label}.
+                </p>
+              </div>
+            </button>
+
+            {/* Option 2 — Livraison uniquement */}
+            <button
+              type="button"
+              onClick={() => setServiceMode("delivery_only")}
+              className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
+                serviceMode === "delivery_only"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                  : "border-border hover:border-muted-foreground/40"
+              }`}
+            >
+              {serviceMode === "delivery_only" && (
+                <span className="absolute top-3 right-3">
+                  <Check className="size-4 text-primary" />
+                </span>
+              )}
+              <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                <Truck className="size-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">Livraison uniquement</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pixel-Mart livre vos commandes depuis votre propre adresse.
+                  Vous gérez votre stock vous-même. Une adresse de retrait est
+                  obligatoire.
+                </p>
+              </div>
+            </button>
+
+            {/* Option 3 — Aucun service */}
+            <button
+              type="button"
+              onClick={() => {
+                setServiceMode("none");
+                setCustomPickup(undefined);
+              }}
+              className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
+                serviceMode === "none"
+                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                  : "border-border hover:border-muted-foreground/40"
+              }`}
+            >
+              {serviceMode === "none" && (
+                <span className="absolute top-3 right-3">
+                  <Check className="size-4 text-primary" />
+                </span>
+              )}
+              <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <X className="size-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">Aucun service</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Vous gérez stock et livraison hors plateforme. Aucun frais de
+                  livraison n&apos;est appliqué au checkout.
+                </p>
+              </div>
+            </button>
           </div>
 
-          {/* Custom pickup map — shown only when service is OFF */}
-          {!usePixelmartService && !hasPendingOrders && (
+          {/* Custom pickup map — shown only for "delivery_only" */}
+          {serviceMode === "delivery_only" && !hasPendingOrders && (
             <div className="space-y-3 rounded-lg border p-4 bg-muted/20">
               <div className="flex items-center gap-2">
                 <MapPin className="size-4 text-primary" />
                 <p className="text-sm font-medium">
-                  Votre point de retrait{" "}
+                  Votre adresse de retrait{" "}
                   <span className="text-destructive">*</span>
                 </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Cliquez sur la carte ou recherchez votre adresse pour définir
-                votre point de retrait.
-              </p>
               <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-                <div className="flex-shrink-0 mt-0.5">
-                  <svg
-                    className="size-4 text-blue-600 dark:text-blue-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div className="text-xs text-blue-800 dark:text-blue-200">
-                  <p className="font-medium mb-1">
-                    💡 Conseil pour la localisation
-                  </p>
-                  <p>
-                    La géolocalisation automatique ("Ma position") peut parfois
-                    être imprécise sur ordinateur. Si vous remarquez que votre
-                    position n'est pas correcte, essayez de passer sur mobile
-                    avant de sauvegarder, ou utilisez la recherche d'adresse
-                    pour une meilleure précision.
-                  </p>
-                </div>
+                <Info className="size-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
+                <p className="text-xs text-blue-800 dark:text-blue-200">
+                  La géolocalisation peut être imprécise sur ordinateur.
+                  Utilisez la recherche d&apos;adresse ou passez sur mobile pour
+                  plus de précision.
+                </p>
               </div>
               <LocationPicker
                 value={customPickup}
@@ -662,8 +718,8 @@ export default function StoreSettingsPage() {
             </div>
           )}
 
-          {/* Read-only display when service is ON */}
-          {usePixelmartService && (
+          {/* Warehouse info for "full" mode */}
+          {serviceMode === "full" && (
             <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
               <MapPin className="size-4 shrink-0 mt-0.5 text-primary" />
               <p className="text-xs text-muted-foreground">
@@ -680,7 +736,7 @@ export default function StoreSettingsPage() {
               disabled={
                 isSavingDelivery ||
                 !!hasPendingOrders ||
-                (!usePixelmartService && !customPickup)
+                (serviceMode === "delivery_only" && !customPickup)
               }
               size="sm"
             >
@@ -689,10 +745,10 @@ export default function StoreSettingsPage() {
               ) : (
                 <Save className="size-4 mr-2" />
               )}
-              Enregistrer la livraison
+              Enregistrer les services
             </Button>
             {deliverySuccess && (
-              <p className="text-sm text-green-600">Livraison mise à jour ✓</p>
+              <p className="text-sm text-green-600">Services mis à jour ✓</p>
             )}
             {deliveryError && (
               <p className="text-sm text-destructive">{deliveryError}</p>

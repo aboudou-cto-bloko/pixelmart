@@ -5,6 +5,23 @@ import { v } from "convex/values";
 import { getVendorStore, requireAgent } from "../users/helpers";
 
 /**
+ * Retourne les tarifs de livraison actifs depuis la base de données.
+ * Accessible publiquement (utilisé au checkout pour calcul côté client).
+ * Retourne un tableau vide si aucun tarif n'est configuré en DB
+ * (le frontend retombe alors sur les constantes locales).
+ */
+export const getActiveRates = query({
+  args: {},
+  handler: async (ctx) => {
+    const rates = await ctx.db
+      .query("delivery_rates")
+      .withIndex("by_type")
+      .collect();
+    return rates.filter((r) => r.is_active);
+  },
+});
+
+/**
  * Liste les commandes prêtes pour livraison (vendeur).
  * Groupées par proximité géographique.
  */
