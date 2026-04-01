@@ -42,12 +42,15 @@ export function middleware(request: NextRequest) {
   const isLaunched = Date.now() >= LAUNCH_AT;
   const isPrelaunchPublic = PRELAUNCH_PUBLIC.some((p) => pathname.startsWith(p));
 
-  // Les utilisateurs connectés (session présente) bypasse le gate de lancement
   const sessionToken =
     request.cookies.get("better-auth.session_token")?.value ||
     request.cookies.get("__Secure-better-auth.session_token")?.value;
 
-  if (!isLaunched && !isPrelaunchPublic && !sessionToken) {
+  // Avant le lancement : seuls les admins/agents connectés accèdent à leurs routes
+  const isAdminRoute =
+    pathname.startsWith("/admin") || pathname.startsWith("/agent");
+
+  if (!isLaunched && !isPrelaunchPublic && !(isAdminRoute && sessionToken)) {
     return NextResponse.redirect(new URL("/access", request.url));
   }
 
