@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// ── Preview access gate ──────────────────────────────────────────────────────
-const PREVIEW_COOKIE = "pm_dev_access";
-const PREVIEW_CODE = "pixelmart123@_";
+// ── Lancement : 1er avril 2026 à 16h00 heure de Cotonou (UTC+1)
+const LAUNCH_AT = new Date("2026-04-01T15:00:00.000Z").getTime();
 
-// Routes accessibles SANS code preview (marketing public + gate elle-même)
-const PREVIEW_PUBLIC = ["/access", "/landing", "/api/access"];
+// Routes accessibles avant le lancement (page countdown + auth)
+const PRELAUNCH_PUBLIC = ["/access", "/api/auth", "/landing"];
 
 // ── Auth public routes ────────────────────────────────────────────────────────
 const AUTH_PUBLIC = [
@@ -31,19 +30,20 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── 1. Preview gate ─────────────────────────────────────────────────────────
-  const isPreviewPublic = PREVIEW_PUBLIC.some((p) => pathname.startsWith(p));
+  // ── 1. Launch gate ───────────────────────────────────────────────────────────
+  const isLaunched = Date.now() >= LAUNCH_AT;
+  const isPrelaunchPublic = PRELAUNCH_PUBLIC.some((p) => pathname.startsWith(p));
 
-  if (!isPreviewPublic) {
-    const previewCookie = request.cookies.get(PREVIEW_COOKIE)?.value;
-    if (previewCookie !== PREVIEW_CODE) {
-      const url = new URL("/access", request.url);
-      url.searchParams.set("from", pathname);
-      return NextResponse.redirect(url);
-    }
+  if (!isLaunched && !isPrelaunchPublic) {
+    return NextResponse.redirect(new URL("/access", request.url));
   }
 
-  // ── 2. Auth gate (comportement inchangé) ─────────────────────────────────
+  // Après le lancement, /access redirige vers l'accueil
+  if (isLaunched && pathname.startsWith("/access")) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // ── 2. Auth gate ─────────────────────────────────────────────────────────────
   if (AUTH_PUBLIC.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }
