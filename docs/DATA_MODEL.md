@@ -113,9 +113,17 @@ Boutique d'un vendeur. Contient la configuration financière, l'apparence, le st
 | `meta_access_token` | string? | Token Meta CAPI |
 | `meta_test_event_code` | string? | Code test CAPI |
 | `vendor_shop_enabled` | boolean? | Active /shop/[slug] |
-| `use_pixelmart_service` | boolean? | Utilise livraison Pixel-Mart |
-| `custom_pickup_lat/lon/label` | mixed? | Point de collecte custom |
-| `has_storage_plan` | boolean? | Mode A (entrepôt Pixel-Mart) |
+| `use_pixelmart_service` | boolean? | Participe au service de livraison Pixel-Mart |
+| `has_storage_plan` | boolean? | Utilise l'entrepôt Pixel-Mart (mode `full`) |
+| `custom_pickup_lat/lon/label` | mixed? | Point de collecte custom (requis si `delivery_only`) |
+
+**Mode de service (tri-état)** — combinaison des deux champs :
+
+| Mode | `use_pixelmart_service` | `has_storage_plan` | Signification |
+|------|------------------------|-------------------|---------------|
+| `full` | `true` | `true` | Livraison + entrepôt Pixel-Mart |
+| `delivery_only` | `true` | `false` | Livraison Pixel-Mart, stock chez le vendeur |
+| `none` | `false` | `false` | Gestion totalement indépendante |
 | `contact_*` | string? | phone, whatsapp, email, website, facebook, instagram |
 | `updated_at` | number | — |
 
@@ -607,21 +615,25 @@ Dette mensuelle de stockage (mode "deferred"). Déduite en priorité sur les ret
 ---
 
 ### `delivery_rates`
-Grille tarifaire de livraison.
+Grille tarifaire de livraison. **Source de vérité principale** pour le calcul des frais. Configurée via `/admin/delivery`. Les constantes de `convex/lib/constants.ts` servent de **fallback** si aucun taux actif ne correspond.
 
 | Champ | Type | Description |
 |-------|------|-------------|
 | `delivery_type` | string | `"standard" \| "urgent" \| "fragile"` |
-| `is_night_rate` | boolean | Tarif nuit |
-| `distance_min_km` | number | — |
-| `distance_max_km` | number? | Null = illimité |
-| `base_price` | number | Centimes |
-| `price_per_km` | number? | Centimes/km au-delà du seuil |
-| `weight_threshold_kg` | number | Seuil poids |
-| `weight_surcharge_per_kg` | number | Centimes/kg au-delà du seuil |
-| `is_active` | boolean | — |
+| `is_night_rate` | boolean | Tarif nuit (21h–06h) |
+| `distance_min_km` | number | Distance minimum de la tranche (km) |
+| `distance_max_km` | number? | Distance maximum (null = illimité) |
+| `base_price` | number | Prix de base (centimes) |
+| `price_per_km` | number? | Centimes par km au-delà du seuil |
+| `weight_threshold_kg` | number | Seuil poids sans supplément (kg) |
+| `weight_surcharge_per_kg` | number | Supplément par kg au-dessus du seuil (centimes) |
+| `is_active` | boolean | Taux actif (seuls les actifs sont utilisés dans les calculs) |
 
 **Indexes** : `by_type([delivery_type, is_night_rate, is_active])`
+
+**Accès** :
+- Backend : `ctx.db.query("delivery_rates").withIndex("by_type").collect()` dans `orders/mutations.createOrder`
+- Frontend : `api.delivery.queries.getActiveRates` via le hook `useDeliveryRates()`
 
 ---
 
