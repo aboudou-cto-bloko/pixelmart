@@ -4,8 +4,16 @@ import type { NextRequest } from "next/server";
 // ── Lancement : 1er avril 2026 à 16h00 heure de Cotonou (UTC+1)
 const LAUNCH_AT = new Date("2026-04-01T15:00:00.000Z").getTime();
 
-// Routes accessibles avant le lancement (page countdown + auth)
-const PRELAUNCH_PUBLIC = ["/access", "/api/auth", "/landing"];
+// Routes accessibles avant le lancement (page countdown + auth + login)
+const PRELAUNCH_PUBLIC = [
+  "/access",
+  "/api/auth",
+  "/landing",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+];
 
 // ── Auth public routes ────────────────────────────────────────────────────────
 const AUTH_PUBLIC = [
@@ -34,7 +42,12 @@ export function middleware(request: NextRequest) {
   const isLaunched = Date.now() >= LAUNCH_AT;
   const isPrelaunchPublic = PRELAUNCH_PUBLIC.some((p) => pathname.startsWith(p));
 
-  if (!isLaunched && !isPrelaunchPublic) {
+  // Les utilisateurs connectés (session présente) bypasse le gate de lancement
+  const sessionToken =
+    request.cookies.get("better-auth.session_token")?.value ||
+    request.cookies.get("__Secure-better-auth.session_token")?.value;
+
+  if (!isLaunched && !isPrelaunchPublic && !sessionToken) {
     return NextResponse.redirect(new URL("/access", request.url));
   }
 
@@ -47,10 +60,6 @@ export function middleware(request: NextRequest) {
   if (AUTH_PUBLIC.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }
-
-  const sessionToken =
-    request.cookies.get("better-auth.session_token")?.value ||
-    request.cookies.get("__Secure-better-auth.session_token")?.value;
 
   if (!sessionToken) {
     const loginUrl = new URL("/login", request.url);
