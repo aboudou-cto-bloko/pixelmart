@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { getOrderStatusConfig, formatShortDate } from "@/lib/order-helpers";
+import { SetupGuide } from "@/components/onboarding/SetupGuide";
 
 export default function VendorDashboardPage() {
   const { user } = useCurrentUser();
@@ -59,6 +60,9 @@ export default function VendorDashboardPage() {
           {store.subscription_tier}
         </Badge>
       </div>
+
+      {/* Guide de configuration */}
+      <SetupGuide />
 
       {/* Alertes urgentes */}
       {orders.paid > 0 && (

@@ -344,3 +344,92 @@ export const listMyStores = query({
     return storesWithLogos;
   },
 });
+
+// ─── getOnboardingProgress ────────────────────────────────────
+
+/**
+ * Retourne l'état d'avancement de la configuration initiale de la boutique.
+ * Dérivé uniquement des champs existants — aucun champ supplémentaire en DB.
+ */
+export const getOnboardingProgress = query({
+  args: {},
+  handler: async (ctx) => {
+    const { store } = await getVendorStore(ctx);
+
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_store", (q) => q.eq("store_id", store._id))
+      .collect();
+    const hasProducts = products.some((p) => p.status === "active");
+
+    const steps: Array<{
+      id: string;
+      label: string;
+      description: string;
+      done: boolean;
+      route: string | null;
+      cta: string | null;
+    }> = [
+      {
+        id: "store_created",
+        label: "Créer votre boutique",
+        description: "Votre boutique Pixel-Mart est en ligne et prête à recevoir des commandes.",
+        done: true,
+        route: null,
+        cta: null,
+      },
+      {
+        id: "logo",
+        label: "Ajouter un logo",
+        description: "Un logo renforce la confiance des acheteurs et donne une identité à votre boutique.",
+        done: store.logo_url !== undefined && store.logo_url !== null,
+        route: "/vendor/settings",
+        cta: "Ajouter un logo",
+      },
+      {
+        id: "delivery",
+        label: "Configurer les services de livraison",
+        description: "Choisissez si Pixel-Mart gère votre stock et livraisons, ou si vous utilisez votre propre logistique.",
+        done: store.has_storage_plan !== undefined && store.has_storage_plan !== null,
+        route: "/vendor/settings",
+        cta: "Configurer maintenant",
+      },
+      {
+        id: "first_product",
+        label: "Mettre en ligne votre premier produit",
+        description: "Ajoutez des produits à votre catalogue pour commencer à vendre.",
+        done: hasProducts,
+        route: "/vendor/products/new",
+        cta: "Ajouter un produit",
+      },
+      {
+        id: "contact",
+        label: "Renseigner vos informations de contact",
+        description: "Téléphone, WhatsApp, email — facilitez la prise de contact avec vos clients.",
+        done: !!(store.contact_phone ?? store.contact_whatsapp ?? store.contact_email),
+        route: "/vendor/settings",
+        cta: "Compléter le profil",
+      },
+      {
+        id: "theme",
+        label: "Personnaliser l'apparence de votre vitrine",
+        description: "Choisissez un thème et une couleur pour donner une identité visuelle unique à votre boutique.",
+        done: store.theme_id !== "default" || (store.primary_color !== undefined && store.primary_color !== null),
+        route: "/vendor/store/theme",
+        cta: "Personnaliser",
+      },
+    ];
+
+    const completedCount = steps.filter((s) => s.done).length;
+    const totalCount = steps.length;
+
+    return {
+      storeId: store._id,
+      steps,
+      completedCount,
+      totalCount,
+      percentage: Math.round((completedCount / totalCount) * 100),
+      isComplete: completedCount === totalCount,
+    };
+  },
+});

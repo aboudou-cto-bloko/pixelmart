@@ -14,10 +14,12 @@ import {
   ExternalLink,
   Plus,
   Check,
+  Sparkles,
 } from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { authClient } from "@/lib/auth-client";
 import type { Id } from "../../../convex/_generated/dataModel";
 import {
@@ -225,6 +227,40 @@ function NavSection({ label, items }: { label: string; items: NavItem[] }) {
   );
 }
 
+// ---- Setup Progress ----
+function SetupProgress() {
+  const { progress, isVisible } = useOnboardingProgress();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
+  if (!isVisible || !progress || isCollapsed) return null;
+
+  return (
+    <Link
+      href="/vendor/dashboard"
+      className="mx-2 mb-1 flex items-center gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 hover:bg-primary/10 transition-colors"
+    >
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10">
+        <Sparkles className="size-3.5 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium leading-none mb-1.5">
+          Configuration
+        </p>
+        <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-500"
+            style={{ width: `${progress.percentage}%` }}
+          />
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1 leading-none">
+          {progress.completedCount}/{progress.totalCount} étapes
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 // ---- User Footer ----
 function UserFooter() {
   const { user } = useCurrentUser();
@@ -318,6 +354,7 @@ export function VendorSidebar(props: React.ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        <SetupProgress />
         <UserFooter />
       </SidebarFooter>
       <SidebarRail />
