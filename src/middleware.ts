@@ -1,20 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// ── Lancement : 1er avril 2026 à 20h00 heure de Cotonou (UTC+1)
-const LAUNCH_AT = new Date("2026-04-01T19:00:00.000Z").getTime();
-
-// Routes accessibles avant le lancement (page countdown + auth + login)
-const PRELAUNCH_PUBLIC = [
-  "/access",
-  "/api/auth",
-  "/landing",
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-];
-
 // ── Auth public routes ────────────────────────────────────────────────────────
 const AUTH_PUBLIC = [
   "/",
@@ -24,6 +10,7 @@ const AUTH_PUBLIC = [
   "/reset-password",
   "/api/auth",
   "/shop",
+  "/access",
 ];
 
 export function middleware(request: NextRequest) {
@@ -38,31 +25,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── 1. Launch gate ───────────────────────────────────────────────────────────
-  const isLaunched = Date.now() >= LAUNCH_AT;
-  const isPrelaunchPublic = PRELAUNCH_PUBLIC.some((p) =>
-    pathname.startsWith(p),
-  );
-
   const sessionToken =
     request.cookies.get("better-auth.session_token")?.value ||
     request.cookies.get("__Secure-better-auth.session_token")?.value;
 
-  // Avant le lancement : admin et agent contournent toujours le gate
-  // (l'auth gate ci-dessous redirige vers /login si session absente)
-  const isAdminRoute =
-    pathname.startsWith("/admin") || pathname.startsWith("/agent");
-
-  if (!isLaunched && !isPrelaunchPublic && !isAdminRoute) {
-    return NextResponse.redirect(new URL("/access", request.url));
-  }
-
-  // Après le lancement, /access redirige vers l'accueil
-  if (isLaunched && pathname.startsWith("/access")) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
-
-  // ── 2. Auth gate ─────────────────────────────────────────────────────────────
+  // ── Auth gate ─────────────────────────────────────────────────────────────
   if (AUTH_PUBLIC.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }
