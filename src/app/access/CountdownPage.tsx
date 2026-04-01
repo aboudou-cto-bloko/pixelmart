@@ -24,22 +24,22 @@ function pad(n: number) {
 
 function CountdownUnit({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl border border-border/40 bg-card shadow-lg shadow-black/30">
+    <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+      <div className="flex h-14 w-14 sm:h-20 sm:w-20 items-center justify-center rounded-xl sm:rounded-2xl border border-border/40 bg-card shadow-lg shadow-black/30">
         <AnimatePresence mode="popLayout">
           <motion.span
             key={value}
-            initial={{ y: -16, opacity: 0 }}
+            initial={{ y: -12, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 16, opacity: 0 }}
+            exit={{ y: 12, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="font-mono text-2xl sm:text-3xl font-bold text-foreground tabular-nums"
+            className="font-mono text-xl sm:text-3xl font-bold text-foreground tabular-nums"
           >
             {value}
           </motion.span>
         </AnimatePresence>
       </div>
-      <span className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground/50 font-medium">
+      <span className="text-[9px] sm:text-xs uppercase tracking-widest text-muted-foreground/50 font-medium">
         {label}
       </span>
     </div>
@@ -89,14 +89,14 @@ export function CountdownPage() {
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-        className="mb-14"
+        className="mb-8 sm:mb-14"
       >
         <Image
           src="/Pixel-Mart-1.png"
           alt="Pixel-Mart"
           width={500}
           height={500}
-          className="w-72 sm:w-96 h-auto max-w-[85vw]"
+          className="w-56 sm:w-96 h-auto max-w-[80vw]"
           priority
         />
       </motion.div>
@@ -114,7 +114,7 @@ export function CountdownPage() {
         <h1 className="mb-2 text-3xl sm:text-4xl font-bold text-foreground">
           Pixel-Mart arrive
         </h1>
-        <p className="mb-10 text-sm text-muted-foreground/60 max-w-xs">
+        <p className="mb-8 sm:mb-10 text-sm text-muted-foreground/60 max-w-xs px-2">
           La marketplace pensée pour le Bénin ouvre ses portes le&nbsp;
           <span className="text-foreground/80 font-medium">
             1er avril à 16h
@@ -128,18 +128,18 @@ export function CountdownPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.25 }}
-            className="flex items-end gap-3 sm:gap-4"
+            className="flex items-end gap-1.5 sm:gap-4"
           >
             {timeLeft.jours > 0 && (
               <>
                 <CountdownUnit value={pad(timeLeft.jours)} label="Jours" />
-                <span className="mb-8 text-2xl font-light text-muted-foreground/30">:</span>
+                <span className="mb-7 sm:mb-8 text-lg sm:text-2xl font-light text-muted-foreground/30">:</span>
               </>
             )}
             <CountdownUnit value={pad(timeLeft.heures)} label="Heures" />
-            <span className="mb-8 text-2xl font-light text-muted-foreground/30">:</span>
+            <span className="mb-7 sm:mb-8 text-lg sm:text-2xl font-light text-muted-foreground/30">:</span>
             <CountdownUnit value={pad(timeLeft.minutes)} label="Minutes" />
-            <span className="mb-8 text-2xl font-light text-muted-foreground/30">:</span>
+            <span className="mb-7 sm:mb-8 text-lg sm:text-2xl font-light text-muted-foreground/30">:</span>
             <CountdownUnit value={pad(timeLeft.secondes)} label="Secondes" />
           </motion.div>
         ) : (
