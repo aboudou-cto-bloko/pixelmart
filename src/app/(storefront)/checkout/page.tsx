@@ -279,6 +279,16 @@ export default function CheckoutPage() {
     }
   }
 
+  // ── Poids total estimé (grammes → kg) ──
+  const estimatedWeightKg = useMemo(() => {
+    const totalGrams = stores.reduce((sum, store) => {
+      return sum + store.items.reduce((s, item) => {
+        return s + (item.weight ?? 0) * item.quantity;
+      }, 0);
+    }, 0);
+    return totalGrams / 1000;
+  }, [stores]);
+
   // ── Frais de livraison (depuis DeliveryDistanceCalculator) ──
   const deliveryFee = deliveryConfig.deliveryFee ?? 0;
 
@@ -375,6 +385,7 @@ export default function CheckoutPage() {
           deliveryFee: storePmService ? deliveryConfig.deliveryFee : 0,
           deliveryType: deliveryConfig.deliveryType,
           paymentMode: deliveryConfig.paymentMode,
+          estimatedWeightKg: estimatedWeightKg > 0 ? estimatedWeightKg : undefined,
         });
 
         orderResults.push(result as OrderResult);
@@ -493,7 +504,7 @@ export default function CheckoutPage() {
           {/* 2. Options de livraison (avec AddressAutocomplete OSM) */}
           {showDeliverySection ? (
             <DeliverySection
-              estimatedWeightKg={0}
+              estimatedWeightKg={estimatedWeightKg}
               value={deliveryConfig}
               onChange={handleDeliveryConfigChange}
               addressError={deliveryAddressError ?? undefined}

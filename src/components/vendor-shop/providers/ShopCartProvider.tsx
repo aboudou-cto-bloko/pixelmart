@@ -31,6 +31,7 @@ export interface ShopCartItem {
   storeId: Id<"stores">;
   storeName: string;
   storeSlug: string;
+  weight?: number; // grammes
   quantity: number;
   maxQuantity: number;
   isDigital: boolean;

@@ -125,6 +125,14 @@ export default function RegisterPage() {
             activer votre compte.
           </CardDescription>
         </CardHeader>
+        <CardContent className="text-center">
+          <p className="text-sm text-muted-foreground">
+            Vous ne trouvez pas l&apos;email ?{" "}
+            <span className="font-medium text-foreground">
+              Pensez à vérifier vos spams ou courriers indésirables.
+            </span>
+          </p>
+        </CardContent>
         <CardFooter className="justify-center">
           <Link href="/login" className="text-sm underline">
             Retour à la connexion

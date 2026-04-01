@@ -28,6 +28,7 @@ export interface ProductCardData {
   store_name?: string | null;
   store_id?: string | null;
   store_slug?: string | null;
+  weight?: number; // grammes
 }
 
 interface ProductCardProps {
@@ -85,6 +86,7 @@ export function ProductCard({
         storeId: store_id as Id<"stores">,
         storeName: store_name,
         storeSlug: store_slug,
+        weight: product.weight,
         quantity: 1,
         maxQuantity: quantity ?? 99,
         isDigital: is_digital,
