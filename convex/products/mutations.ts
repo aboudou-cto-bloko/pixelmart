@@ -3,6 +3,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getVendorStore } from "../users/helpers";
+import { getFreeMaxActiveProducts } from "../lib/getConfig";
 import {
   generateProductSlug,
   safeDeleteFile,
@@ -274,6 +275,28 @@ export const updateStatus = mutation({
       if (product.price <= 0) {
         throw new Error("Le prix doit être défini pour publier");
       }
+
+      // Vérifier la limite de produits actifs pour le plan gratuit
+      if (store.subscription_tier === "free") {
+        const maxActive = await getFreeMaxActiveProducts(ctx);
+        const activeCount = await ctx.db
+          .query("products")
+          .withIndex("by_store", (q) => q.eq("store_id", store._id))
+          .filter((q) =>
+            q.or(
+              q.eq(q.field("status"), "active"),
+              q.eq(q.field("status"), "out_of_stock"),
+            ),
+          )
+          .collect()
+          .then((products) => products.filter((p) => p._id !== args.id).length);
+
+        if (activeCount >= maxActive) {
+          throw new Error(
+            `Limite atteinte : le plan Gratuit autorise ${maxActive} produits actifs maximum. Passez au plan Pro pour publier davantage.`,
+          );
+        }
+      }
     }
 
     const updates: Record<string, unknown> = {
@@ -480,6 +503,25 @@ export const bulkUpdateStatus = mutation({
       out_of_stock: ["draft", "active"],
     };
 
+    // Pré-calculer la limite pour le plan gratuit si activation en masse
+    let freeMaxActive: number | null = null;
+    let currentActiveCount = 0;
+    let activatedInBatch = 0;
+    if (args.status === "active" && store.subscription_tier === "free") {
+      freeMaxActive = await getFreeMaxActiveProducts(ctx);
+      currentActiveCount = await ctx.db
+        .query("products")
+        .withIndex("by_store", (q) => q.eq("store_id", store._id))
+        .filter((q) =>
+          q.or(
+            q.eq(q.field("status"), "active"),
+            q.eq(q.field("status"), "out_of_stock"),
+          ),
+        )
+        .collect()
+        .then((products) => products.length);
+    }
+
     const results: Array<{ id: string; success: boolean; error?: string }> = [];
 
     for (const productId of args.ids) {
@@ -512,6 +554,20 @@ export const bulkUpdateStatus = mutation({
           });
           continue;
         }
+
+        // Limite de produits actifs pour le plan gratuit
+        if (
+          freeMaxActive !== null &&
+          currentActiveCount + activatedInBatch >= freeMaxActive
+        ) {
+          results.push({
+            id: productId,
+            success: false,
+            error: `Limite plan Gratuit atteinte (${freeMaxActive} produits actifs max)`,
+          });
+          continue;
+        }
+        activatedInBatch++;
       }
 
       const updates: Record<string, unknown> = {

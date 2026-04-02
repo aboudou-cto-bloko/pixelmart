@@ -3,11 +3,12 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { Settings2, Pencil, Check, X, RotateCcw } from "lucide-react";
+import { Settings2, Pencil, Check, X, RotateCcw, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -20,7 +21,8 @@ export const CONFIG_DEFAULTS: ConfigEntry[] = [
     label: "Prix abonnement Pro",
     defaultValue: 2900,
     group: "Abonnements",
-    description: "Prix mensuel abonnement Pro — centimes XOF (2 900 = 2 900 XOF)",
+    description:
+      "Prix mensuel abonnement Pro — centimes XOF (2 900 = 2 900 XOF)",
     unit: "centimes",
   },
   {
@@ -28,7 +30,8 @@ export const CONFIG_DEFAULTS: ConfigEntry[] = [
     label: "Prix abonnement Business",
     defaultValue: 9900,
     group: "Abonnements",
-    description: "Prix mensuel abonnement Business — centimes XOF (9 900 = 9 900 XOF)",
+    description:
+      "Prix mensuel abonnement Business — centimes XOF (9 900 = 9 900 XOF)",
     unit: "centimes",
   },
   {
@@ -88,7 +91,8 @@ export const CONFIG_DEFAULTS: ConfigEntry[] = [
     label: "Délai blocage facture",
     defaultValue: 2592000000,
     group: "Délais",
-    description: "Délai avant blocage retrait si facture impayée (ms) — défaut 30j",
+    description:
+      "Délai avant blocage retrait si facture impayée (ms) — défaut 30j",
     unit: "ms",
   },
 
@@ -148,7 +152,8 @@ export const CONFIG_DEFAULTS: ConfigEntry[] = [
     label: "Latitude entrepôt",
     defaultValue: 6.4106,
     group: "Entrepôt",
-    description: "Latitude GPS de l'entrepôt Pixel-Mart (Cotonou) — ex : 6.4106",
+    description:
+      "Latitude GPS de l'entrepôt Pixel-Mart (Cotonou) — ex : 6.4106",
     unit: "°",
   },
   {
@@ -156,7 +161,8 @@ export const CONFIG_DEFAULTS: ConfigEntry[] = [
     label: "Longitude entrepôt",
     defaultValue: 2.329,
     group: "Entrepôt",
-    description: "Longitude GPS de l'entrepôt Pixel-Mart (Cotonou) — ex : 2.3290",
+    description:
+      "Longitude GPS de l'entrepôt Pixel-Mart (Cotonou) — ex : 2.3290",
     unit: "°",
   },
 ];
@@ -172,7 +178,10 @@ type ConfigEntry = {
   unit: string;
 };
 
-type ConfigMap = Record<string, { value: number; label: string; updated_at: number }>;
+type ConfigMap = Record<
+  string,
+  { value: number; label: string; updated_at: number }
+>;
 
 interface Props {
   config: ConfigMap | undefined;
@@ -244,7 +253,9 @@ function ConfigRow({
             </Badge>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5">{entry.description}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {entry.description}
+        </p>
         {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
       </div>
 
@@ -316,6 +327,96 @@ function ConfigRow({
   );
 }
 
+// ─── Broadcast Notification Section ──────────────────────────
+
+function BroadcastSection() {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ sent: number } | null>(null);
+
+  const broadcast = useAction(api.admin.actions.broadcastPushToVendors);
+
+  async function handleBroadcast() {
+    if (!title.trim() || !body.trim()) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await broadcast({
+        title: title.trim(),
+        body: body.trim(),
+        url: url.trim() || undefined,
+      });
+      setResult(res);
+      setTitle("");
+      setBody("");
+      setUrl("");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Bell className="size-4 text-primary" />
+          Notification push broadcast
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Envoie une notification push + in-app à tous les vendeurs actifs sur
+          la plateforme.
+        </p>
+        <div className="space-y-2">
+          <label className="text-xs font-medium">Titre</label>
+          <Input
+            placeholder="Ex : Mise à jour importante"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={80}
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-medium">Message</label>
+          <Textarea
+            placeholder="Ex : Nouvelle fonctionnalité disponible dans votre dashboard…"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={3}
+            maxLength={200}
+          />
+          <p className="text-[10px] text-muted-foreground text-right">
+            {body.length}/200
+          </p>
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-medium">Lien (optionnel)</label>
+          <Input
+            placeholder="Ex : /vendor/dashboard"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+          />
+        </div>
+        {result && (
+          <p className="text-sm text-green-600 font-medium">
+            Envoyé à {result.sent} vendeur{result.sent !== 1 ? "s" : ""}.
+          </p>
+        )}
+        <Button
+          onClick={handleBroadcast}
+          disabled={!title.trim() || !body.trim() || loading}
+          className="w-full sm:w-auto"
+        >
+          {loading ? "Envoi en cours…" : "Envoyer à tous les vendeurs"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Template ────────────────────────────────────────────
 
 export function AdminConfigTemplate({ config }: Props) {
@@ -342,10 +443,7 @@ export function AdminConfigTemplate({ config }: Props) {
             codés.
           </p>
         </div>
-        <Badge
-          variant="outline"
-          className="gap-1 text-xs mt-1"
-        >
+        <Badge variant="outline" className="gap-1 text-xs mt-1">
           <Settings2 className="size-3" />
           {config ? Object.keys(config).length : 0} surchargée
           {Object.keys(config ?? {}).length !== 1 ? "s" : ""}
@@ -376,6 +474,8 @@ export function AdminConfigTemplate({ config }: Props) {
             </CardContent>
           </Card>
         ))}
+
+        <BroadcastSection />
       </div>
     </div>
   );

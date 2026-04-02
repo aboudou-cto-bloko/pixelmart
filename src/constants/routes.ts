@@ -59,6 +59,15 @@ export const ROUTES = {
   // ---- Vendor Coupons ----
   VENDOR_COUPONS: "/vendor/coupons",
 
+  // ---- Vendor Tarifs ----
+  VENDOR_TARIFS: "/vendor/tarifs",
+
+  // ---- Vendor Leaderboard ----
+  VENDOR_LEADERBOARD: "/vendor/leaderboard",
+
+  // ---- Admin Products ----
+  ADMIN_PRODUCTS: "/admin/products",
+
   // ---- Agent ----
   AGENT_HOME: "/agent",
 } as const;

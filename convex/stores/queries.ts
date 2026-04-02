@@ -3,7 +3,8 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { resolveImageUrl } from "../products/helpers";
-import { getVendorStore } from "../users/helpers";
+import { getVendorStore, requireVendor } from "../users/helpers";
+import { getEffectiveStorageFees } from "../lib/getConfig";
 
 // Default Pixel-Mart warehouse coordinates (Cotonou)
 const DEFAULT_WAREHOUSE_LAT = 6.4105682373046875;
@@ -30,6 +31,46 @@ export const getWarehouseCoordinates = query({
       lat: latRow?.value ?? DEFAULT_WAREHOUSE_LAT,
       lon: lonRow?.value ?? DEFAULT_WAREHOUSE_LON,
     };
+  },
+});
+
+/**
+ * Retourne les taux de commission effectifs depuis platform_config.
+ * PUBLIC — utilisé à l'onboarding et sur la page Tarifs vendor.
+ */
+export const getPublicCommissionRates = query({
+  args: {},
+  handler: async (ctx) => {
+    const keys = [
+      "commission_free",
+      "commission_pro",
+      "commission_business",
+    ] as const;
+    const defaults: Record<string, number> = {
+      commission_free: 500,
+      commission_pro: 300,
+      commission_business: 200,
+    };
+    const rows = await ctx.db.query("platform_config").collect();
+    const config = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    return {
+      free: (config["commission_free"] ?? defaults["commission_free"]) / 100,
+      pro: (config["commission_pro"] ?? defaults["commission_pro"]) / 100,
+      business:
+        (config["commission_business"] ?? defaults["commission_business"]) /
+        100,
+    };
+  },
+});
+
+/**
+ * Retourne les frais de stockage effectifs depuis platform_config.
+ * PUBLIC — utilisé sur la page Tarifs vendor.
+ */
+export const getPublicStorageFees = query({
+  args: {},
+  handler: async (ctx) => {
+    return getEffectiveStorageFees(ctx);
   },
 });
 
@@ -283,9 +324,7 @@ export const getDeliveryConfigBatch = query({
     storeIds: v.array(v.id("stores")),
   },
   handler: async (ctx, args) => {
-    const stores = await Promise.all(
-      args.storeIds.map((id) => ctx.db.get(id)),
-    );
+    const stores = await Promise.all(args.storeIds.map((id) => ctx.db.get(id)));
     return stores.reduce(
       (acc, store) => {
         if (store) {
@@ -373,7 +412,8 @@ export const getOnboardingProgress = query({
       {
         id: "store_created",
         label: "Créer votre boutique",
-        description: "Votre boutique Pixel-Mart est en ligne et prête à recevoir des commandes.",
+        description:
+          "Votre boutique Pixel-Mart est en ligne et prête à recevoir des commandes.",
         done: true,
         route: null,
         cta: null,
@@ -381,7 +421,8 @@ export const getOnboardingProgress = query({
       {
         id: "logo",
         label: "Ajouter un logo",
-        description: "Un logo renforce la confiance des acheteurs et donne une identité à votre boutique.",
+        description:
+          "Un logo renforce la confiance des acheteurs et donne une identité à votre boutique.",
         done: store.logo_url !== undefined && store.logo_url !== null,
         route: "/vendor/settings",
         cta: "Ajouter un logo",
@@ -389,15 +430,19 @@ export const getOnboardingProgress = query({
       {
         id: "delivery",
         label: "Configurer les services de livraison",
-        description: "Choisissez si Pixel-Mart gère votre stock et livraisons, ou si vous utilisez votre propre logistique.",
-        done: store.has_storage_plan !== undefined && store.has_storage_plan !== null,
+        description:
+          "Choisissez si Pixel-Mart gère votre stock et livraisons, ou si vous utilisez votre propre logistique.",
+        done:
+          store.has_storage_plan !== undefined &&
+          store.has_storage_plan !== null,
         route: "/vendor/settings",
         cta: "Configurer maintenant",
       },
       {
         id: "first_product",
         label: "Mettre en ligne votre premier produit",
-        description: "Ajoutez des produits à votre catalogue pour commencer à vendre.",
+        description:
+          "Ajoutez des produits à votre catalogue pour commencer à vendre.",
         done: hasProducts,
         route: "/vendor/products/new",
         cta: "Ajouter un produit",
@@ -405,16 +450,24 @@ export const getOnboardingProgress = query({
       {
         id: "contact",
         label: "Renseigner vos informations de contact",
-        description: "Téléphone, WhatsApp, email — facilitez la prise de contact avec vos clients.",
-        done: !!(store.contact_phone ?? store.contact_whatsapp ?? store.contact_email),
+        description:
+          "Téléphone, WhatsApp, email — facilitez la prise de contact avec vos clients.",
+        done: !!(
+          store.contact_phone ??
+          store.contact_whatsapp ??
+          store.contact_email
+        ),
         route: "/vendor/settings",
         cta: "Compléter le profil",
       },
       {
         id: "theme",
         label: "Personnaliser l'apparence de votre vitrine",
-        description: "Choisissez un thème et une couleur pour donner une identité visuelle unique à votre boutique.",
-        done: store.theme_id !== "default" || (store.primary_color !== undefined && store.primary_color !== null),
+        description:
+          "Choisissez un thème et une couleur pour donner une identité visuelle unique à votre boutique.",
+        done:
+          store.theme_id !== "default" ||
+          (store.primary_color !== undefined && store.primary_color !== null),
         route: "/vendor/store/theme",
         cta: "Personnaliser",
       },
@@ -431,5 +484,52 @@ export const getOnboardingProgress = query({
       percentage: Math.round((completedCount / totalCount) * 100),
       isComplete: completedCount === totalCount,
     };
+  },
+});
+
+// ─── getVendorLeaderboard ─────────────────────────────────────
+
+/**
+ * Classement des vendeurs par CA (chiffre d'affaires).
+ * Accessible à tous les vendeurs authentifiés.
+ * Expose seulement les champs publics (pas de balance ni de données financières privées).
+ */
+export const getVendorLeaderboard = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireVendor(ctx);
+
+    const allOrders = await ctx.db
+      .query("orders")
+      .filter((q) => q.eq(q.field("payment_status"), "paid"))
+      .collect();
+
+    const storeRevenue: Record<string, number> = {};
+    const storeOrders: Record<string, number> = {};
+    for (const order of allOrders) {
+      const sid = order.store_id as string;
+      storeRevenue[sid] = (storeRevenue[sid] ?? 0) + order.total_amount;
+      storeOrders[sid] = (storeOrders[sid] ?? 0) + 1;
+    }
+
+    const allStores = await ctx.db
+      .query("stores")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    const ranked = allStores
+      .map((s) => ({
+        _id: s._id,
+        name: s.name,
+        slug: s.slug,
+        subscription_tier: s.subscription_tier,
+        is_verified: s.is_verified,
+        avg_rating: s.avg_rating ?? 0,
+        revenue: storeRevenue[s._id as string] ?? 0,
+        order_count: storeOrders[s._id as string] ?? 0,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    return ranked;
   },
 });

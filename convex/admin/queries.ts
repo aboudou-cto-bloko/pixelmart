@@ -1,8 +1,8 @@
 // filepath: convex/admin/queries.ts
 
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAdmin } from "../users/helpers";
+import { requireAdmin, getAppUser } from "../users/helpers";
 
 // ─── getPlatformStats ────────────────────────────────────────
 
@@ -21,16 +21,23 @@ export const getPlatformStats = query({
     const paidOrders = allOrders.filter((o) => o.payment_status === "paid");
     const todayOrders = paidOrders.filter((o) => o._creationTime >= todayTs);
 
-    const revenueToday = todayOrders.reduce((sum, o) => sum + o.total_amount, 0);
+    const revenueToday = todayOrders.reduce(
+      (sum, o) => sum + o.total_amount,
+      0,
+    );
     const ordersToday = todayOrders.length;
 
     // New users today
     const allUsers = await ctx.db.query("users").collect();
-    const newUsersToday = allUsers.filter((u) => u._creationTime >= todayTs).length;
+    const newUsersToday = allUsers.filter(
+      (u) => u._creationTime >= todayTs,
+    ).length;
 
     // New stores today
     const allStores = await ctx.db.query("stores").collect();
-    const newStoresToday = allStores.filter((s) => s._creationTime >= todayTs).length;
+    const newStoresToday = allStores.filter(
+      (s) => s._creationTime >= todayTs,
+    ).length;
 
     // Alerts
     const pendingPayouts = await ctx.db
@@ -48,7 +55,9 @@ export const getPlatformStats = query({
 
     // Revenue by day (30 last days)
     const thirtyDaysAgo = now - 30 * 86400000;
-    const recentPaidOrders = paidOrders.filter((o) => o._creationTime >= thirtyDaysAgo);
+    const recentPaidOrders = paidOrders.filter(
+      (o) => o._creationTime >= thirtyDaysAgo,
+    );
 
     const revenueByDay: Record<string, number> = {};
     for (const order of recentPaidOrders) {
@@ -103,10 +112,12 @@ export const getPlatformStats = query({
     for (const order of allOrders) {
       statusCounts[order.status] = (statusCounts[order.status] ?? 0) + 1;
     }
-    const ordersByStatus = Object.entries(statusCounts).map(([status, count]) => ({
-      status,
-      count,
-    }));
+    const ordersByStatus = Object.entries(statusCounts).map(
+      ([status, count]) => ({
+        status,
+        count,
+      }),
+    );
 
     // Global totals
     const totalUsers = allUsers.length;
@@ -287,8 +298,7 @@ export const listDeliveryRates = query({
     return rates.sort((a, b) => {
       if (a.delivery_type !== b.delivery_type)
         return a.delivery_type.localeCompare(b.delivery_type);
-      if (a.is_night_rate !== b.is_night_rate)
-        return a.is_night_rate ? 1 : -1;
+      if (a.is_night_rate !== b.is_night_rate) return a.is_night_rate ? 1 : -1;
       return a.distance_min_km - b.distance_min_km;
     });
   },
@@ -301,7 +311,10 @@ export const listAdSpaces = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const spaces = await ctx.db.query("ad_spaces").withIndex("by_active").collect();
+    const spaces = await ctx.db
+      .query("ad_spaces")
+      .withIndex("by_active")
+      .collect();
     const now = Date.now();
 
     return await Promise.all(
@@ -386,7 +399,9 @@ export const listStorageRequests = query({
     return await Promise.all(
       received.map(async (req) => {
         const store = await ctx.db.get(req.store_id);
-        const product = req.product_id ? await ctx.db.get(req.product_id) : null;
+        const product = req.product_id
+          ? await ctx.db.get(req.product_id)
+          : null;
         return {
           _id: req._id,
           storage_code: req.storage_code,
@@ -417,7 +432,12 @@ export const getAnalytics = query({
     await requireAdmin(ctx);
 
     const now = Date.now();
-    const periodMs = args.period === "7d" ? 7 * 86400000 : args.period === "30d" ? 30 * 86400000 : 90 * 86400000;
+    const periodMs =
+      args.period === "7d"
+        ? 7 * 86400000
+        : args.period === "30d"
+          ? 30 * 86400000
+          : 90 * 86400000;
     const periodStart = now - periodMs;
     const prevPeriodStart = periodStart - periodMs;
 
@@ -426,24 +446,49 @@ export const getAnalytics = query({
 
     // Période courante
     const curOrders = paidOrders.filter((o) => o._creationTime >= periodStart);
-    const prevOrders = paidOrders.filter((o) => o._creationTime >= prevPeriodStart && o._creationTime < periodStart);
+    const prevOrders = paidOrders.filter(
+      (o) =>
+        o._creationTime >= prevPeriodStart && o._creationTime < periodStart,
+    );
 
     const gmv = curOrders.reduce((s, o) => s + o.total_amount, 0);
     const prevGmv = prevOrders.reduce((s, o) => s + o.total_amount, 0);
-    const commissions = curOrders.reduce((s, o) => s + (o.commission_amount ?? 0), 0);
-    const prevCommissions = prevOrders.reduce((s, o) => s + (o.commission_amount ?? 0), 0);
-    const deliveryFees = curOrders.reduce((s, o) => s + (o.delivery_fee ?? 0), 0);
-    const prevDeliveryFees = prevOrders.reduce((s, o) => s + (o.delivery_fee ?? 0), 0);
+    const commissions = curOrders.reduce(
+      (s, o) => s + (o.commission_amount ?? 0),
+      0,
+    );
+    const prevCommissions = prevOrders.reduce(
+      (s, o) => s + (o.commission_amount ?? 0),
+      0,
+    );
+    const deliveryFees = curOrders.reduce(
+      (s, o) => s + (o.delivery_fee ?? 0),
+      0,
+    );
+    const prevDeliveryFees = prevOrders.reduce(
+      (s, o) => s + (o.delivery_fee ?? 0),
+      0,
+    );
 
     // Utilisateurs
     const allUsers = await ctx.db.query("users").collect();
-    const newUsers = allUsers.filter((u) => u._creationTime >= periodStart).length;
-    const prevNewUsers = allUsers.filter((u) => u._creationTime >= prevPeriodStart && u._creationTime < periodStart).length;
+    const newUsers = allUsers.filter(
+      (u) => u._creationTime >= periodStart,
+    ).length;
+    const prevNewUsers = allUsers.filter(
+      (u) =>
+        u._creationTime >= prevPeriodStart && u._creationTime < periodStart,
+    ).length;
 
     // Boutiques
     const allStores = await ctx.db.query("stores").collect();
-    const newStores = allStores.filter((s) => s._creationTime >= periodStart).length;
-    const prevNewStores = allStores.filter((s) => s._creationTime >= prevPeriodStart && s._creationTime < periodStart).length;
+    const newStores = allStores.filter(
+      (s) => s._creationTime >= periodStart,
+    ).length;
+    const prevNewStores = allStores.filter(
+      (s) =>
+        s._creationTime >= prevPeriodStart && s._creationTime < periodStart,
+    ).length;
 
     // Revenus publicitaires
     const allBookings = await ctx.db.query("ad_bookings").collect();
@@ -457,17 +502,33 @@ export const getAnalytics = query({
 
     // Revenus stockage
     const storageInvoices = await ctx.db.query("storage_invoices").collect();
-    const paidStorageInvoices = storageInvoices.filter((i) => i.status === "paid" && i._creationTime >= periodStart);
-    const storageRevenue = paidStorageInvoices.reduce((s, i) => s + i.amount, 0);
+    const paidStorageInvoices = storageInvoices.filter(
+      (i) => i.status === "paid" && i._creationTime >= periodStart,
+    );
+    const storageRevenue = paidStorageInvoices.reduce(
+      (s, i) => s + i.amount,
+      0,
+    );
 
     // Série temporelle journalière
-    const bucketMs = args.period === "7d" ? 86400000 : args.period === "30d" ? 86400000 : 7 * 86400000; // daily ou weekly pour 90d
-    const seriesMap: Record<string, { gmv: number; commissions: number; orders: number }> = {};
+    const bucketMs =
+      args.period === "7d"
+        ? 86400000
+        : args.period === "30d"
+          ? 86400000
+          : 7 * 86400000; // daily ou weekly pour 90d
+    const seriesMap: Record<
+      string,
+      { gmv: number; commissions: number; orders: number }
+    > = {};
 
     for (const o of curOrders) {
       const bucket = Math.floor((o._creationTime - periodStart) / bucketMs);
-      const label = new Date(periodStart + bucket * bucketMs).toISOString().slice(0, 10);
-      if (!seriesMap[label]) seriesMap[label] = { gmv: 0, commissions: 0, orders: 0 };
+      const label = new Date(periodStart + bucket * bucketMs)
+        .toISOString()
+        .slice(0, 10);
+      if (!seriesMap[label])
+        seriesMap[label] = { gmv: 0, commissions: 0, orders: 0 };
       seriesMap[label].gmv += o.total_amount;
       seriesMap[label].commissions += o.commission_amount ?? 0;
       seriesMap[label].orders += 1;
@@ -485,7 +546,10 @@ export const getAnalytics = query({
       storeGmv[sid] = (storeGmv[sid] ?? 0) + o.total_amount;
       storeOrders[sid] = (storeOrders[sid] ?? 0) + 1;
     }
-    const topStoreIds = Object.entries(storeGmv).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id]) => id);
+    const topStoreIds = Object.entries(storeGmv)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([id]) => id);
     const topStores = topStoreIds.map((sid) => {
       const store = allStores.find((s) => (s._id as string) === sid);
       return {
@@ -502,7 +566,9 @@ export const getAnalytics = query({
     for (const o of allOrders.filter((o) => o._creationTime >= periodStart)) {
       statusDist[o.status] = (statusDist[o.status] ?? 0) + 1;
     }
-    const ordersByStatus = Object.entries(statusDist).map(([status, count]) => ({ status, count }));
+    const ordersByStatus = Object.entries(statusDist).map(
+      ([status, count]) => ({ status, count }),
+    );
 
     // Répartition abonnements boutiques
     const tierDist: Record<string, number> = {};
@@ -510,30 +576,44 @@ export const getAnalytics = query({
       const t = s.subscription_tier ?? "free";
       tierDist[t] = (tierDist[t] ?? 0) + 1;
     }
-    const storesByTier = Object.entries(tierDist).map(([tier, count]) => ({ tier, count }));
+    const storesByTier = Object.entries(tierDist).map(([tier, count]) => ({
+      tier,
+      count,
+    }));
 
     // Taux de conversion (orders paid / orders total in period)
-    const ordersInPeriod = allOrders.filter((o) => o._creationTime >= periodStart);
-    const conversionRate = ordersInPeriod.length > 0
-      ? Math.round((curOrders.length / ordersInPeriod.length) * 100)
-      : 0;
+    const ordersInPeriod = allOrders.filter(
+      (o) => o._creationTime >= periodStart,
+    );
+    const conversionRate =
+      ordersInPeriod.length > 0
+        ? Math.round((curOrders.length / ordersInPeriod.length) * 100)
+        : 0;
 
     // Panier moyen
     const aov = curOrders.length > 0 ? Math.round(gmv / curOrders.length) : 0;
-    const prevAov = prevOrders.length > 0 ? Math.round(prevGmv / prevOrders.length) : 0;
+    const prevAov =
+      prevOrders.length > 0 ? Math.round(prevGmv / prevOrders.length) : 0;
 
     return {
       kpis: {
-        gmv, prevGmv,
-        commissions, prevCommissions,
-        orders: curOrders.length, prevOrders: prevOrders.length,
-        newUsers, prevNewUsers,
-        newStores, prevNewStores,
+        gmv,
+        prevGmv,
+        commissions,
+        prevCommissions,
+        orders: curOrders.length,
+        prevOrders: prevOrders.length,
+        newUsers,
+        prevNewUsers,
+        newStores,
+        prevNewStores,
         adRevenue,
         storageRevenue,
-        deliveryFees, prevDeliveryFees,
+        deliveryFees,
+        prevDeliveryFees,
         netRevenue: commissions + adRevenue + storageRevenue + deliveryFees,
-        aov, prevAov,
+        aov,
+        prevAov,
         conversionRate,
       },
       series,
@@ -566,8 +646,12 @@ export const getPlatformHealth = query({
       .query("payouts")
       .withIndex("by_status_only", (q) => q.eq("status", "pending"))
       .collect();
-    const oldestPayout = pendingPayouts.reduce((min, p) => Math.min(min, p.requested_at), Infinity);
-    const oldestPayoutAgeMs = pendingPayouts.length > 0 ? now - oldestPayout : 0;
+    const oldestPayout = pendingPayouts.reduce(
+      (min, p) => Math.min(min, p.requested_at),
+      Infinity,
+    );
+    const oldestPayoutAgeMs =
+      pendingPayouts.length > 0 ? now - oldestPayout : 0;
 
     // Boutiques non vérifiées
     const unverifiedStores = await ctx.db
@@ -580,14 +664,21 @@ export const getPlatformHealth = query({
       .query("storage_invoices")
       .filter((q) => q.eq(q.field("status"), "unpaid"))
       .collect();
-    const unpaidInvoicesTotal = unpaidInvoices.reduce((s, i) => s + i.amount, 0);
+    const unpaidInvoicesTotal = unpaidInvoices.reduce(
+      (s, i) => s + i.amount,
+      0,
+    );
 
     // Factures impayées depuis > 30 jours (blocage F-06)
     const thirtyDaysAgo = now - 30 * 86400000;
-    const overdueInvoices = unpaidInvoices.filter((i) => i._creationTime < thirtyDaysAgo);
+    const overdueInvoices = unpaidInvoices.filter(
+      (i) => i._creationTime < thirtyDaysAgo,
+    );
 
     // Boutiques bloquées (dette > 30j)
-    const blockedStoreIds = new Set(overdueInvoices.map((i) => i.store_id as string));
+    const blockedStoreIds = new Set(
+      overdueInvoices.map((i) => i.store_id as string),
+    );
 
     // Demandes stockage en attente de validation
     const receivedStorage = await ctx.db
@@ -604,7 +695,9 @@ export const getPlatformHealth = query({
       .query("orders")
       .filter((q) => q.eq(q.field("status"), "paid"))
       .collect();
-    const staleOrders = allPaidOrders.filter((o) => o._creationTime < twoDaysAgo);
+    const staleOrders = allPaidOrders.filter(
+      (o) => o._creationTime < twoDaysAgo,
+    );
 
     // Bookings pub actifs / total
     const activeBookings = await ctx.db
@@ -626,7 +719,9 @@ export const getPlatformHealth = query({
       .query("orders")
       .filter((q) => q.eq(q.field("status"), "pending"))
       .collect();
-    const paymentFailures = stalePendingOrders.filter((o) => o._creationTime < oneDayAgo && o._creationTime >= sevenDaysAgo);
+    const paymentFailures = stalePendingOrders.filter(
+      (o) => o._creationTime < oneDayAgo && o._creationTime >= sevenDaysAgo,
+    );
 
     return {
       payouts: {
@@ -842,15 +937,14 @@ export const listBatchesAdmin = query({
           .withIndex("by_status", (q) => q.eq("status", args.status!))
           .order("desc")
           .take(limit)
-      : await ctx.db
-          .query("delivery_batches")
-          .order("desc")
-          .take(limit);
+      : await ctx.db.query("delivery_batches").order("desc").take(limit);
 
     return Promise.all(
       batches.map(async (batch) => {
         const store = await ctx.db.get(batch.store_id);
-        const vendor = batch.created_by ? await ctx.db.get(batch.created_by) : null;
+        const vendor = batch.created_by
+          ? await ctx.db.get(batch.created_by)
+          : null;
 
         let zone_name: string | undefined;
         if (batch.order_ids.length > 0) {
@@ -858,7 +952,9 @@ export const listBatchesAdmin = query({
           zone_name = firstOrder?.shipping_address?.city;
         }
 
-        const orders = await Promise.all(batch.order_ids.map((id) => ctx.db.get(id)));
+        const orders = await Promise.all(
+          batch.order_ids.map((id) => ctx.db.get(id)),
+        );
         const total_to_collect = orders
           .filter((o) => o?.payment_mode === "cod")
           .reduce((sum, o) => sum + (o?.total_amount ?? 0), 0);
@@ -936,12 +1032,13 @@ export const listAuditLog = query({
       target_type: e.target_type,
       target_id: e.target_id,
       target_label: e.target_label,
-      metadata: e.metadata ? JSON.parse(e.metadata) as Record<string, unknown> : undefined,
+      metadata: e.metadata
+        ? (JSON.parse(e.metadata) as Record<string, unknown>)
+        : undefined,
       created_at: e.created_at,
     }));
   },
 });
-
 
 // ─── listStorageInvoices ──────────────────────────────────────
 
@@ -1000,6 +1097,96 @@ export const listStorageInvoices = query({
   },
 });
 
+// ─── listAllProducts ─────────────────────────────────────────
+
+export const listAllProducts = query({
+  args: {
+    status: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const n = Math.min(args.limit ?? 200, 500);
+
+    const allProducts = await ctx.db.query("products").order("desc").take(n);
+    const products = args.status
+      ? allProducts.filter((p) => p.status === args.status)
+      : allProducts;
+
+    return Promise.all(
+      products.map(async (p) => {
+        const store = await ctx.db.get(p.store_id);
+        let imageUrl: string | null = null;
+        if (p.images[0]) {
+          try {
+            imageUrl = await ctx.storage.getUrl(p.images[0]);
+          } catch {
+            imageUrl = null;
+          }
+        }
+        return {
+          _id: p._id,
+          title: p.title,
+          slug: p.slug,
+          status: p.status,
+          price: p.price,
+          currency: store?.currency ?? "XOF",
+          quantity: p.quantity,
+          image_url: imageUrl,
+          store_id: p.store_id,
+          store_name: store?.name ?? "Boutique inconnue",
+          store_owner_id: store?.owner_id,
+          _creationTime: p._creationTime,
+          updated_at: p.updated_at,
+        };
+      }),
+    );
+  },
+});
+
+// ─── getVendorLeaderboard ─────────────────────────────────────
+
+export const getVendorLeaderboard = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const allOrders = await ctx.db
+      .query("orders")
+      .filter((q) => q.eq(q.field("payment_status"), "paid"))
+      .collect();
+
+    const storeRevenue: Record<string, number> = {};
+    const storeOrders: Record<string, number> = {};
+    for (const order of allOrders) {
+      const sid = order.store_id as string;
+      storeRevenue[sid] = (storeRevenue[sid] ?? 0) + order.total_amount;
+      storeOrders[sid] = (storeOrders[sid] ?? 0) + 1;
+    }
+
+    const allStores = await ctx.db.query("stores").collect();
+
+    const ranked = allStores
+      .map((s) => ({
+        _id: s._id,
+        name: s.name,
+        slug: s.slug,
+        subscription_tier: s.subscription_tier,
+        is_verified: s.is_verified,
+        revenue: storeRevenue[s._id as string] ?? 0,
+        order_count: storeOrders[s._id as string] ?? 0,
+        avg_rating: s.avg_rating ?? 0,
+        _creationTime: s._creationTime,
+      }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    return ranked;
+  },
+});
+
 // ─── getBatchDetailAdmin ───────────────────────────────────────
 
 /**
@@ -1037,9 +1224,7 @@ export const getBatchDetailAdmin = query({
           shipping_address: order.shipping_address,
           customer_name: customer?.name ?? order.shipping_address.full_name,
           customer_phone:
-            customer?.phone ??
-            order.shipping_address.phone ??
-            undefined,
+            customer?.phone ?? order.shipping_address.phone ?? undefined,
           delivery_lat: order.delivery_lat,
           delivery_lon: order.delivery_lon,
           delivery_distance_km: order.delivery_distance_km,
@@ -1065,5 +1250,34 @@ export const getBatchDetailAdmin = query({
       orders: validOrders,
       total_to_collect,
     };
+  },
+});
+
+// ─── getAdminUser — internal ──────────────────────────────────
+
+/**
+ * Retourne le user courant si authentifié — utilisé par les actions admin.
+ */
+export const getAdminUser = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return getAppUser(ctx);
+  },
+});
+
+// ─── listVendorUserIds — internal ────────────────────────────
+
+/**
+ * Retourne les IDs utilisateurs de tous les vendeurs actifs.
+ * Utilisé par broadcastPushToVendors action.
+ */
+export const listVendorUserIds = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const vendors = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "vendor"))
+      .collect();
+    return vendors.map((u) => ({ _id: u._id }));
   },
 });

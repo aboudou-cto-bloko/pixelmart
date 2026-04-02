@@ -14,6 +14,7 @@ import {
   Bike,
   Globe,
   FileText,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 
@@ -62,6 +63,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
     icon: ShoppingBag,
     section: "Plateforme",
     roles: ["admin"],
+  },
+  {
+    title: "Produits",
+    href: "/admin/products",
+    icon: Package,
+    section: "Plateforme",
+    roles: ["admin", "marketing"],
   },
   {
     title: "Catégories",
