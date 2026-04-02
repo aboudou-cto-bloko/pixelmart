@@ -934,6 +934,7 @@ export const listBatchesAdmin = query({
     const batches = args.status
       ? await ctx.db
           .query("delivery_batches")
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           .withIndex("by_status", (q) => q.eq("status", args.status!))
           .order("desc")
           .take(limit)
@@ -1013,6 +1014,7 @@ export const listAuditLog = query({
     if (args.type) {
       events = await ctx.db
         .query("platform_events")
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         .withIndex("by_type", (q) => q.eq("type", args.type!))
         .order("desc")
         .take(n);
@@ -1142,6 +1144,58 @@ export const listAllProducts = query({
         };
       }),
     );
+  },
+});
+
+// ─── getAdminProduct ─────────────────────────────────────────
+
+export const getAdminProduct = query({
+  args: { productId: v.id("products") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const p = await ctx.db.get(args.productId);
+    if (!p) return null;
+
+    const store = await ctx.db.get(p.store_id);
+    const category = p.category_id ? await ctx.db.get(p.category_id) : null;
+
+    const imageUrls: string[] = [];
+    for (const storageId of p.images ?? []) {
+      try {
+        const url = await ctx.storage.getUrl(storageId);
+        if (url) imageUrls.push(url);
+      } catch {
+        // skip broken
+      }
+    }
+
+    return {
+      _id: p._id,
+      title: p.title,
+      slug: p.slug,
+      status: p.status,
+      price: p.price,
+      compare_price: p.compare_price,
+      currency: store?.currency ?? "XOF",
+      quantity: p.quantity,
+      warehouse_qty: p.warehouse_qty,
+      sku: p.sku,
+      barcode: p.barcode,
+      description: p.description,
+      short_description: p.short_description,
+      tags: p.tags ?? [],
+      avg_rating: p.avg_rating,
+      review_count: p.review_count,
+      is_digital: p.is_digital,
+      image_urls: imageUrls,
+      store_id: p.store_id,
+      store_name: store?.name ?? "Boutique inconnue",
+      store_slug: store?.slug ?? "",
+      category_name: category?.name ?? null,
+      _creationTime: p._creationTime,
+      updated_at: p.updated_at,
+    };
   },
 });
 

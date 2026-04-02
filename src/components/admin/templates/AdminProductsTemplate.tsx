@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { formatPrice, formatDate } from "@/lib/format";
@@ -34,15 +34,30 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MoreHorizontal, Package, Ban, RotateCcw, Search } from "lucide-react";
+import {
+  MoreHorizontal,
+  Package,
+  Ban,
+  RotateCcw,
+  Search,
+  Eye,
+  ExternalLink,
+  Star,
+  Tag,
+  Barcode,
+  Loader2,
+} from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -79,7 +94,304 @@ const STATUS_VARIANTS: Record<
   out_of_stock: "outline",
 };
 
-// ─── Component ───────────────────────────────────────────────
+// ─── Product Preview Modal ────────────────────────────────────
+
+function ProductPreviewModal({
+  productId,
+  open,
+  onOpenChange,
+  onSuspend,
+  onRestore,
+}: {
+  productId: Id<"products"> | null;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  onSuspend: (p: {
+    _id: Id<"products">;
+    title: string;
+    status: string;
+  }) => void;
+  onRestore: (p: { _id: Id<"products">; title: string }) => void;
+}) {
+  const product = useQuery(
+    api.admin.queries.getAdminProduct,
+    productId ? { productId } : "skip",
+  );
+  const [prevProductId, setPrevProductId] = useState(productId);
+  const [imgIndex, setImgIndex] = useState(0);
+
+  if (prevProductId !== productId) {
+    setPrevProductId(productId);
+    setImgIndex(0);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        {product === undefined ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : product === null ? (
+          <div className="py-16 text-center text-muted-foreground">
+            Produit introuvable
+          </div>
+        ) : (
+          <>
+            {/* Images */}
+            {product.image_urls.length > 0 ? (
+              <div className="relative bg-muted">
+                <div className="relative aspect-[4/3] w-full overflow-hidden">
+                  <Image
+                    src={product.image_urls[imgIndex] ?? product.image_urls[0]}
+                    alt={product.title}
+                    fill
+                    sizes="(max-width: 672px) 100vw, 672px"
+                    className="object-contain"
+                  />
+                </div>
+                {product.image_urls.length > 1 && (
+                  <div className="flex gap-2 p-3 overflow-x-auto bg-muted/50">
+                    {product.image_urls.map((url, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setImgIndex(i)}
+                        className={`relative size-14 shrink-0 rounded-md overflow-hidden border-2 transition-colors ${
+                          i === imgIndex
+                            ? "border-primary"
+                            : "border-transparent hover:border-muted-foreground/30"
+                        }`}
+                      >
+                        <Image
+                          src={url}
+                          alt={`Image ${i + 1}`}
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center aspect-[4/3] bg-muted">
+                <Package className="size-16 text-muted-foreground/30" />
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="p-6 space-y-5">
+              {/* Header */}
+              <div className="space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-lg font-bold leading-snug">
+                    {product.title}
+                  </h2>
+                  <Badge
+                    variant={STATUS_VARIANTS[product.status] ?? "secondary"}
+                    className="shrink-0"
+                  >
+                    {STATUS_LABELS[product.status] ?? product.status}
+                  </Badge>
+                </div>
+
+                {product.short_description && (
+                  <p className="text-sm text-muted-foreground">
+                    {product.short_description}
+                  </p>
+                )}
+
+                {/* Price */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xl font-bold">
+                    {formatPrice(product.price, product.currency)}
+                  </span>
+                  {product.compare_price &&
+                    product.compare_price > product.price && (
+                      <span className="text-sm line-through text-muted-foreground">
+                        {formatPrice(product.compare_price, product.currency)}
+                      </span>
+                    )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Meta grid */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs mb-0.5">
+                    Boutique
+                  </p>
+                  <Link
+                    href={`/stores/${product.store_slug}`}
+                    target="_blank"
+                    className="font-medium hover:underline flex items-center gap-1"
+                  >
+                    {product.store_name}
+                    <ExternalLink className="size-3 text-muted-foreground" />
+                  </Link>
+                </div>
+                {product.category_name && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">
+                      Catégorie
+                    </p>
+                    <p className="font-medium">{product.category_name}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-muted-foreground text-xs mb-0.5">
+                    Stock disponible
+                  </p>
+                  <p className="font-medium">
+                    {product.quantity} unité{product.quantity > 1 ? "s" : ""}
+                  </p>
+                </div>
+                {product.warehouse_qty !== undefined && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">
+                      Stock entrepôt
+                    </p>
+                    <p className="font-medium">
+                      {product.warehouse_qty} unité
+                      {(product.warehouse_qty ?? 0) > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                )}
+                {product.avg_rating !== undefined && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">Note</p>
+                    <p className="font-medium flex items-center gap-1">
+                      <Star className="size-3.5 text-yellow-400 fill-yellow-400" />
+                      {product.avg_rating.toFixed(1)}
+                      <span className="text-muted-foreground font-normal">
+                        ({product.review_count ?? 0} avis)
+                      </span>
+                    </p>
+                  </div>
+                )}
+                {product.sku && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5">SKU</p>
+                    <p className="font-mono text-xs font-medium">
+                      {product.sku}
+                    </p>
+                  </div>
+                )}
+                {product.barcode && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-0.5 flex items-center gap-1">
+                      <Barcode className="size-3" />
+                      Code-barres
+                    </p>
+                    <p className="font-mono text-xs font-medium">
+                      {product.barcode}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-muted-foreground text-xs mb-0.5">
+                    Ajouté le
+                  </p>
+                  <p className="font-medium">
+                    {formatDate(product._creationTime)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tags */}
+              {product.tags.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="flex flex-wrap gap-1.5">
+                    {product.tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="outline"
+                        className="text-xs gap-1"
+                      >
+                        <Tag className="size-3" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Description */}
+              {product.description && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      Description
+                    </p>
+                    <div
+                      className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-p:text-muted-foreground prose-p:leading-relaxed prose-li:text-muted-foreground prose-strong:text-foreground prose-img:rounded-lg prose-img:my-3"
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
+                  </div>
+                </>
+              )}
+
+              <Separator />
+
+              {/* Actions */}
+              <div className="flex flex-wrap items-center gap-2">
+                {product.status === "active" && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/products/${product.slug}`} target="_blank">
+                      <ExternalLink className="size-3.5 mr-1.5" />
+                      Voir sur la marketplace
+                    </Link>
+                  </Button>
+                )}
+                <div className="flex-1" />
+                {product.status !== "archived" && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onSuspend({
+                        _id: product._id,
+                        title: product.title,
+                        status: product.status,
+                      });
+                    }}
+                  >
+                    <Ban className="size-3.5 mr-1.5" />
+                    Retirer de la marketplace
+                  </Button>
+                )}
+                {product.status === "archived" && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onRestore({
+                        _id: product._id,
+                        title: product.title,
+                      });
+                    }}
+                  >
+                    <RotateCcw className="size-3.5 mr-1.5" />
+                    Remettre en ligne
+                  </Button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────
 
 interface AdminProductsTemplateProps {
   products: ProductItem[];
@@ -92,6 +404,7 @@ export function AdminProductsTemplate({
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [suspendTarget, setSuspendTarget] = useState<ProductItem | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<ProductItem | null>(null);
+  const [previewId, setPreviewId] = useState<Id<"products"> | null>(null);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -246,8 +559,12 @@ export function AdminProductsTemplate({
                   </TableRow>
                 )}
                 {filtered.map((product) => (
-                  <TableRow key={product._id}>
-                    <TableCell>
+                  <TableRow
+                    key={product._id}
+                    className="cursor-pointer"
+                    onClick={() => setPreviewId(product._id)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {product.image_url ? (
                         <div className="relative size-10 rounded-md overflow-hidden bg-muted shrink-0">
                           <Image
@@ -290,7 +607,7 @@ export function AdminProductsTemplate({
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDate(product._creationTime)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -302,6 +619,16 @@ export function AdminProductsTemplate({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => setPreviewId(product._id)}
+                          >
+                            <Eye className="size-4 mr-2" />
+                            Voir la fiche
+                          </DropdownMenuItem>
+                          {(product.status !== "archived" ||
+                            product.status === "archived") && (
+                            <DropdownMenuSeparator />
+                          )}
                           {product.status !== "archived" && (
                             <DropdownMenuItem
                               className="text-destructive"
@@ -329,6 +656,19 @@ export function AdminProductsTemplate({
           </div>
         </CardContent>
       </Card>
+
+      {/* Product preview modal */}
+      <ProductPreviewModal
+        productId={previewId}
+        open={!!previewId}
+        onOpenChange={(o) => !o && setPreviewId(null)}
+        onSuspend={(p) =>
+          setSuspendTarget(products.find((x) => x._id === p._id) ?? null)
+        }
+        onRestore={(p) =>
+          setRestoreTarget(products.find((x) => x._id === p._id) ?? null)
+        }
+      />
 
       {/* Suspend dialog */}
       <Dialog
@@ -378,7 +718,7 @@ export function AdminProductsTemplate({
             <DialogTitle>Remettre en ligne ?</DialogTitle>
             <DialogDescription>
               Le produit <strong>{restoreTarget?.title}</strong> sera remis à
-              l'état actif et visible sur la marketplace. Le vendeur sera
+              l&apos;état actif et visible sur la marketplace. Le vendeur sera
               notifié.
             </DialogDescription>
           </DialogHeader>
