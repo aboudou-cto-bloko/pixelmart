@@ -53,6 +53,7 @@ export default function VendorPayoutsPage() {
           onOpenChange={setDialogOpen}
           balance={eligibility.balance}
           currency={eligibility.currency}
+          storeCountry={eligibility.country}
           minAmount={eligibility.minAmount}
           onSubmit={requestPayout}
         />

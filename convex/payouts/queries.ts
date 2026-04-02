@@ -63,6 +63,7 @@ export const getPayoutEligibility = query({
     return {
       balance: store.balance,
       currency: store.currency,
+      country: store.country ?? "BJ",
       minAmount: MIN_PAYOUT_AMOUNT,
       canRequestPayout: store.balance >= MIN_PAYOUT_AMOUNT && validation.valid,
       validationError: validation.error,
