@@ -60,6 +60,7 @@ import {
 export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);
   const hasPendingOrders = useQuery(api.stores.queries.hasPendingOrders);
+  const commissionRates = useQuery(api.stores.queries.getPublicCommissionRates);
   const updateStore = useMutation(api.stores.mutations.updateStore);
   const updateDeliverySettings = useMutation(
     api.stores.mutations.updateDeliverySettings,
@@ -726,7 +727,11 @@ export default function StoreSettingsPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Commission</span>
-            <span>{(store.commission_rate / 100).toFixed(1)}%</span>
+            <span>
+              {commissionRates
+                ? `${(commissionRates[store.subscription_tier as "free" | "pro" | "business"] ?? commissionRates.free).toFixed(1)}%`
+                : "—"}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Solde disponible</span>
