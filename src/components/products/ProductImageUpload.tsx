@@ -264,7 +264,8 @@ export function ProductImageUpload({
       />
 
       <p className="text-xs text-muted-foreground">
-        JPG, PNG ou WebP · Max 5 Mo par image · Glissez pour réordonner
+        JPEG, PNG ou WebP · Max 5 Mo · 800×800 px minimum recommandé · Glissez
+        pour réordonner
       </p>
     </div>
   );

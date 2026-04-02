@@ -194,7 +194,19 @@ export default function StoreSettingsPage() {
         throw new Error("Invalid upload response");
       }
 
-      setStorageId(result.storageId);
+      const newStorageId = result.storageId as string;
+      setStorageId(newStorageId);
+
+      // Auto-save immediately so the tutorial step is marked done
+      await updateStore({
+        name,
+        description: description || undefined,
+        primary_color: primaryColor,
+        country,
+        currency,
+        logo_url: type === "logo" ? newStorageId : logoStorageId,
+        banner_url: type === "banner" ? newStorageId : bannerStorageId,
+      });
     } catch (err) {
       setError(getSafeSettingsErrorMessage(err));
     } finally {
@@ -221,9 +233,12 @@ export default function StoreSettingsPage() {
       const deliveryData: DeliverySettingsData = {
         use_pixelmart_service: serviceMode !== "none",
         has_storage_plan: serviceMode === "full",
-        custom_pickup_lat: serviceMode === "delivery_only" ? customPickup?.lat : undefined,
-        custom_pickup_lon: serviceMode === "delivery_only" ? customPickup?.lon : undefined,
-        custom_pickup_label: serviceMode === "delivery_only" ? customPickup?.label : undefined,
+        custom_pickup_lat:
+          serviceMode === "delivery_only" ? customPickup?.lat : undefined,
+        custom_pickup_lon:
+          serviceMode === "delivery_only" ? customPickup?.lon : undefined,
+        custom_pickup_label:
+          serviceMode === "delivery_only" ? customPickup?.label : undefined,
       };
 
       const validatedData = deliverySettingsSchema.parse(deliveryData);
@@ -424,7 +439,7 @@ export default function StoreSettingsPage() {
                 <input
                   ref={logoInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -457,6 +472,9 @@ export default function StoreSettingsPage() {
                 )}
               </div>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              JPEG, PNG ou WebP · Max 5 Mo · Carré recommandé (400×400 px min)
+            </p>
           </div>
 
           <Separator />
@@ -482,7 +500,7 @@ export default function StoreSettingsPage() {
                 <input
                   ref={bannerInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -514,6 +532,9 @@ export default function StoreSettingsPage() {
                   </Button>
                 )}
               </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                JPEG, PNG ou WebP · Max 5 Mo · 1200×400 px recommandé
+              </p>
             </div>
           </div>
         </CardContent>
