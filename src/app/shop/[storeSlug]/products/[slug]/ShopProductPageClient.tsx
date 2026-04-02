@@ -226,13 +226,24 @@ export function ShopProductPageClient({
 
         {/* Main grid */}
         <div className="grid gap-8 lg:gap-12 md:grid-cols-2">
-          {/* Gallery — sticky on desktop */}
-          <div className="md:sticky md:top-6 md:self-start">
-            <ProductGallery
-              images={product.images ?? []}
-              title={product.title}
-              imageRoles={product.image_roles}
-            />
+          {/* Gallery — sticky on desktop, description below on desktop */}
+          <div>
+            <div className="md:sticky md:top-6">
+              <ProductGallery
+                images={product.images ?? []}
+                title={product.title}
+                imageRoles={product.image_roles}
+              />
+            </div>
+            {product.description && (
+              <div className="hidden md:block mt-8">
+                <h3 className="text-sm font-semibold mb-3">Description</h3>
+                <div
+                  className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-img:rounded-lg prose-img:my-4 prose-img:max-w-full prose-img:mx-auto"
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Info panel */}
@@ -317,10 +328,10 @@ export function ShopProductPageClient({
                     onChange={setQuantity}
                   />
                 )}
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col gap-3">
                   <Button
                     size="lg"
-                    className="flex-1 h-12 text-base font-semibold gap-2"
+                    className="w-full h-12 text-base font-semibold gap-2"
                     onClick={() => setQuickOrderOpen(true)}
                     style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
                   >
@@ -330,7 +341,7 @@ export function ShopProductPageClient({
                   <Button
                     size="lg"
                     variant="outline"
-                    className="sm:w-12 h-12"
+                    className="w-full h-12"
                     title="Partager"
                     onClick={() => {
                       if (navigator.share) {
@@ -403,9 +414,9 @@ export function ShopProductPageClient({
               </div>
             )}
 
-            {/* Description */}
+            {/* Description — mobile only (desktop shows it under the gallery) */}
             {product.description && (
-              <>
+              <div className="md:hidden">
                 <Separator />
                 <div>
                   <h3 className="text-sm font-semibold mb-3">Description</h3>
@@ -416,7 +427,7 @@ export function ShopProductPageClient({
                     />
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
             {/* Tags as badges */}

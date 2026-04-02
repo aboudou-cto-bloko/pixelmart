@@ -344,13 +344,24 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
 
       {/* Main grid */}
       <div className="grid gap-8 lg:gap-12 md:grid-cols-2">
-        {/* Gallery — sticky on desktop */}
-        <div className="md:sticky md:top-6 md:self-start">
-          <ProductGallery
-            images={product.images ?? []}
-            title={product.title}
-            imageRoles={product.image_roles}
-          />
+        {/* Gallery — sticky on desktop, description below on desktop */}
+        <div>
+          <div className="md:sticky md:top-6">
+            <ProductGallery
+              images={product.images ?? []}
+              title={product.title}
+              imageRoles={product.image_roles}
+            />
+          </div>
+          {product.description && (
+            <div className="hidden md:block mt-8">
+              <h3 className="text-sm font-semibold mb-2">Description</h3>
+              <div
+                className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-img:rounded-lg prose-img:my-4 prose-img:max-w-full prose-img:mx-auto"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
+            </div>
+          )}
         </div>
 
         {/* Right column */}
@@ -443,10 +454,10 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                 max={product.is_digital ? 99 : maxQuantity}
                 onChange={setQuantity}
               />
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col gap-2">
                 <Button
                   size="lg"
-                  className="flex-1"
+                  className="w-full"
                   onClick={handleAddToCart}
                   disabled={isAdding}
                 >
@@ -462,7 +473,7 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                 <Button
                   size="lg"
                   variant="secondary"
-                  className="flex-1"
+                  className="w-full"
                   onClick={handleBuyNow}
                   disabled={isAdding}
                 >
@@ -514,9 +525,9 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
             </div>
           )}
 
-          {/* Description */}
+          {/* Description — mobile only (desktop shows it under the gallery) */}
           {product.description && (
-            <div>
+            <div className="md:hidden">
               <h3 className="text-sm font-semibold mb-2">Description</h3>
               <div className="overflow-x-auto">
                 <div
