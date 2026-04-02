@@ -276,6 +276,93 @@ const TIER_COLORS: Record<string, string> = {
   business: "#8b5cf6",
 };
 
+// ─── Vendor Leaderboard (all-time) ────────────────────────────
+
+function VendorLeaderboard() {
+  const vendors = useQuery(api.admin.queries.getVendorLeaderboard, {});
+  const top10 = vendors?.slice(0, 10);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm font-medium">
+          Classement vendeurs — GMV total
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        {!top10 ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full" />
+            ))}
+          </div>
+        ) : top10.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Aucun vendeur pour le moment
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {top10.map((vendor, i) => (
+              <div key={vendor._id} className="flex items-center gap-3">
+                <span
+                  className={`text-xs font-bold w-5 text-center shrink-0 ${
+                    i === 0
+                      ? "text-yellow-500"
+                      : i === 1
+                        ? "text-slate-400"
+                        : i === 2
+                          ? "text-amber-600"
+                          : "text-muted-foreground"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium truncate">
+                      {vendor.name}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1 py-0 shrink-0 capitalize"
+                    >
+                      {vendor.subscription_tier}
+                    </Badge>
+                    {vendor.is_verified && (
+                      <span className="text-[10px] text-green-600 shrink-0">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="w-full bg-muted rounded-full h-1.5 mt-1"
+                    style={{ maxWidth: "100%" }}
+                  >
+                    <div
+                      className="bg-primary/70 h-1.5 rounded-full"
+                      style={{
+                        width: `${Math.round((vendor.revenue / (top10[0]?.revenue || 1)) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-medium">
+                    {formatPrice(vendor.revenue, "XOF")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {vendor.order_count} cmd
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Analytics Tab ────────────────────────────────────────────
 
 function TodayStats() {
@@ -597,7 +684,10 @@ function AnalyticsTab({
         </Card>
       </div>
 
-      {/* Top stores leaderboard */}
+      {/* All-time vendor leaderboard */}
+      <VendorLeaderboard />
+
+      {/* Top stores leaderboard — current period */}
       <Card>
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="text-sm font-medium">
