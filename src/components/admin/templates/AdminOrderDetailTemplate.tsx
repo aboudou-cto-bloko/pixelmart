@@ -33,6 +33,7 @@ interface AdminOrderDetail {
   source?: "marketplace" | "vendor_shop";
   items: Array<{
     title: string;
+    variant_title?: string;
     sku?: string;
     quantity: number;
     unit_price: number;
@@ -347,6 +348,11 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium line-clamp-1">{item.title}</p>
+                    {item.variant_title && (
+                      <p className="text-xs text-muted-foreground font-medium">
+                        {item.variant_title}
+                      </p>
+                    )}
                     {item.sku && (
                       <p className="text-xs text-muted-foreground font-mono">
                         {item.sku}
