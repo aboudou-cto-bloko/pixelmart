@@ -333,6 +333,8 @@ Balance credited only when `order.status === "delivered"` AND `delivered_at` old
 commission_amount = Math.round((subtotal - discount_amount) * commission_rate / 10_000)
 ```
 
+**Commission source of truth**: `platform_config` table (keys `commission_free`, `commission_pro`, `commission_business` in basis points). Read via `getEffectiveCommissionRates(ctx)` + `getCommissionRate(tier, rates)` in `convex/orders/helpers.ts`. The `store.commission_rate` field is a legacy default (500 bp) — **never use it for calculations or display**. Use `api.stores.queries.getPublicCommissionRates` on the frontend.
+
 ### F-05: Storage Debt Priority
 On payout request, outstanding `storage_debt` is deducted **first**, before fee calculation.
 
@@ -381,12 +383,15 @@ received → rejected             (admin: rejects with reason)
 
 | Role | Space | Guard | Sidebar |
 |------|-------|-------|---------|
-| `customer` | `/account`, `/orders`, `/cart` | `AuthGuard roles={["customer","vendor","admin"]}` | — |
+| `guest` | `/`, `/shop/*`, `/cart` | none — public | — |
+| `customer` | `/account`, `/orders` | `AuthGuard roles={["customer","vendor","admin"]}` | — |
 | `vendor` | `/vendor/*` | `AuthGuard roles={["vendor","admin"]}` | `VendorSidebar` |
 | `agent` | `/agent/*` | `AuthGuard roles={["agent","admin"]}` | `AgentSidebar` |
 | `admin` | `/admin/*` | `AuthGuard roles={["admin"]}` | — |
 
 Middleware enforces session at the edge. `AuthGuard` is a second layer.
+
+**Guest cart**: `/cart` is in `AUTH_PUBLIC` — unauthenticated users can browse, add to cart (localStorage), and view the cart. Auth is enforced at `createOrder` (checkout). Cart mutations `validateCart` and `validateProductForCart` accept unauthenticated callers; the "own product" check is skipped for guests.
 
 ---
 
@@ -428,7 +433,7 @@ Sender: `Pixel-Mart <noreply@pixel-mart-bj.com>` — defined as `EMAIL_FROM` in 
 | Route | Purpose | Status |
 |-------|---------|--------|
 | `/vendor/select-store` | Multi-store picker | ✅ |
-| `/vendor/dashboard` | KPI overview | ✅ |
+| `/vendor/dashboard` | KPI overview + dismissible WhatsApp community banner | ✅ |
 | `/vendor/orders` | Order list | ✅ |
 | `/vendor/orders/[id]` | Order detail | ✅ |
 | `/vendor/orders/returns` | Return requests | ✅ |
@@ -531,6 +536,7 @@ main                    ← production (protected, auto-deploys to Vercel)
 - Signature: `verifyMonerooSignature` (HMAC-SHA256) before any processing
 - Amount conversion: `centimesToMonerooAmount(centimes, currency)` / `monerooAmountToCentimes(amount, currency)`
 - Payment types: `payment.*` | `ad_payment.*` | `payout.*` | `storage_payment.*`
+- Payout methods: `GET /v1/utils/payout/methods` via `api.payouts.actions.listPayoutMethods` (public action, filtered by store country with static fallback)
 
 ### Nominatim (Geocoding)
 - Rate limit: 1 req/sec — always debounce in `useAddressAutocomplete`
@@ -572,6 +578,31 @@ main                    ← production (protected, auto-deploys to Vercel)
 | `public/sw.js` | Service Worker for Web Push |
 
 ---
+
+## Analytics
+
+Vendor analytics supports periods: `"1d"` | `"7d"` | `"30d"` | `"90d"` | `"12m"`.
+- `"1d"` uses `"hour"` granularity (buckets labeled `"14h"`)
+- Other periods use `"day"`, `"week"`, or `"month"` granularity
+- Admin dashboard has separate `"7d"` | `"30d"` | `"90d"` period selector
+
+## RichTextEditor (Product Description)
+
+`src/components/products/RichTextEditor.tsx` — TipTap-based editor with image upload.
+
+Key behaviours:
+- **Async sync**: `useEffect` syncs the `value` prop into the editor **once** (on first non-empty value) via `editor.commands.setContent(value, { emitUpdate: false })`. Prevents overwriting user edits on re-renders.
+- **Image deletion**: Tracks uploaded images (`storageId → src` Map ref). On every `onUpdate`, images removed from editor content trigger `api.files.mutations.deleteFile` automatically.
+- **Upload flow**: `generateUploadUrl` → POST → `getUrl` → `editor.setImage` → tracked in `uploadedImages` ref.
+
+## VendorSidebar
+
+`src/components/layout/VendorSidebar.tsx` — shadcn Sidebar with collapsible icon mode.
+
+Footer order (bottom to top when collapsed):
+1. `UserFooter` — profile dropdown
+2. `WhatsAppCommunity` — vendor WhatsApp group link (hidden when collapsed)
+3. `SetupProgress` — onboarding progress bar (hidden when collapsed or complete)
 
 ## Do NOT
 
