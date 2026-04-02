@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, usePreloadedQuery } from "convex/react";
+import { VariantSelector } from "@/components/products/VariantSelector";
 import type { Preloaded } from "convex/react";
 import { useCart } from "@/hooks/useCart";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -203,8 +204,14 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
     product ? { product_id: product._id } : "skip",
   );
 
+  const variants = useQuery(
+    api.variants.queries.listByProduct,
+    product ? { productId: product._id } : "skip",
+  );
+
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   const handleShare = async () => {
     if (!product) return;
@@ -228,9 +235,10 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
     try {
       await addItem({
         productId: product._id,
+        variantId: selectedVariant?._id,
         title: product.title,
         slug: product.slug,
-        image: product.images[0] ?? "",
+        image: selectedVariant?.resolvedImageUrl ?? product.images[0] ?? "",
         price: activePrice,
         comparePrice: activeComparePrice,
         storeId: product.store._id,
@@ -260,9 +268,10 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
     try {
       await addItem({
         productId: product._id,
+        variantId: selectedVariant?._id,
         title: product.title,
         slug: product.slug,
-        image: product.images[0] ?? "",
+        image: selectedVariant?.resolvedImageUrl ?? product.images[0] ?? "",
         price: activePrice,
         comparePrice: activeComparePrice,
         storeId: product.store._id,
@@ -295,7 +304,11 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
 
   if (!product) return null;
 
-  const activePrice = product.price;
+  const hasVariants = variants !== undefined && variants.length > 0;
+  const selectedVariant = variants?.find((v) => v._id === selectedVariantId) ?? null;
+
+  const activePrice =
+    selectedVariant?.price !== undefined ? selectedVariant.price : product.price;
   const activeComparePrice = product.compare_price;
   const comparePrice = activeComparePrice ?? 0;
   const hasDiscount =
@@ -303,10 +316,16 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
   const discountPercent = hasDiscount
     ? Math.round(((comparePrice - activePrice) / comparePrice) * 100)
     : 0;
-  const maxQuantity = product.quantity;
-  const isOutOfStock = !product.is_digital && maxQuantity <= 0;
+  const maxQuantity = selectedVariant
+    ? selectedVariant.quantity
+    : product.quantity;
+  const isOutOfStock = !product.is_digital && (
+    hasVariants
+      ? selectedVariantId === null || !selectedVariant?.is_available || selectedVariant.quantity <= 0
+      : maxQuantity <= 0
+  );
   const isLowStock =
-    !product.is_digital && maxQuantity > 0 && maxQuantity <= 10;
+    !product.is_digital && !isOutOfStock && maxQuantity > 0 && maxQuantity <= 10;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 space-y-10">
@@ -447,19 +466,38 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
           <Separator />
 
           {/* Buy section */}
-          {!isOutOfStock ? (
+          {!isOutOfStock || (hasVariants && !selectedVariantId) ? (
             <div className="space-y-4">
-              <QuantitySelector
-                value={quantity}
-                max={product.is_digital ? 99 : maxQuantity}
-                onChange={setQuantity}
-              />
+              {/* Variant selector */}
+              {hasVariants && variants && (
+                <VariantSelector
+                  variants={variants}
+                  selectedVariantId={selectedVariantId}
+                  onSelect={(id) => {
+                    setSelectedVariantId(id);
+                    setQuantity(1);
+                  }}
+                  currency="XOF"
+                />
+              )}
+              {hasVariants && !selectedVariantId && (
+                <p className="text-sm text-muted-foreground">
+                  Sélectionnez une variante pour continuer
+                </p>
+              )}
+              {(!hasVariants || selectedVariantId) && !isOutOfStock && (
+                <QuantitySelector
+                  value={quantity}
+                  max={product.is_digital ? 99 : maxQuantity}
+                  onChange={setQuantity}
+                />
+              )}
               <div className="flex flex-col gap-2">
                 <Button
                   size="lg"
                   className="w-full"
                   onClick={handleAddToCart}
-                  disabled={isAdding}
+                  disabled={isAdding || isOutOfStock || (hasVariants && !selectedVariantId)}
                 >
                   {isAdding ? (
                     "Ajout..."
@@ -475,7 +513,7 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                   variant="secondary"
                   className="w-full"
                   onClick={handleBuyNow}
-                  disabled={isAdding}
+                  disabled={isAdding || isOutOfStock || (hasVariants && !selectedVariantId)}
                 >
                   {isAdding ? "Ajout..." : "Commander maintenant"}
                 </Button>

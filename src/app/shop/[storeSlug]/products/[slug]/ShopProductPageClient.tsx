@@ -25,6 +25,7 @@ import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductReviewList } from "@/components/reviews";
 import { ProductQASection } from "@/components/questions";
 import { QuickOrderSheet } from "@/components/vendor-shop/organisms/QuickOrderSheet";
+import { VariantSelector } from "@/components/products/VariantSelector";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -142,6 +143,7 @@ export function ShopProductPageClient({
 
   const [quantity, setQuantity] = useState(1);
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   // Hydrate from server-preloaded data (no loading flash)
   const product = usePreloadedQuery(preloadedProduct);
@@ -151,6 +153,11 @@ export function ShopProductPageClient({
   const specs = useQuery(
     api.product_specs.queries.listByProduct,
     product ? { product_id: product._id } : "skip",
+  );
+
+  const variants = useQuery(
+    api.variants.queries.listByProduct,
+    product ? { productId: product._id } : "skip",
   );
 
   // Track ViewContent
@@ -186,6 +193,11 @@ export function ShopProductPageClient({
     );
   }
 
+  const hasVariants = variants !== undefined && variants.length > 0;
+  const selectedVariant = variants?.find((v) => v._id === selectedVariantId) ?? null;
+
+  const activePrice =
+    selectedVariant?.price !== undefined ? selectedVariant.price : product.price;
   const hasDiscount =
     product.compare_price !== undefined &&
     product.compare_price > product.price;
@@ -193,12 +205,17 @@ export function ShopProductPageClient({
   const discountPercent = hasDiscount
     ? Math.round(((comparePrice - product.price) / comparePrice) * 100)
     : 0;
-  const isOutOfStock =
-    !product.is_digital &&
-    product.quantity !== undefined &&
-    product.quantity <= 0;
+  const isOutOfStock = !product.is_digital && (
+    hasVariants
+      ? selectedVariantId === null || !selectedVariant?.is_available || selectedVariant.quantity <= 0
+      : (product.quantity !== undefined && product.quantity <= 0)
+  );
   const currency = store?.currency ?? "XOF";
-  const maxQty = product.is_digital ? 99 : (product.quantity ?? 99);
+  const maxQty = product.is_digital
+    ? 99
+    : selectedVariant
+      ? selectedVariant.quantity
+      : (product.quantity ?? 99);
 
   return (
     <>
@@ -300,7 +317,7 @@ export function ShopProductPageClient({
                   className="text-3xl font-extrabold"
                   style={{ color: "var(--shop-primary, #6366f1)" }}
                 >
-                  {formatPrice(product.price, currency)}
+                  {formatPrice(activePrice, currency)}
                 </span>
                 {hasDiscount && (
                   <span className="text-lg text-muted-foreground line-through">
@@ -311,7 +328,7 @@ export function ShopProductPageClient({
               {hasDiscount && (
                 <p className="text-sm text-green-600 font-medium">
                   Vous économisez{" "}
-                  {formatPrice(comparePrice - product.price, currency)}
+                  {formatPrice(comparePrice - activePrice, currency)}
                 </p>
               )}
             </div>
@@ -319,9 +336,25 @@ export function ShopProductPageClient({
             <Separator />
 
             {/* Buy section */}
-            {!isOutOfStock ? (
+            {!isOutOfStock || (hasVariants && !selectedVariantId) ? (
               <div className="space-y-4">
-                {!product.is_digital && (
+                {hasVariants && variants && (
+                  <VariantSelector
+                    variants={variants}
+                    selectedVariantId={selectedVariantId}
+                    onSelect={(id) => {
+                      setSelectedVariantId(id);
+                      setQuantity(1);
+                    }}
+                    currency={currency}
+                  />
+                )}
+                {hasVariants && !selectedVariantId && (
+                  <p className="text-sm text-muted-foreground">
+                    Sélectionnez une variante pour continuer
+                  </p>
+                )}
+                {!product.is_digital && (!hasVariants || selectedVariantId) && (
                   <QuantitySelector
                     value={quantity}
                     max={maxQty}
@@ -333,6 +366,7 @@ export function ShopProductPageClient({
                     size="lg"
                     className="w-full h-12 text-base font-semibold gap-2"
                     onClick={() => setQuickOrderOpen(true)}
+                    disabled={hasVariants && !selectedVariantId}
                     style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
                   >
                     <ShoppingCart className="size-5" />
@@ -525,14 +559,16 @@ export function ShopProductPageClient({
       </div>
 
       {/* Quick Order Sheet */}
-      {store && !isOutOfStock && (
+      {store && (!isOutOfStock || (hasVariants && !selectedVariantId)) && (
         <QuickOrderSheet
           open={quickOrderOpen}
           onOpenChange={setQuickOrderOpen}
-          product={product}
+          product={{ ...product, price: activePrice }}
           store={store}
           storeSlug={storeSlug}
           quantity={quantity}
+          variantId={selectedVariantId ?? undefined}
+          variantTitle={selectedVariant?.title}
         />
       )}
     </>

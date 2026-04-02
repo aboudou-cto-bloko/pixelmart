@@ -74,6 +74,8 @@ interface QuickOrderSheetProps {
   store: QuickOrderStore;
   storeSlug: string;
   quantity: number;
+  variantId?: string;
+  variantTitle?: string;
 }
 
 // ─── Component ──────────────────────────────────────────────
@@ -85,6 +87,8 @@ export function QuickOrderSheet({
   store,
   storeSlug,
   quantity,
+  variantId,
+  variantTitle,
 }: QuickOrderSheetProps) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useCurrentUser();
@@ -179,7 +183,7 @@ export function QuickOrderSheet({
       try {
         const { orderId } = await createOrder({
           storeId: store._id,
-          items: [{ productId: product._id, quantity }],
+          items: [{ productId: product._id, quantity, variantId: variantId as Id<"product_variants"> | undefined }],
           shippingAddress: address,
           notes: notes.trim() || undefined,
           deliveryFee: deliveryConfig.deliveryFee,
@@ -244,6 +248,8 @@ export function QuickOrderSheet({
       generateEventId,
       onOpenChange,
       twoSegmentDistances,
+      variantId,
+      variantTitle,
     ],
   );
 
@@ -292,6 +298,9 @@ export function QuickOrderSheet({
               )}
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{product.title}</p>
+                {variantTitle && (
+                  <p className="text-xs text-muted-foreground">{variantTitle}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Qté : {quantity}
                 </p>
