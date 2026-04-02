@@ -2,7 +2,7 @@
 
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAppUser } from "../users/helpers";
+import { getAppUser } from "../users/helpers";
 import type { Doc, Id } from "../_generated/dataModel";
 
 /**
@@ -55,8 +55,6 @@ export const validateCart = mutation({
     ),
   },
   handler: async (ctx, args): Promise<CartValidationResult> => {
-    await requireAppUser(ctx);
-
     if (args.items.length === 0) {
       return {
         items: [],
@@ -207,7 +205,7 @@ export const validateProductForCart = mutation({
     quantity: v.number(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAppUser(ctx);
+    const user = await getAppUser(ctx);
 
     // Validate quantity
     if (args.quantity <= 0 || args.quantity > 1000) {
@@ -230,8 +228,8 @@ export const validateProductForCart = mutation({
       throw new Error("Cette boutique n'est plus active");
     }
 
-    // Prevent buying own products
-    if (store.owner_id === user._id) {
+    // Prevent buying own products (only checked when authenticated)
+    if (user && store.owner_id === user._id) {
       throw new Error("Vous ne pouvez pas acheter vos propres produits");
     }
 
