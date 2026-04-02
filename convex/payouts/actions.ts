@@ -1,7 +1,7 @@
 // filepath: convex/payouts/actions.ts
 "use node";
 
-import { internalAction } from "../_generated/server";
+import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { centimesToMonerooAmount } from "../payments/helpers";
@@ -102,6 +102,46 @@ export const initializePayoutViaMoneroo = internalAction({
         payoutId: args.payoutId,
         reason: `Erreur réseau: ${error instanceof Error ? error.message : "unknown"}`,
       });
+    }
+  },
+});
+
+// ─── List Payout Methods (Moneroo) ──────────────────────────
+
+export const listPayoutMethods = action({
+  args: {},
+  handler: async () => {
+    const apiKey = getMonerooKey();
+
+    try {
+      const response = await fetch(`${MONEROO_API_URL}/utils/payout/methods`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
+
+      if (!response.ok) return null;
+
+      const result = await response.json();
+
+      // Moneroo returns { data: [...] }
+      const methods: unknown[] = Array.isArray(result.data)
+        ? result.data
+        : Array.isArray(result)
+          ? result
+          : [];
+
+      return methods as Array<{
+        id: string;
+        name: string;
+        country?: string;
+        logo?: string;
+        active?: boolean;
+        type?: string;
+      }>;
+    } catch {
+      return null;
     }
   },
 });

@@ -2,7 +2,9 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useAction } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 import {
   Dialog,
   DialogContent,
@@ -26,20 +28,40 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/format";
 
-// ─── Moneroo Provider Options ────────────────────────────────
+// ─── Fallback static list (used if Moneroo API is unreachable) ─
 
-const MOBILE_MONEY_PROVIDERS = [
-  { code: "mtn_bj", label: "MTN Mobile Money (Bénin)" },
-  { code: "moov_bj", label: "Moov Money (Bénin)" },
-  { code: "mtn_ci", label: "MTN Mobile Money (Côte d'Ivoire)" },
-  { code: "orange_ci", label: "Orange Money (Côte d'Ivoire)" },
-  { code: "wave_ci", label: "Wave (Côte d'Ivoire)" },
-  { code: "wave_sn", label: "Wave (Sénégal)" },
-  { code: "orange_sn", label: "Orange Money (Sénégal)" },
-  { code: "togocel", label: "Togocel Money (Togo)" },
-];
+const FALLBACK_METHODS: Record<string, Array<{ id: string; name: string }>> = {
+  BJ: [
+    { id: "mtn_bj", name: "MTN Mobile Money" },
+    { id: "moov_bj", name: "Moov Money" },
+  ],
+  CI: [
+    { id: "mtn_ci", name: "MTN Mobile Money" },
+    { id: "orange_ci", name: "Orange Money" },
+    { id: "wave_ci", name: "Wave" },
+    { id: "moov_ci", name: "Moov Money" },
+  ],
+  SN: [
+    { id: "orange_sn", name: "Orange Money" },
+    { id: "wave_sn", name: "Wave" },
+  ],
+  TG: [{ id: "togocel", name: "Togocel Money" }],
+  GN: [{ id: "orange_gn", name: "Orange Money Guinea" }],
+  ML: [{ id: "orange_ml", name: "Orange Money Mali" }],
+  BF: [{ id: "orange_bf", name: "Orange Money Burkina" }],
+  NE: [{ id: "airtel_ne", name: "Airtel Money Niger" }],
+};
 
 // ─── Types ───────────────────────────────────────────────────
+
+interface MonerooMethod {
+  id: string;
+  name: string;
+  country?: string;
+  logo?: string;
+  active?: boolean;
+  type?: string;
+}
 
 type PayoutMethod = "mobile_money" | "bank_transfer" | "paypal";
 
@@ -48,6 +70,7 @@ interface PayoutRequestDialogProps {
   onOpenChange: (open: boolean) => void;
   balance: number;
   currency: string;
+  storeCountry?: string;
   minAmount: number;
   onSubmit: (args: {
     amount: number;
@@ -86,6 +109,7 @@ export function PayoutRequestDialog({
   onOpenChange,
   balance,
   currency,
+  storeCountry = "BJ",
   minAmount,
   onSubmit,
 }: PayoutRequestDialogProps) {
@@ -98,6 +122,42 @@ export function PayoutRequestDialog({
   const [bankCode, setBankCode] = useState("");
   const [amountInput, setAmountInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Moneroo methods
+  const fetchMethods = useAction(api.payouts.actions.listPayoutMethods);
+  const [monerooMethods, setMonerooMethods] = useState<MonerooMethod[] | null>(
+    null,
+  );
+  const [methodsLoading, setMethodsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || monerooMethods !== null) return;
+    setMethodsLoading(true);
+    fetchMethods({})
+      .then((result) => {
+        if (!result) return;
+        const country = storeCountry.toUpperCase();
+        const filtered = result.filter(
+          (m) =>
+            m.active !== false &&
+            (!m.country || m.country.toUpperCase() === country),
+        );
+        setMonerooMethods(
+          filtered.length > 0
+            ? filtered
+            : result.filter((m) => m.active !== false),
+        );
+      })
+      .catch(() => {})
+      .finally(() => setMethodsLoading(false));
+  }, [open, fetchMethods, storeCountry, monerooMethods]);
+
+  // Providers shown in selector: live Moneroo data or static fallback
+  const providers: MonerooMethod[] =
+    monerooMethods ??
+    (FALLBACK_METHODS[storeCountry.toUpperCase()] ?? FALLBACK_METHODS.BJ).map(
+      (m) => ({ id: m.id, name: m.name }),
+    );
 
   // Computed
   const isNoDecimal = NO_DECIMAL.includes(currency);
@@ -139,6 +199,7 @@ export function PayoutRequestDialog({
     setBankCode("");
     setAmountInput("");
     setIsSubmitting(false);
+    setMonerooMethods(null);
   }, []);
 
   const handleSubmit = async () => {
@@ -226,7 +287,9 @@ export function PayoutRequestDialog({
             {amountCentimes > 0 && amountCentimes <= balance && (
               <button
                 type="button"
-                onClick={() => setAmountInput(String(isNoDecimal ? balance : balance / 100))}
+                onClick={() =>
+                  setAmountInput(String(isNoDecimal ? balance : balance / 100))
+                }
                 className="text-xs text-primary hover:underline"
               >
                 Retirer tout le solde
@@ -260,18 +323,35 @@ export function PayoutRequestDialog({
             <>
               <div className="space-y-2">
                 <Label>Opérateur</Label>
-                <Select value={provider} onValueChange={setProvider}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choisir un opérateur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MOBILE_MONEY_PROVIDERS.map((p) => (
-                      <SelectItem key={p.code} value={p.code}>
-                        {p.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {methodsLoading ? (
+                  <div className="flex items-center gap-2 h-9 px-3 rounded-md border text-sm text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Chargement des opérateurs…
+                  </div>
+                ) : (
+                  <Select value={provider} onValueChange={setProvider}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un opérateur" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providers.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          <div className="flex items-center gap-2">
+                            {p.logo && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={p.logo}
+                                alt={p.name}
+                                className="h-4 w-4 rounded-sm object-contain"
+                              />
+                            )}
+                            {p.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Numéro de téléphone</Label>
