@@ -100,11 +100,15 @@ function RateFormDialog({
   const [isNight, setIsNight] = useState(rate?.is_night_rate ?? false);
   const [distMin, setDistMin] = useState(String(rate?.distance_min_km ?? 0));
   const [distMax, setDistMax] = useState(
-    rate?.distance_max_km != null ? String(rate.distance_max_km) : "",
+    rate?.distance_max_km !== null && rate?.distance_max_km !== undefined
+      ? String(rate.distance_max_km)
+      : "",
   );
   const [basePrice, setBasePrice] = useState(String(rate?.base_price ?? ""));
   const [pricePerKm, setPricePerKm] = useState(
-    rate?.price_per_km != null ? String(rate.price_per_km) : "",
+    rate?.price_per_km !== null && rate?.price_per_km !== undefined
+      ? String(rate.price_per_km)
+      : "",
   );
   const [weightThreshold, setWeightThreshold] = useState(
     String(rate?.weight_threshold_kg ?? 20),
@@ -117,8 +121,10 @@ function RateFormDialog({
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!basePrice) {
-      setError("Le prix de base est obligatoire");
+    if (!basePrice && !pricePerKm) {
+      setError(
+        "Renseignez un prix de base (tarif fixe) ou un prix/km — au moins l'un des deux.",
+      );
       return;
     }
     setLoading(true);
@@ -130,7 +136,7 @@ function RateFormDialog({
         is_night_rate: isNight,
         distance_min_km: Number(distMin),
         distance_max_km: distMax ? Number(distMax) : undefined,
-        base_price: Number(basePrice),
+        base_price: basePrice ? Number(basePrice) : 0,
         price_per_km: pricePerKm ? Number(pricePerKm) : undefined,
         weight_threshold_kg: Number(weightThreshold),
         weight_surcharge_per_kg: Number(weightSurcharge),
@@ -152,7 +158,7 @@ function RateFormDialog({
             {isEdit ? "Modifier le tarif" : "Nouveau tarif de livraison"}
           </DialogTitle>
           <DialogDescription>
-            Les prix sont en centimes XOF. 1 000 XOF = 1 000 centimes.
+            Saisissez les montants directement en FCFA (ex: 700 pour 700 FCFA).
           </DialogDescription>
         </DialogHeader>
 
@@ -213,12 +219,17 @@ function RateFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Prix de base (centimes) *</Label>
+              <Label>
+                Prix de base (FCFA){" "}
+                <span className="text-muted-foreground font-normal text-xs">
+                  — tarif fixe
+                </span>
+              </Label>
               <Input
                 type="number"
                 value={basePrice}
                 onChange={(e) => setBasePrice(e.target.value)}
-                placeholder="Ex: 150000"
+                placeholder="Ex: 700"
               />
               {basePrice && (
                 <p className="text-xs text-muted-foreground">
@@ -227,15 +238,30 @@ function RateFormDialog({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Prix/km (centimes) — optionnel</Label>
+              <Label>
+                Prix/km (FCFA){" "}
+                <span className="text-muted-foreground font-normal text-xs">
+                  — tarif variable
+                </span>
+              </Label>
               <Input
                 type="number"
                 value={pricePerKm}
                 onChange={(e) => setPricePerKm(e.target.value)}
-                placeholder="Ex: 20000"
+                placeholder="Ex: 200"
               />
+              {pricePerKm && (
+                <p className="text-xs text-muted-foreground">
+                  = {formatPrice(Number(pricePerKm), "XOF")}/km
+                </p>
+              )}
             </div>
           </div>
+          <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
+            Si <strong>Prix/km</strong> est renseigné, il est utilisé (distance
+            × prix/km). Sinon le <strong>Prix de base</strong> fixe
+            s&apos;applique. Au moins l&apos;un des deux est requis.
+          </p>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -311,9 +337,8 @@ function DeleteRateDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Supprimer le tarif</AlertDialogTitle>
           <AlertDialogDescription>
-            Supprimer le tarif {rate.delivery_type} —{" "}
-            {rate.distance_min_km}–{rate.distance_max_km ?? "∞"} km ?
-            Cette action est irréversible.
+            Supprimer le tarif {rate.delivery_type} — {rate.distance_min_km}–
+            {rate.distance_max_km ?? "∞"} km ? Cette action est irréversible.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -370,11 +395,7 @@ export function AdminDeliveryTemplate({ rates }: Props) {
             {rates.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button
-          size="sm"
-          className="gap-1.5"
-          onClick={() => setFormOpen(true)}
-        >
+        <Button size="sm" className="gap-1.5" onClick={() => setFormOpen(true)}>
           <Plus className="size-4" />
           Nouveau tarif
         </Button>
@@ -409,7 +430,9 @@ export function AdminDeliveryTemplate({ rates }: Props) {
                         <TableHead>Distance</TableHead>
                         <TableHead className="text-right">Prix base</TableHead>
                         <TableHead className="text-right">+/km</TableHead>
-                        <TableHead className="text-right">Seuil poids</TableHead>
+                        <TableHead className="text-right">
+                          Seuil poids
+                        </TableHead>
                         <TableHead className="text-right">Surcoût/kg</TableHead>
                         <TableHead>Actif</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -433,8 +456,7 @@ export function AdminDeliveryTemplate({ rates }: Props) {
                             )}
                           </TableCell>
                           <TableCell className="text-sm font-mono">
-                            {r.distance_min_km}–
-                            {r.distance_max_km ?? "∞"} km
+                            {r.distance_min_km}–{r.distance_max_km ?? "∞"} km
                           </TableCell>
                           <TableCell className="text-right text-sm font-medium">
                             {formatPrice(r.base_price, "XOF")}
@@ -453,9 +475,7 @@ export function AdminDeliveryTemplate({ rates }: Props) {
                           <TableCell>
                             <Switch
                               checked={r.is_active}
-                              onCheckedChange={() =>
-                                toggleRate({ id: r._id })
-                              }
+                              onCheckedChange={() => toggleRate({ id: r._id })}
                             />
                           </TableCell>
                           <TableCell className="text-right">
