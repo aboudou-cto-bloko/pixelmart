@@ -581,9 +581,9 @@ export default function StoreSettingsPage() {
               <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
                 <Info className="size-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
                 <p className="text-xs text-blue-800 dark:text-blue-200">
-                  La géolocalisation peut être imprécise sur ordinateur.
-                  Utilisez la recherche d&apos;adresse ou passez sur mobile pour
-                  plus de précision.
+                  Vous pouvez choisir votre position en utilisant la recherche
+                  d&apos;adresse ou le bouton de géolocalisation pour votre
+                  postion actuelle ( bouton disponible uniquement sur mobile).
                 </p>
               </div>
               <LocationPicker

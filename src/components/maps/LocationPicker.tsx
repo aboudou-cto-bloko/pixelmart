@@ -73,8 +73,8 @@ export function LocationPicker({
 
       // Limit map to Benin bounding box
       const BENIN_BOUNDS = L.latLngBounds(
-        L.latLng(5.7, 0.78),   // SW corner
-        L.latLng(12.4, 3.85),  // NE corner
+        L.latLng(5.7, 0.78), // SW corner
+        L.latLng(12.4, 3.85), // NE corner
       );
 
       const map = L.map(mapContainerRef.current!, {
@@ -292,7 +292,7 @@ export function LocationPicker({
               variant="outline"
               onClick={handleGeolocate}
               disabled={isLocating || !navigator.geolocation}
-              className="shrink-0"
+              className="shrink-0 lg:hidden"
             >
               {isLocating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
