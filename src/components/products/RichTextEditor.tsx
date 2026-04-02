@@ -6,6 +6,9 @@ import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Color from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
+import Image from "@tiptap/extension-image";
+import { useMutation, useConvex } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import {
   Bold,
   Italic,
@@ -21,9 +24,11 @@ import {
   RemoveFormatting,
   Link,
   Link2Off,
+  ImagePlus,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 
 interface RichTextEditorProps {
   value: string;
@@ -70,6 +75,11 @@ export function RichTextEditor({
   placeholder = "Décrivez votre produit en détail pour maximiser les conversions...",
   className,
 }: RichTextEditorProps) {
+  const generateUploadUrl = useMutation(api.files.mutations.generateUploadUrl);
+  const convex = useConvex();
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -79,10 +89,14 @@ export function RichTextEditor({
       }),
       Underline,
       TextAlign.configure({
-        types: ["heading", "paragraph"],
+        types: ["heading", "paragraph", "image"],
       }),
       TextStyle,
       Color,
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+      }),
     ],
     content: value || "",
     immediatelyRender: false,
@@ -114,6 +128,39 @@ export function RichTextEditor({
     if (!editor) return;
     editor.chain().focus().unsetMark("link").run();
   }, [editor]);
+
+  const handleImageUpload = useCallback(
+    async (file: File) => {
+      if (!editor) return;
+      if (!file.type.startsWith("image/")) return;
+      if (file.size > 5 * 1024 * 1024) return;
+
+      setUploadingImage(true);
+      try {
+        const uploadUrl = await generateUploadUrl();
+        const res = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        if (!res.ok) return;
+        const { storageId } = (await res.json()) as { storageId: string };
+        const imageUrl = await convex.query(api.files.queries.getUrl, {
+          storageId,
+        });
+        if (!imageUrl) return;
+        editor
+          .chain()
+          .focus()
+          .setImage({ src: imageUrl, alt: file.name })
+          .run();
+      } finally {
+        setUploadingImage(false);
+        if (imageInputRef.current) imageInputRef.current.value = "";
+      }
+    },
+    [editor, generateUploadUrl, convex],
+  );
 
   if (!editor) {
     return null;
@@ -239,7 +286,9 @@ export function RichTextEditor({
         <div className="relative flex items-center" title="Couleur du texte">
           <input
             type="color"
-            onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+            onChange={(e) =>
+              editor.chain().focus().setColor(e.target.value).run()
+            }
             className="w-7 h-7 rounded cursor-pointer border border-border bg-background p-0.5"
             title="Couleur du texte"
           />
@@ -256,6 +305,30 @@ export function RichTextEditor({
         >
           <RemoveFormatting className="size-4" />
         </ToolbarButton>
+
+        <ToolbarSeparator />
+
+        {/* Image upload */}
+        <ToolbarButton
+          onClick={() => imageInputRef.current?.click()}
+          title="Insérer une image"
+        >
+          {uploadingImage ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ImagePlus className="size-4" />
+          )}
+        </ToolbarButton>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImageUpload(file);
+          }}
+        />
       </div>
 
       {/* Editor content area */}
