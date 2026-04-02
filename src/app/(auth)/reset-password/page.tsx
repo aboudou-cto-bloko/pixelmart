@@ -99,10 +99,10 @@ function ResetPasswordForm() {
                 id="newPassword"
                 name="newPassword"
                 type={showNewPassword ? "text" : "password"}
-                placeholder="Min. 12 caractères"
+                placeholder="Min. 8 caractères"
                 required
                 autoComplete="new-password"
-                minLength={12}
+                minLength={8}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="pr-10"
@@ -143,7 +143,7 @@ function ResetPasswordForm() {
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Minimum 12 caractères, avec majuscule, minuscule, chiffre et
+                  Minimum 8 caractères, avec majuscule, minuscule, chiffre et
                   caractère spécial.
                 </p>
               </div>
@@ -158,7 +158,7 @@ function ResetPasswordForm() {
                 type={showConfirmPassword ? "text" : "password"}
                 required
                 autoComplete="new-password"
-                minLength={12}
+                minLength={8}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="pr-10"

@@ -129,7 +129,7 @@ export function getStrengthWidth(strength: PasswordStrength): string {
  */
 export function getPasswordRequirements(password: string) {
   return {
-    minLength: password.length >= 12,
+    minLength: password.length >= 8,
     hasLowercase: /[a-z]/.test(password),
     hasUppercase: /[A-Z]/.test(password),
     hasNumber: /[0-9]/.test(password),

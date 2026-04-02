@@ -10,7 +10,7 @@ const nameRegex = /^[a-zA-ZÀ-ÿĀ-žА-я\u4e00-\u9fff\s'-]+$/;
 
 /**
  * Strong password validation - requires:
- * - At least 12 characters
+ * - At least 8 characters
  * - At least one uppercase letter
  * - At least one lowercase letter
  * - At least one number
@@ -70,7 +70,7 @@ export const registerSchema = z
 
     password: z
       .string()
-      .min(12, "Le mot de passe doit contenir au moins 12 caractères")
+      .min(8, "Le mot de passe doit contenir au moins 8 caractères")
       .max(128, "Le mot de passe ne peut pas dépasser 128 caractères")
       .regex(
         strongPasswordRegex,
@@ -105,7 +105,7 @@ export const passwordResetSchema = z
   .object({
     password: z
       .string()
-      .min(12, "Le mot de passe doit contenir au moins 12 caractères")
+      .min(8, "Le mot de passe doit contenir au moins 8 caractères")
       .max(128, "Le mot de passe ne peut pas dépasser 128 caractères")
       .regex(
         strongPasswordRegex,
@@ -153,7 +153,8 @@ export const AUTH_ERROR_MESSAGES: Record<string, string> = {
 
   // Password reset errors (Better Auth codes)
   INVALID_TOKEN: "Lien de réinitialisation invalide ou expiré.",
-  TOKEN_EXPIRED: "Ce lien de réinitialisation a expiré. Demandez-en un nouveau.",
+  TOKEN_EXPIRED:
+    "Ce lien de réinitialisation a expiré. Demandez-en un nouveau.",
 
   // Generic fallback
   UNKNOWN_ERROR: "Une erreur inattendue est survenue. Veuillez réessayer.",

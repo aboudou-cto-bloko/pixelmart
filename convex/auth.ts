@@ -95,7 +95,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: process.env.SEED_MODE !== "true",
-      minPasswordLength: 12, // Increased from 8 to 12
+      minPasswordLength: 8, // Reduced back to 8 for better UX
       maxPasswordLength: 128,
       autoSignIn: false,
       resetPasswordTokenExpiresIn: 1800, // Reduced from 3600 to 1800 (30 minutes)
@@ -121,10 +121,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       // Password strength validation
       passwordValidator: (password: string) => {
         // Enforce strong password requirements on backend
-        if (password.length < 12) {
+        if (password.length < 8) {
           return {
             isValid: false,
-            message: "Le mot de passe doit contenir au moins 12 caractères",
+            message: "Le mot de passe doit contenir au moins 8 caractères",
           };
         }
 

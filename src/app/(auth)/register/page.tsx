@@ -204,10 +204,10 @@ export default function RegisterPage() {
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Min. 12 caractères"
+                placeholder="Min. 8 caractères"
                 required
                 autoComplete="new-password"
-                minLength={12}
+                minLength={8}
                 value={formData.password}
                 onChange={(e) => updateField("password", e.target.value)}
                 className={`pr-10 ${fieldErrors.password ? "border-destructive" : ""}`}
@@ -258,7 +258,7 @@ export default function RegisterPage() {
                           : "text-muted-foreground"
                       }
                     >
-                      Au moins 12 caractères
+                      Au moins 8 caractères
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export default function RegisterPage() {
                 placeholder="Répéter le mot de passe"
                 required
                 autoComplete="new-password"
-                minLength={12}
+                minLength={8}
                 value={formData.confirmPassword}
                 onChange={(e) => updateField("confirmPassword", e.target.value)}
                 className={`pr-10 ${fieldErrors.confirmPassword ? "border-destructive" : ""}`}
