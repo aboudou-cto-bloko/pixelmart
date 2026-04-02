@@ -28,7 +28,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface RichTextEditorProps {
   value: string;
@@ -76,9 +76,29 @@ export function RichTextEditor({
   className,
 }: RichTextEditorProps) {
   const generateUploadUrl = useMutation(api.files.mutations.generateUploadUrl);
+  const deleteFile = useMutation(api.files.mutations.deleteFile);
   const convex = useConvex();
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Track storageId → src for uploaded images so we can delete on removal
+  const uploadedImages = useRef<Map<string, string>>(new Map());
+  // Stable ref to deleteFile so onUpdate closure doesn't go stale
+  const deleteFileRef = useRef(deleteFile);
+  deleteFileRef.current = deleteFile;
+  // Guard: sync value into editor only once (when async data first arrives)
+  const initializedRef = useRef(false);
+
+  function extractImageSrcs(node: unknown, out: Set<string>) {
+    if (!node || typeof node !== "object") return;
+    const n = node as {
+      type?: string;
+      attrs?: { src?: string };
+      content?: unknown[];
+    };
+    if (n.type === "image" && n.attrs?.src) out.add(n.attrs.src);
+    n.content?.forEach((child) => extractImageSrcs(child, out));
+  }
 
   const editor = useEditor({
     extensions: [
@@ -102,6 +122,15 @@ export function RichTextEditor({
     immediatelyRender: false,
     onUpdate: ({ editor: ed }) => {
       onChange(ed.getHTML());
+      // Detect images removed from editor and delete from storage
+      const currentSrcs = new Set<string>();
+      extractImageSrcs(ed.getJSON(), currentSrcs);
+      for (const [storageId, src] of uploadedImages.current.entries()) {
+        if (!currentSrcs.has(src)) {
+          uploadedImages.current.delete(storageId);
+          deleteFileRef.current({ storageId }).catch(() => {});
+        }
+      }
     },
     editorProps: {
       attributes: {
@@ -149,6 +178,7 @@ export function RichTextEditor({
           storageId,
         });
         if (!imageUrl) return;
+        uploadedImages.current.set(storageId, imageUrl);
         editor
           .chain()
           .focus()
@@ -161,6 +191,13 @@ export function RichTextEditor({
     },
     [editor, generateUploadUrl, convex],
   );
+
+  // Sync async value into editor once it arrives (editor initializes with empty string)
+  useEffect(() => {
+    if (!editor || !value || initializedRef.current) return;
+    editor.commands.setContent(value, false);
+    initializedRef.current = true;
+  }, [editor, value]);
 
   if (!editor) {
     return null;
