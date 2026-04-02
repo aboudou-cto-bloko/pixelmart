@@ -283,6 +283,7 @@ export interface OrderItemInput {
 export interface ValidatedOrderItem {
   product_id: Id<"products">;
   variant_id?: Id<"product_variants">;
+  variant_title?: string;
   title: string;
   sku?: string;
   image_url: string;
@@ -327,6 +328,7 @@ export async function validateAndBuildItems(
     let unitPrice = product.price;
     let sku = product.sku;
     let imageUrl = product.images[0] ?? "";
+    let variantTitle: string | undefined;
 
     if (item.variantId) {
       const variant = await ctx.db.get(item.variantId);
@@ -350,6 +352,7 @@ export async function validateAndBuildItems(
       if (variant.image_url) {
         imageUrl = variant.image_url;
       }
+      variantTitle = variant.title;
     } else if (product.track_inventory && product.quantity < item.quantity) {
       throw new Error(
         `Stock insuffisant pour "${product.title}" (${product.quantity} disponibles)`,
@@ -361,6 +364,7 @@ export async function validateAndBuildItems(
     validatedItems.push({
       product_id: product._id,
       variant_id: item.variantId,
+      variant_title: variantTitle,
       title: product.title,
       sku,
       image_url: imageUrl,
