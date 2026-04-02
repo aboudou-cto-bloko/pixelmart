@@ -46,7 +46,9 @@ function QuantitySelector({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm font-medium text-muted-foreground">Quantité</span>
+      <span className="text-sm font-medium text-muted-foreground">
+        Quantité
+      </span>
       <div className="flex items-center border rounded-lg overflow-hidden">
         <button
           type="button"
@@ -56,7 +58,9 @@ function QuantitySelector({
         >
           <Minus className="size-3.5" />
         </button>
-        <span className="w-12 text-center text-sm font-semibold border-x">{value}</span>
+        <span className="w-12 text-center text-sm font-semibold border-x">
+          {value}
+        </span>
         <button
           type="button"
           className="h-10 w-10 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-40"
@@ -108,10 +112,14 @@ function TrustBadge({
 }) {
   return (
     <div className="flex flex-col items-center gap-1 text-center min-w-0">
-      <div className={`size-9 rounded-full flex items-center justify-center ${color}`}>
+      <div
+        className={`size-9 rounded-full flex items-center justify-center ${color}`}
+      >
         <Icon className="size-4" />
       </div>
-      <span className="text-xs text-muted-foreground leading-tight">{label}</span>
+      <span className="text-xs text-muted-foreground leading-tight">
+        {label}
+      </span>
     </div>
   );
 }
@@ -170,20 +178,25 @@ export function ShopProductPageClient({
           Ce produit n&apos;est plus disponible ou a été retiré.
         </p>
         <Button asChild>
-          <Link href={SHOP_ROUTES.PRODUCTS(storeSlug)}>Voir tous les produits</Link>
+          <Link href={SHOP_ROUTES.PRODUCTS(storeSlug)}>
+            Voir tous les produits
+          </Link>
         </Button>
       </div>
     );
   }
 
   const hasDiscount =
-    product.compare_price !== undefined && product.compare_price > product.price;
+    product.compare_price !== undefined &&
+    product.compare_price > product.price;
   const comparePrice = product.compare_price ?? 0;
   const discountPercent = hasDiscount
     ? Math.round(((comparePrice - product.price) / comparePrice) * 100)
     : 0;
   const isOutOfStock =
-    !product.is_digital && product.quantity !== undefined && product.quantity <= 0;
+    !product.is_digital &&
+    product.quantity !== undefined &&
+    product.quantity <= 0;
   const currency = store?.currency ?? "XOF";
   const maxQty = product.is_digital ? 99 : (product.quantity ?? 99);
 
@@ -286,7 +299,8 @@ export function ShopProductPageClient({
               </div>
               {hasDiscount && (
                 <p className="text-sm text-green-600 font-medium">
-                  Vous économisez {formatPrice(comparePrice - product.price, currency)}
+                  Vous économisez{" "}
+                  {formatPrice(comparePrice - product.price, currency)}
                 </p>
               )}
             </div>
@@ -297,7 +311,11 @@ export function ShopProductPageClient({
             {!isOutOfStock ? (
               <div className="space-y-4">
                 {!product.is_digital && (
-                  <QuantitySelector value={quantity} max={maxQty} onChange={setQuantity} />
+                  <QuantitySelector
+                    value={quantity}
+                    max={maxQty}
+                    onChange={setQuantity}
+                  />
                 )}
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button
@@ -316,7 +334,10 @@ export function ShopProductPageClient({
                     title="Partager"
                     onClick={() => {
                       if (navigator.share) {
-                        navigator.share({ title: product.title, url: window.location.href });
+                        navigator.share({
+                          title: product.title,
+                          url: window.location.href,
+                        });
                       } else {
                         navigator.clipboard.writeText(window.location.href);
                       }
@@ -388,10 +409,12 @@ export function ShopProductPageClient({
                 <Separator />
                 <div>
                   <h3 className="text-sm font-semibold mb-3">Description</h3>
-                  <div
-                    className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: product.description }}
-                  />
+                  <div className="overflow-x-auto">
+                    <div
+                      className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -419,42 +442,60 @@ export function ShopProductPageClient({
                   <Package className="size-4 text-muted-foreground" />
                   <h3 className="text-sm font-semibold">Caractéristiques</h3>
                 </div>
-                <table className="w-full text-sm">
-                  <tbody>
-                    {[
-                      product.color && { label: "Couleur", value: product.color },
-                      product.material && { label: "Matériau", value: product.material },
-                      product.weight && {
-                        label: "Poids",
-                        value:
-                          product.weight >= 1000
-                            ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
-                            : `${product.weight} g`,
-                      },
-                      product.dimensions && { label: "Dimensions", value: product.dimensions },
-                      product.sku && { label: "Référence (SKU)", value: product.sku },
-                      ...(specs ?? []).map((spec) => ({
-                        label: spec.spec_key,
-                        value: spec.spec_value,
-                      })),
-                    ]
-                      .filter(Boolean)
-                      .map((row, i) => {
-                        if (!row) return null;
-                        return (
-                          <tr
-                            key={row.label}
-                            className={i % 2 === 0 ? "bg-background" : "bg-muted/30"}
-                          >
-                            <td className="px-4 py-2.5 w-2/5 text-muted-foreground font-medium">
-                              {row.label}
-                            </td>
-                            <td className="px-4 py-2.5 text-foreground">{row.value}</td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {[
+                        product.color && {
+                          label: "Couleur",
+                          value: product.color,
+                        },
+                        product.material && {
+                          label: "Matériau",
+                          value: product.material,
+                        },
+                        product.weight && {
+                          label: "Poids",
+                          value:
+                            product.weight >= 1000
+                              ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
+                              : `${product.weight} g`,
+                        },
+                        product.dimensions && {
+                          label: "Dimensions",
+                          value: product.dimensions,
+                        },
+                        product.sku && {
+                          label: "Référence (SKU)",
+                          value: product.sku,
+                        },
+                        ...(specs ?? []).map((spec) => ({
+                          label: spec.spec_key,
+                          value: spec.spec_value,
+                        })),
+                      ]
+                        .filter(Boolean)
+                        .map((row, i) => {
+                          if (!row) return null;
+                          return (
+                            <tr
+                              key={row.label}
+                              className={
+                                i % 2 === 0 ? "bg-background" : "bg-muted/30"
+                              }
+                            >
+                              <td className="px-4 py-2.5 w-2/5 text-muted-foreground font-medium">
+                                {row.label}
+                              </td>
+                              <td className="px-4 py-2.5 text-foreground">
+                                {row.value}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

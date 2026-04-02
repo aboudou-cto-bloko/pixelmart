@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, usePreloadedQuery } from "convex/react";
 import type { Preloaded } from "convex/react";
 import { useCart } from "@/hooks/useCart";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -138,7 +139,10 @@ function StoreInfoCard({
   return (
     <Card>
       <CardContent className="p-4">
-        <Link href={ROUTES.STORE(store.slug)} className="flex items-center gap-3 group">
+        <Link
+          href={ROUTES.STORE(store.slug)}
+          className="flex items-center gap-3 group"
+        >
           {store.logo_url ? (
             <Image
               src={store.logo_url}
@@ -192,6 +196,7 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
   const router = useRouter();
   const product = usePreloadedQuery(preloadedProduct);
   const { addItem } = useCart();
+  const { isAuthenticated } = useCurrentUser();
 
   const specs = useQuery(
     api.product_specs.queries.listByProduct,
@@ -213,6 +218,12 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
 
   const handleAddToCart = async () => {
     if (!product?.store || isAdding) return;
+    if (!isAuthenticated) {
+      router.push(
+        `${ROUTES.LOGIN}?callbackUrl=${encodeURIComponent(window.location.pathname)}`,
+      );
+      return;
+    }
     setIsAdding(true);
     try {
       await addItem({
@@ -239,6 +250,12 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
 
   const handleBuyNow = async () => {
     if (!product?.store || isAdding) return;
+    if (!isAuthenticated) {
+      router.push(
+        `${ROUTES.LOGIN}?callbackUrl=${encodeURIComponent(window.location.pathname)}`,
+      );
+      return;
+    }
     setIsAdding(true);
     try {
       await addItem({
@@ -281,23 +298,31 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
   const activePrice = product.price;
   const activeComparePrice = product.compare_price;
   const comparePrice = activeComparePrice ?? 0;
-  const hasDiscount = activeComparePrice !== undefined && activeComparePrice > activePrice;
+  const hasDiscount =
+    activeComparePrice !== undefined && activeComparePrice > activePrice;
   const discountPercent = hasDiscount
     ? Math.round(((comparePrice - activePrice) / comparePrice) * 100)
     : 0;
   const maxQuantity = product.quantity;
   const isOutOfStock = !product.is_digital && maxQuantity <= 0;
-  const isLowStock = !product.is_digital && maxQuantity > 0 && maxQuantity <= 10;
+  const isLowStock =
+    !product.is_digital && maxQuantity > 0 && maxQuantity <= 10;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 space-y-10">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap">
-        <Link href={ROUTES.HOME} className="hover:text-foreground transition-colors">
+        <Link
+          href={ROUTES.HOME}
+          className="hover:text-foreground transition-colors"
+        >
           Accueil
         </Link>
         <ChevronRight className="size-3.5 shrink-0" />
-        <Link href={ROUTES.PRODUCTS} className="hover:text-foreground transition-colors">
+        <Link
+          href={ROUTES.PRODUCTS}
+          className="hover:text-foreground transition-colors"
+        >
           Catalogue
         </Link>
         {product.category && (
@@ -372,7 +397,10 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
 
           {/* Rating */}
           {(product.avg_rating ?? 0) > 0 && (
-            <StarRating rating={product.avg_rating ?? 0} count={product.review_count} />
+            <StarRating
+              rating={product.avg_rating ?? 0}
+              count={product.review_count}
+            />
           )}
 
           {/* Category link */}
@@ -415,8 +443,13 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                 max={product.is_digital ? 99 : maxQuantity}
                 onChange={setQuantity}
               />
-              <div className="flex gap-2">
-                <Button size="lg" className="flex-1" onClick={handleAddToCart} disabled={isAdding}>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleAddToCart}
+                  disabled={isAdding}
+                >
                   {isAdding ? (
                     "Ajout..."
                   ) : (
@@ -485,10 +518,12 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
           {product.description && (
             <div>
               <h3 className="text-sm font-semibold mb-2">Description</h3>
-              <div
-                className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: product.description }}
-              />
+              <div className="overflow-x-auto">
+                <div
+                  className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
+              </div>
             </div>
           )}
 
@@ -516,43 +551,64 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                 <Package className="size-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold">Caractéristiques</h3>
               </div>
-              <table className="w-full text-sm">
-                <tbody>
-                  {[
-                    product.category && { label: "Catégorie", value: product.category.name },
-                    product.color && { label: "Couleur", value: product.color },
-                    product.material && { label: "Matériau", value: product.material },
-                    product.weight && {
-                      label: "Poids",
-                      value:
-                        product.weight >= 1000
-                          ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
-                          : `${product.weight} g`,
-                    },
-                    product.dimensions && { label: "Dimensions", value: product.dimensions },
-                    product.sku && { label: "Référence (SKU)", value: product.sku },
-                    ...(specs ?? []).map((spec) => ({
-                      label: spec.spec_key,
-                      value: spec.spec_value,
-                    })),
-                  ]
-                    .filter(Boolean)
-                    .map((row, i) => {
-                      if (!row) return null;
-                      return (
-                        <tr
-                          key={row.label}
-                          className={i % 2 === 0 ? "bg-background" : "bg-muted/30"}
-                        >
-                          <td className="px-4 py-2.5 w-2/5 text-muted-foreground font-medium">
-                            {row.label}
-                          </td>
-                          <td className="px-4 py-2.5 text-foreground">{row.value}</td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {[
+                      product.category && {
+                        label: "Catégorie",
+                        value: product.category.name,
+                      },
+                      product.color && {
+                        label: "Couleur",
+                        value: product.color,
+                      },
+                      product.material && {
+                        label: "Matériau",
+                        value: product.material,
+                      },
+                      product.weight && {
+                        label: "Poids",
+                        value:
+                          product.weight >= 1000
+                            ? `${(product.weight / 1000).toFixed(2).replace(/\.?0+$/, "")} kg`
+                            : `${product.weight} g`,
+                      },
+                      product.dimensions && {
+                        label: "Dimensions",
+                        value: product.dimensions,
+                      },
+                      product.sku && {
+                        label: "Référence (SKU)",
+                        value: product.sku,
+                      },
+                      ...(specs ?? []).map((spec) => ({
+                        label: spec.spec_key,
+                        value: spec.spec_value,
+                      })),
+                    ]
+                      .filter(Boolean)
+                      .map((row, i) => {
+                        if (!row) return null;
+                        return (
+                          <tr
+                            key={row.label}
+                            className={
+                              i % 2 === 0 ? "bg-background" : "bg-muted/30"
+                            }
+                          >
+                            <td className="px-4 py-2.5 w-2/5 text-muted-foreground font-medium">
+                              {row.label}
+                            </td>
+                            <td className="px-4 py-2.5 text-foreground">
+                              {row.value}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

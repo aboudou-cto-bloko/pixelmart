@@ -157,15 +157,13 @@ export function QuickOrderSheet({
     async (e: React.FormEvent) => {
       e.preventDefault();
 
-      // Si paiement online et non connecté → rediriger vers login
-      if (deliveryConfig.paymentMode === "online" && !isAuthenticated) {
+      // Non connecté → rediriger vers login pour tous les modes de paiement
+      if (!isAuthenticated) {
         router.push(
-          `${ROUTES.LOGIN}?redirect=${encodeURIComponent(SHOP_ROUTES.CHECKOUT(storeSlug))}`,
+          `${ROUTES.LOGIN}?callbackUrl=${encodeURIComponent(window.location.pathname)}`,
         );
         return;
       }
-
-      if (!user && deliveryConfig.paymentMode === "online") return;
 
       const errors = validateAddress(address);
       if (errors && Object.keys(errors).length > 0) {
@@ -356,12 +354,11 @@ export function QuickOrderSheet({
             </div>
           </div>
 
-          {/* Auth notice for online payment */}
+          {/* Auth notice */}
           {!authLoading && !isAuthenticated && (
             <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
-              Le paiement en ligne nécessite un compte. Choisissez{" "}
-              <strong>paiement à la livraison</strong> pour commander sans
-              compte.
+              Un compte est requis pour passer une commande.{" "}
+              <strong>Vous serez redirigé vers la connexion.</strong>
             </div>
           )}
 

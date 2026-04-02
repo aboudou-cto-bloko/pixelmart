@@ -93,10 +93,18 @@ export async function getEffectiveStorageFees(
       "storage_fee_bulk_threshold",
       STORAGE_FEES.BULK_THRESHOLD_UNITS,
     ),
-    getConfigValue(ctx, "storage_fee_medium_kg_flat", STORAGE_FEES.MEDIUM_KG_FLAT),
+    getConfigValue(
+      ctx,
+      "storage_fee_medium_kg_flat",
+      STORAGE_FEES.MEDIUM_KG_FLAT,
+    ),
     getConfigValue(ctx, "storage_fee_heavy_base", STORAGE_FEES.HEAVY_BASE),
     getConfigValue(ctx, "storage_fee_heavy_per_kg", STORAGE_FEES.HEAVY_PER_KG),
-    getConfigValue(ctx, "storage_fee_medium_max_kg", STORAGE_FEES.MEDIUM_MAX_KG),
+    getConfigValue(
+      ctx,
+      "storage_fee_medium_max_kg",
+      STORAGE_FEES.MEDIUM_MAX_KG,
+    ),
     getConfigValue(ctx, "storage_fee_free_max_kg", STORAGE_FEES.FREE_MAX_KG),
   ]);
   return {
@@ -117,4 +125,11 @@ export async function getStorageDebtBlockDelayMs(ctx: AnyCtx): Promise<number> {
     "storage_debt_block_delay_ms",
     STORAGE_DEBT_BLOCK_DELAY_MS,
   );
+}
+
+// ─── Subscription helpers ─────────────────────────────────────
+
+/** Nombre maximum de produits actifs pour le plan Gratuit (défaut 50). */
+export async function getFreeMaxActiveProducts(ctx: AnyCtx): Promise<number> {
+  return getConfigValue(ctx, "subscription_free_max_products", 50);
 }

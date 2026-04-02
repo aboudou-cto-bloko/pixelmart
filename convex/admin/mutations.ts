@@ -6,7 +6,12 @@ import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { components, internal } from "../_generated/api";
 import { v } from "convex/values";
-import { requireAdmin, requireSuperAdmin, requireRoles, ADMIN_ROLES } from "../users/helpers";
+import {
+  requireAdmin,
+  requireSuperAdmin,
+  requireRoles,
+  ADMIN_ROLES,
+} from "../users/helpers";
 
 // ─── Audit log helper ─────────────────────────────────────────
 
@@ -58,16 +63,20 @@ export const verifyStore = mutation({
     });
 
     // Notify vendor
-    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
-      userId: store.owner_id,
-      type: "system",
-      title: "Boutique vérifiée ✓",
-      body: `Votre boutique "${store.name}" a été vérifiée et est maintenant active.`,
-      link: "/vendor/store/settings",
-      channels: ["in_app"],
-      sentVia: ["in_app"],
-      metadata: undefined,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: store.owner_id,
+        type: "system",
+        title: "Boutique vérifiée ✓",
+        body: `Votre boutique "${store.name}" a été vérifiée et est maintenant active.`,
+        link: "/vendor/store/settings",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
     await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
       userId: store.owner_id,
       title: "Boutique vérifiée",
@@ -105,16 +114,20 @@ export const suspendStore = mutation({
     });
 
     // Notify vendor
-    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
-      userId: store.owner_id,
-      type: "system",
-      title: "Boutique suspendue",
-      body: `Votre boutique "${store.name}" a été suspendue. Motif : ${args.reason}`,
-      link: "/vendor/store/settings",
-      channels: ["in_app"],
-      sentVia: ["in_app"],
-      metadata: undefined,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: store.owner_id,
+        type: "system",
+        title: "Boutique suspendue",
+        body: `Votre boutique "${store.name}" a été suspendue. Motif : ${args.reason}`,
+        link: "/vendor/store/settings",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
     await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
       userId: store.owner_id,
       title: "Boutique suspendue",
@@ -150,16 +163,20 @@ export const reactivateStore = mutation({
     });
 
     // Notify vendor
-    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
-      userId: store.owner_id,
-      type: "system",
-      title: "Boutique réactivée ✓",
-      body: `Votre boutique "${store.name}" est à nouveau active.`,
-      link: "/vendor/store/settings",
-      channels: ["in_app"],
-      sentVia: ["in_app"],
-      metadata: undefined,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: store.owner_id,
+        type: "system",
+        title: "Boutique réactivée ✓",
+        body: `Votre boutique "${store.name}" est à nouveau active.`,
+        link: "/vendor/store/settings",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
     await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
       userId: store.owner_id,
       title: "Boutique réactivée",
@@ -234,7 +251,10 @@ export const banUser = mutation({
       throw new Error("Impossible de bannir un administrateur");
     }
 
-    await ctx.db.patch(args.userId, { is_banned: true, updated_at: Date.now() });
+    await ctx.db.patch(args.userId, {
+      is_banned: true,
+      updated_at: Date.now(),
+    });
 
     await logEvent(ctx, admin._id, admin.name, "user_banned", {
       target_type: "user",
@@ -242,16 +262,20 @@ export const banUser = mutation({
       target_label: user.email,
     });
 
-    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
-      userId: args.userId,
-      type: "system",
-      title: "Compte suspendu",
-      body: "Votre compte a été suspendu. Contactez le support pour plus d'informations.",
-      link: "/",
-      channels: ["in_app"],
-      sentVia: ["in_app"],
-      metadata: undefined,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: args.userId,
+        type: "system",
+        title: "Compte suspendu",
+        body: "Votre compte a été suspendu. Contactez le support pour plus d'informations.",
+        link: "/",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
 
     return { success: true };
   },
@@ -267,7 +291,10 @@ export const unbanUser = mutation({
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("Utilisateur introuvable");
 
-    await ctx.db.patch(args.userId, { is_banned: false, updated_at: Date.now() });
+    await ctx.db.patch(args.userId, {
+      is_banned: false,
+      updated_at: Date.now(),
+    });
 
     await logEvent(ctx, admin._id, admin.name, "user_unbanned", {
       target_type: "user",
@@ -275,15 +302,128 @@ export const unbanUser = mutation({
       target_label: user.email,
     });
 
-    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
-      userId: args.userId,
-      type: "system",
-      title: "Compte réactivé ✓",
-      body: "Votre compte a été réactivé. Vous pouvez maintenant utiliser Pixel-Mart normalement.",
-      link: "/",
-      channels: ["in_app"],
-      sentVia: ["in_app"],
-      metadata: undefined,
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: args.userId,
+        type: "system",
+        title: "Compte réactivé ✓",
+        body: "Votre compte a été réactivé. Vous pouvez maintenant utiliser Pixel-Mart normalement.",
+        link: "/",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
+
+    return { success: true };
+  },
+});
+
+// ─── suspendProduct ───────────────────────────────────────────
+
+export const suspendProduct = mutation({
+  args: {
+    productId: v.id("products"),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const product = await ctx.db.get(args.productId);
+    if (!product) throw new Error("Produit introuvable");
+
+    const store = await ctx.db.get(product.store_id);
+    if (!store) throw new Error("Boutique introuvable");
+
+    await ctx.db.patch(args.productId, {
+      status: "archived",
+      updated_at: Date.now(),
+    });
+
+    await logEvent(ctx, admin._id, admin.name, "product_suspended", {
+      target_type: "product",
+      target_id: args.productId,
+      target_label: product.title,
+      metadata: {
+        reason: args.reason,
+        storeId: store._id,
+        storeName: store.name,
+      },
+    });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: store.owner_id,
+        type: "system",
+        title: "Produit retiré de la marketplace",
+        body: `Votre produit "${product.title}" a été retiré. Motif : ${args.reason}. Vous pouvez le modifier et le republier.`,
+        link: `/vendor/products/${args.productId}/edit`,
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: store.owner_id,
+      title: "Produit retiré",
+      body: `"${product.title}" a été retiré. Motif : ${args.reason}`,
+      url: `/vendor/products/${args.productId}/edit`,
+    });
+
+    return { success: true };
+  },
+});
+
+// ─── restoreProduct ───────────────────────────────────────────
+
+export const restoreProduct = mutation({
+  args: {
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const product = await ctx.db.get(args.productId);
+    if (!product) throw new Error("Produit introuvable");
+
+    const store = await ctx.db.get(product.store_id);
+    if (!store) throw new Error("Boutique introuvable");
+
+    await ctx.db.patch(args.productId, {
+      status: "active",
+      updated_at: Date.now(),
+    });
+
+    await logEvent(ctx, admin._id, admin.name, "product_restored", {
+      target_type: "product",
+      target_id: args.productId,
+      target_label: product.title,
+      metadata: { storeId: store._id, storeName: store.name },
+    });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: store.owner_id,
+        type: "system",
+        title: "Produit remis en ligne ✓",
+        body: `Votre produit "${product.title}" est à nouveau visible sur la marketplace.`,
+        link: `/vendor/products/${args.productId}/edit`,
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: store.owner_id,
+      title: "Produit remis en ligne",
+      body: `"${product.title}" est à nouveau visible.`,
+      url: `/vendor/products/${args.productId}/edit`,
     });
 
     return { success: true };
@@ -313,7 +453,10 @@ export const changeUserRole = mutation({
     if (!user) throw new Error("Utilisateur introuvable");
 
     const previousRole = user.role;
-    await ctx.db.patch(args.userId, { role: args.role, updated_at: Date.now() });
+    await ctx.db.patch(args.userId, {
+      role: args.role,
+      updated_at: Date.now(),
+    });
 
     await logEvent(ctx, admin._id, admin.name, "user_role_changed", {
       target_type: "user",
@@ -332,16 +475,20 @@ export const changeUserRole = mutation({
       customer: "Client",
       agent: "Agent Entrepôt",
     };
-    await ctx.scheduler.runAfter(0, internal.notifications.send.createInAppNotification, {
-      userId: args.userId,
-      type: "system",
-      title: "Rôle mis à jour",
-      body: `Votre rôle a été changé de ${ROLE_LABELS[previousRole] ?? previousRole} à ${ROLE_LABELS[args.role] ?? args.role}.`,
-      link: "/",
-      channels: ["in_app"],
-      sentVia: ["in_app"],
-      metadata: undefined,
-    });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: args.userId,
+        type: "system",
+        title: "Rôle mis à jour",
+        body: `Votre rôle a été changé de ${ROLE_LABELS[previousRole] ?? previousRole} à ${ROLE_LABELS[args.role] ?? args.role}.`,
+        link: "/",
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
 
     return { success: true };
   },
@@ -566,7 +713,9 @@ export const updateBatchStatus = mutation({
       in_progress: ["completed", "cancelled"],
     };
     if (!allowed[batch.status]?.includes(args.status)) {
-      throw new Error(`Transition ${batch.status} → ${args.status} non autorisée`);
+      throw new Error(
+        `Transition ${batch.status} → ${args.status} non autorisée`,
+      );
     }
 
     const now = Date.now();
@@ -591,7 +740,10 @@ export const updateBatchStatus = mutation({
         for (const item of order.items) {
           if (!item.storage_code) continue; // pas un article entrepôt
           const key = item.product_id.toString();
-          qtyByProductId.set(key, (qtyByProductId.get(key) ?? 0) + item.quantity);
+          qtyByProductId.set(
+            key,
+            (qtyByProductId.get(key) ?? 0) + item.quantity,
+          );
         }
       }
 
@@ -605,7 +757,9 @@ export const updateBatchStatus = mutation({
 
       // Décrémenter products.warehouse_qty + storage_requests.actual_qty
       for (const [productIdStr, qty] of qtyByProductId) {
-        const req = inStockReqs.find((r) => r.product_id?.toString() === productIdStr);
+        const req = inStockReqs.find(
+          (r) => r.product_id?.toString() === productIdStr,
+        );
         if (!req) continue;
 
         await ctx.db.patch(req._id, {
@@ -738,20 +892,20 @@ export const rejectPayout = mutation({
 
     const store = await ctx.db.get(payout.store_id);
 
-    await ctx.scheduler.runAfter(
-      0,
-      internal.payouts.mutations.failPayout,
-      {
-        payoutId: args.payoutId,
-        reason: args.reason,
-      },
-    );
+    await ctx.scheduler.runAfter(0, internal.payouts.mutations.failPayout, {
+      payoutId: args.payoutId,
+      reason: args.reason,
+    });
 
     await logEvent(ctx, admin._id, admin.name, "payout_rejected", {
       target_type: "payout",
       target_id: args.payoutId,
       target_label: store?.name ?? "Boutique inconnue",
-      metadata: { amount: payout.amount, currency: payout.currency, reason: args.reason },
+      metadata: {
+        amount: payout.amount,
+        currency: payout.currency,
+        reason: args.reason,
+      },
     });
 
     return { success: true };
@@ -803,15 +957,24 @@ export const deleteUser = mutation({
     // ── Better Auth cleanup ────────────────────────────────────
     if (user.better_auth_user_id) {
       await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
-        input: { model: "session", where: [{ field: "userId", value: user.better_auth_user_id }] },
+        input: {
+          model: "session",
+          where: [{ field: "userId", value: user.better_auth_user_id }],
+        },
         paginationOpts: { numItems: 200, cursor: null },
       });
       await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
-        input: { model: "account", where: [{ field: "userId", value: user.better_auth_user_id }] },
+        input: {
+          model: "account",
+          where: [{ field: "userId", value: user.better_auth_user_id }],
+        },
         paginationOpts: { numItems: 200, cursor: null },
       });
       await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
-        input: { model: "user", where: [{ field: "_id", value: user.better_auth_user_id }] },
+        input: {
+          model: "user",
+          where: [{ field: "_id", value: user.better_auth_user_id }],
+        },
       });
     }
 
@@ -849,7 +1012,12 @@ export const bulkBanUsers = mutation({
     let count = 0;
     for (const userId of args.userIds) {
       const user = await ctx.db.get(userId);
-      if (!user || (ADMIN_ROLES as readonly string[]).includes(user.role) || user.is_banned) continue;
+      if (
+        !user ||
+        (ADMIN_ROLES as readonly string[]).includes(user.role) ||
+        user.is_banned
+      )
+        continue;
       await ctx.db.patch(userId, { is_banned: true, updated_at: Date.now() });
       count++;
     }
@@ -889,19 +1057,29 @@ export const bulkDeleteUsers = mutation({
     let count = 0;
     for (const userId of args.userIds) {
       const user = await ctx.db.get(userId);
-      if (!user || (ADMIN_ROLES as readonly string[]).includes(user.role)) continue;
+      if (!user || (ADMIN_ROLES as readonly string[]).includes(user.role))
+        continue;
 
       if (user.better_auth_user_id) {
         await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
-          input: { model: "session", where: [{ field: "userId", value: user.better_auth_user_id }] },
+          input: {
+            model: "session",
+            where: [{ field: "userId", value: user.better_auth_user_id }],
+          },
           paginationOpts: { numItems: 200, cursor: null },
         });
         await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
-          input: { model: "account", where: [{ field: "userId", value: user.better_auth_user_id }] },
+          input: {
+            model: "account",
+            where: [{ field: "userId", value: user.better_auth_user_id }],
+          },
           paginationOpts: { numItems: 200, cursor: null },
         });
         await ctx.runMutation(components.betterAuth.adapter.deleteOne, {
-          input: { model: "user", where: [{ field: "_id", value: user.better_auth_user_id }] },
+          input: {
+            model: "user",
+            where: [{ field: "_id", value: user.better_auth_user_id }],
+          },
         });
       }
 
@@ -937,7 +1115,10 @@ export const bulkVerifyStores = mutation({
     for (const storeId of args.storeIds) {
       const store = await ctx.db.get(storeId);
       if (!store || store.is_verified) continue;
-      await ctx.db.patch(storeId, { is_verified: true, updated_at: Date.now() });
+      await ctx.db.patch(storeId, {
+        is_verified: true,
+        updated_at: Date.now(),
+      });
       count++;
     }
     await logEvent(ctx, admin._id, admin.name, "bulk_action", {
@@ -998,16 +1179,14 @@ export const adminUpdateOrderStatus = mutation({
 
     // Validate transition
     const ALLOWED: Partial<Record<string, string[]>> = {
-      paid:                ["processing"],
-      processing:          ["shipped", "ready_for_delivery"],
-      ready_for_delivery:  ["shipped"],
-      shipped:             ["delivered", "delivery_failed"],
-      delivery_failed:     ["shipped"],
+      paid: ["processing"],
+      processing: ["shipped", "ready_for_delivery"],
+      ready_for_delivery: ["shipped"],
+      shipped: ["delivered", "delivery_failed"],
+      delivery_failed: ["shipped"],
     };
     if (!ALLOWED[order.status]?.includes(args.status)) {
-      throw new Error(
-        `Transition invalide : ${order.status} → ${args.status}`,
-      );
+      throw new Error(`Transition invalide : ${order.status} → ${args.status}`);
     }
 
     const updates: Record<string, unknown> = {

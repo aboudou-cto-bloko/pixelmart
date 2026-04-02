@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
@@ -63,6 +63,7 @@ export default function VendorOnboardingPage() {
   const router = useRouter();
   const { user, isLoading: isUserLoading } = useCurrentUser();
   const becomeVendor = useMutation(api.users.mutations.becomeVendor);
+  const commissionRates = useQuery(api.stores.queries.getPublicCommissionRates);
 
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,7 +78,9 @@ export default function VendorOnboardingPage() {
 
   // Service config
   const [serviceMode, setServiceMode] = useState<ServiceMode>("full");
-  const [customPickup, setCustomPickup] = useState<PickedLocation | undefined>();
+  const [customPickup, setCustomPickup] = useState<
+    PickedLocation | undefined
+  >();
 
   // ---- Guards ----
   if (isUserLoading) {
@@ -87,9 +90,18 @@ export default function VendorOnboardingPage() {
       </div>
     );
   }
-  if (!user) { router.replace("/login"); return null; }
-  if (user.role === "vendor") { router.replace("/vendor/dashboard"); return null; }
-  if (user.role === "admin") { router.replace("/admin/dashboard"); return null; }
+  if (!user) {
+    router.replace("/login");
+    return null;
+  }
+  if (user.role === "vendor") {
+    router.replace("/vendor/dashboard");
+    return null;
+  }
+  if (user.role === "admin") {
+    router.replace("/admin/dashboard");
+    return null;
+  }
 
   // ---- Handlers ----
   function updateField<K extends keyof VendorOnboardingValues>(
@@ -106,8 +118,10 @@ export default function VendorOnboardingPage() {
 
     if (step === 1) {
       const trimmed = formData.store_name.trim();
-      if (trimmed.length < 3) errors.store_name = "Le nom doit contenir au moins 3 caractères";
-      else if (trimmed.length > 60) errors.store_name = "Le nom ne peut pas dépasser 60 caractères";
+      if (trimmed.length < 3)
+        errors.store_name = "Le nom doit contenir au moins 3 caractères";
+      else if (trimmed.length > 60)
+        errors.store_name = "Le nom ne peut pas dépasser 60 caractères";
     }
 
     if (step === 2) {
@@ -153,7 +167,9 @@ export default function VendorOnboardingPage() {
 
     setIsSubmitting(true);
     try {
-      const country = SUPPORTED_COUNTRIES.find((c) => c.code === result.data.country);
+      const country = SUPPORTED_COUNTRIES.find(
+        (c) => c.code === result.data.country,
+      );
 
       await becomeVendor({
         store_name: result.data.store_name.trim(),
@@ -161,9 +177,12 @@ export default function VendorOnboardingPage() {
         currency: country?.currency ?? "XOF",
         description: result.data.description ?? undefined,
         use_pixelmart_service: serviceMode !== "none",
-        custom_pickup_lat: serviceMode === "delivery_only" ? customPickup?.lat : undefined,
-        custom_pickup_lon: serviceMode === "delivery_only" ? customPickup?.lon : undefined,
-        custom_pickup_label: serviceMode === "delivery_only" ? customPickup?.label : undefined,
+        custom_pickup_lat:
+          serviceMode === "delivery_only" ? customPickup?.lat : undefined,
+        custom_pickup_lon:
+          serviceMode === "delivery_only" ? customPickup?.lon : undefined,
+        custom_pickup_label:
+          serviceMode === "delivery_only" ? customPickup?.label : undefined,
       });
 
       router.push("/vendor/dashboard");
@@ -174,7 +193,9 @@ export default function VendorOnboardingPage() {
   }
 
   // ---- Derived ----
-  const selectedCountry = SUPPORTED_COUNTRIES.find((c) => c.code === formData.country);
+  const selectedCountry = SUPPORTED_COUNTRIES.find(
+    (c) => c.code === formData.country,
+  );
 
   const serviceModeLabel =
     serviceMode === "full"
@@ -197,7 +218,9 @@ export default function VendorOnboardingPage() {
             return (
               <div key={s.id} className="flex items-center gap-2">
                 {index > 0 && (
-                  <div className={`h-px w-6 transition-colors ${isCompleted ? "bg-primary" : "bg-border"}`} />
+                  <div
+                    className={`h-px w-6 transition-colors ${isCompleted ? "bg-primary" : "bg-border"}`}
+                  />
                 )}
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors ${
@@ -208,7 +231,11 @@ export default function VendorOnboardingPage() {
                         : "border-border text-muted-foreground"
                   }`}
                 >
-                  {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                  {isCompleted ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Icon className="h-4 w-4" />
+                  )}
                 </div>
               </div>
             );
@@ -225,10 +252,14 @@ export default function VendorOnboardingPage() {
               {step === 4 && "Prêt à lancer ?"}
             </CardTitle>
             <CardDescription>
-              {step === 1 && "Ce nom sera visible par vos clients. Vous pourrez le modifier plus tard."}
-              {step === 2 && "Définissez comment Pixel-Mart intervient dans votre activité."}
-              {step === 3 && "Votre pays détermine la devise et les modes de paiement disponibles."}
-              {step === 4 && "Vérifiez les informations et lancez votre boutique."}
+              {step === 1 &&
+                "Ce nom sera visible par vos clients. Vous pourrez le modifier plus tard."}
+              {step === 2 &&
+                "Définissez comment Pixel-Mart intervient dans votre activité."}
+              {step === 3 &&
+                "Votre pays détermine la devise et les modes de paiement disponibles."}
+              {step === 4 &&
+                "Vérifiez les informations et lancez votre boutique."}
             </CardDescription>
           </CardHeader>
 
@@ -247,9 +278,13 @@ export default function VendorOnboardingPage() {
                     autoFocus
                   />
                   {fieldErrors.store_name && (
-                    <p className="text-sm text-destructive">{fieldErrors.store_name}</p>
+                    <p className="text-sm text-destructive">
+                      {fieldErrors.store_name}
+                    </p>
                   )}
-                  <p className="text-xs text-muted-foreground">{formData.store_name.length}/60 caractères</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.store_name.length}/60 caractères
+                  </p>
                 </div>
               </div>
             )}
@@ -262,7 +297,11 @@ export default function VendorOnboardingPage() {
                   {/* Option 1 — Full */}
                   <button
                     type="button"
-                    onClick={() => { setServiceMode("full"); setCustomPickup(undefined); setError(null); }}
+                    onClick={() => {
+                      setServiceMode("full");
+                      setCustomPickup(undefined);
+                      setError(null);
+                    }}
                     className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
                       serviceMode === "full"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
@@ -270,16 +309,21 @@ export default function VendorOnboardingPage() {
                     }`}
                   >
                     {serviceMode === "full" && (
-                      <span className="absolute top-3 right-3"><Check className="size-4 text-primary" /></span>
+                      <span className="absolute top-3 right-3">
+                        <Check className="size-4 text-primary" />
+                      </span>
                     )}
                     <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                       <Package className="size-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium text-sm">Livraison + Stockage</p>
+                      <p className="font-medium text-sm">
+                        Livraison + Stockage
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Pixel-Mart stocke vos produits et gère les livraisons depuis son entrepôt ({PIXELMART_WAREHOUSE.label}).
-                        Le stock est mis à jour automatiquement à chaque commande.
+                        Pixel-Mart stocke vos produits et gère les livraisons
+                        depuis son entrepôt ({PIXELMART_WAREHOUSE.label}). Le
+                        stock est mis à jour automatiquement à chaque commande.
                       </p>
                     </div>
                   </button>
@@ -287,7 +331,10 @@ export default function VendorOnboardingPage() {
                   {/* Option 2 — Delivery only */}
                   <button
                     type="button"
-                    onClick={() => { setServiceMode("delivery_only"); setError(null); }}
+                    onClick={() => {
+                      setServiceMode("delivery_only");
+                      setError(null);
+                    }}
                     className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
                       serviceMode === "delivery_only"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
@@ -295,16 +342,21 @@ export default function VendorOnboardingPage() {
                     }`}
                   >
                     {serviceMode === "delivery_only" && (
-                      <span className="absolute top-3 right-3"><Check className="size-4 text-primary" /></span>
+                      <span className="absolute top-3 right-3">
+                        <Check className="size-4 text-primary" />
+                      </span>
                     )}
                     <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
                       <Truck className="size-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <p className="font-medium text-sm">Livraison uniquement</p>
+                      <p className="font-medium text-sm">
+                        Livraison uniquement
+                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Pixel-Mart livre vos commandes depuis votre adresse. Vous gérez votre stock vous-même.
-                        Une adresse de retrait est obligatoire.
+                        Pixel-Mart livre vos commandes depuis votre adresse.
+                        Vous gérez votre stock vous-même. Une adresse de retrait
+                        est obligatoire.
                       </p>
                     </div>
                   </button>
@@ -312,7 +364,11 @@ export default function VendorOnboardingPage() {
                   {/* Option 3 — None */}
                   <button
                     type="button"
-                    onClick={() => { setServiceMode("none"); setCustomPickup(undefined); setError(null); }}
+                    onClick={() => {
+                      setServiceMode("none");
+                      setCustomPickup(undefined);
+                      setError(null);
+                    }}
                     className={`relative flex items-start gap-4 rounded-xl border p-4 text-left transition-all ${
                       serviceMode === "none"
                         ? "border-primary bg-primary/5 ring-1 ring-primary"
@@ -320,7 +376,9 @@ export default function VendorOnboardingPage() {
                     }`}
                   >
                     {serviceMode === "none" && (
-                      <span className="absolute top-3 right-3"><Check className="size-4 text-primary" /></span>
+                      <span className="absolute top-3 right-3">
+                        <Check className="size-4 text-primary" />
+                      </span>
                     )}
                     <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                       <X className="size-5 text-muted-foreground" />
@@ -328,7 +386,8 @@ export default function VendorOnboardingPage() {
                     <div>
                       <p className="font-medium text-sm">Aucun service</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Vous gérez stock et livraison hors plateforme. Aucun frais de livraison appliqué au checkout.
+                        Vous gérez stock et livraison hors plateforme. Aucun
+                        frais de livraison appliqué au checkout.
                       </p>
                     </div>
                   </button>
@@ -340,20 +399,26 @@ export default function VendorOnboardingPage() {
                     <div className="flex items-center gap-2">
                       <MapPin className="size-4 text-primary" />
                       <p className="text-sm font-medium">
-                        Adresse de retrait <span className="text-destructive">*</span>
+                        Adresse de retrait{" "}
+                        <span className="text-destructive">*</span>
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Cliquez sur la carte ou recherchez votre adresse pour définir votre point de retrait.
+                      Cliquez sur la carte ou recherchez votre adresse pour
+                      définir votre point de retrait.
                     </p>
                     <LocationPicker
                       value={customPickup}
-                      onChange={(loc) => { setCustomPickup(loc); setError(null); }}
+                      onChange={(loc) => {
+                        setCustomPickup(loc);
+                        setError(null);
+                      }}
                       height={240}
                     />
                     {!customPickup && (
                       <p className="text-xs text-destructive font-medium">
-                        ⚠ Adresse obligatoire pour passer à l&apos;étape suivante.
+                        ⚠ Adresse obligatoire pour passer à l&apos;étape
+                        suivante.
                       </p>
                     )}
                   </div>
@@ -363,7 +428,9 @@ export default function VendorOnboardingPage() {
                 {serviceMode === "full" && (
                   <div className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2">
                     <MapPin className="size-4 shrink-0 mt-0.5 text-primary" />
-                    <p className="text-xs text-muted-foreground">{PIXELMART_WAREHOUSE.label}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {PIXELMART_WAREHOUSE.label}
+                    </p>
                   </div>
                 )}
               </div>
@@ -377,7 +444,10 @@ export default function VendorOnboardingPage() {
                   <Select
                     value={formData.country}
                     onValueChange={(value) =>
-                      updateField("country", value as VendorOnboardingValues["country"])
+                      updateField(
+                        "country",
+                        value as VendorOnboardingValues["country"],
+                      )
                     }
                   >
                     <SelectTrigger id="country">
@@ -392,7 +462,9 @@ export default function VendorOnboardingPage() {
                     </SelectContent>
                   </Select>
                   {fieldErrors.country && (
-                    <p className="text-sm text-destructive">{fieldErrors.country}</p>
+                    <p className="text-sm text-destructive">
+                      {fieldErrors.country}
+                    </p>
                   )}
                 </div>
 
@@ -400,10 +472,13 @@ export default function VendorOnboardingPage() {
                   <div className="rounded-lg border bg-muted/50 p-4">
                     <p className="text-sm text-muted-foreground">
                       Devise :{" "}
-                      <span className="font-medium text-foreground">{selectedCountry.currency}</span>
+                      <span className="font-medium text-foreground">
+                        {selectedCountry.currency}
+                      </span>
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Les prix seront affichés en {selectedCountry.currency}. Tous les montants sont stockés en centimes.
+                      Les prix seront affichés en {selectedCountry.currency}.
+                      Tous les montants sont stockés en centimes.
                     </p>
                   </div>
                 )}
@@ -415,24 +490,44 @@ export default function VendorOnboardingPage() {
               <div className="space-y-4">
                 <div className="rounded-lg border p-4 space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Boutique</span>
-                    <span className="text-sm font-medium">{formData.store_name}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Boutique
+                    </span>
+                    <span className="text-sm font-medium">
+                      {formData.store_name}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Services</span>
-                    <span className="text-sm font-medium">{serviceModeLabel}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Services
+                    </span>
+                    <span className="text-sm font-medium">
+                      {serviceModeLabel}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Pays</span>
-                    <span className="text-sm font-medium">{selectedCountry?.name}</span>
+                    <span className="text-sm font-medium">
+                      {selectedCountry?.name}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Devise</span>
-                    <span className="text-sm font-medium">{selectedCountry?.currency}</span>
+                    <span className="text-sm text-muted-foreground">
+                      Devise
+                    </span>
+                    <span className="text-sm font-medium">
+                      {selectedCountry?.currency}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Commission</span>
-                    <span className="text-sm font-medium">5% (plan gratuit)</span>
+                    <span className="text-sm text-muted-foreground">
+                      Commission
+                    </span>
+                    <span className="text-sm font-medium">
+                      {commissionRates
+                        ? `${commissionRates.free}% (plan gratuit)`
+                        : "5% (plan gratuit)"}
+                    </span>
                   </div>
                 </div>
 
@@ -466,7 +561,12 @@ export default function VendorOnboardingPage() {
             {/* Navigation */}
             <div className="flex gap-3">
               {step > 1 && (
-                <Button variant="outline" onClick={handleBack} disabled={isSubmitting} className="flex-1">
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Retour
                 </Button>
@@ -478,7 +578,11 @@ export default function VendorOnboardingPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -497,7 +601,8 @@ export default function VendorOnboardingPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          Vous pourrez modifier ces informations à tout moment dans les paramètres de votre boutique.
+          Vous pourrez modifier ces informations à tout moment dans les
+          paramètres de votre boutique.
         </p>
       </div>
     </div>

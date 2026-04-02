@@ -12,6 +12,8 @@ import {
   Bell,
   Archive,
   Tag,
+  Receipt,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "./routes";
@@ -94,6 +96,16 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
       { title: "Mes stocks", url: ROUTES.VENDOR_STORAGE },
       { title: "Facturation stockage", url: ROUTES.VENDOR_BILLING },
     ],
+  },
+  {
+    title: "Grilles tarifaires",
+    url: ROUTES.VENDOR_TARIFS,
+    icon: Receipt,
+  },
+  {
+    title: "Classement vendeurs",
+    url: ROUTES.VENDOR_LEADERBOARD,
+    icon: Trophy,
   },
   {
     title: "Notifications",
