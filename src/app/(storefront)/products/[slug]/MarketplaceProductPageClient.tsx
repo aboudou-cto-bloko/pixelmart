@@ -362,25 +362,14 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
       </nav>
 
       {/* Main grid */}
-      <div className="grid gap-8 lg:gap-12 md:grid-cols-2">
-        {/* Gallery — sticky on desktop, description below on desktop */}
-        <div>
-          <div className="lg:sticky lg:top-6">
-            <ProductGallery
-              images={product.images ?? []}
-              title={product.title}
-              imageRoles={product.image_roles}
-            />
-          </div>
-          {product.description && (
-            <div className="hidden lg:block mt-8">
-              <h3 className="text-sm font-semibold mb-2">Description</h3>
-              <div
-                className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-img:rounded-lg prose-img:my-4 prose-img:max-w-full prose-img:mx-auto"
-                dangerouslySetInnerHTML={{ __html: product.description }}
-              />
-            </div>
-          )}
+      <div className="grid gap-8 lg:gap-12 md:grid-cols-2 md:items-start">
+        {/* Gallery — sticky on desktop */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <ProductGallery
+            images={product.images ?? []}
+            title={product.title}
+            imageRoles={product.image_roles}
+          />
         </div>
 
         {/* Right column */}
@@ -563,19 +552,6 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
             </div>
           )}
 
-          {/* Description — mobile and tablet (desktop shows it under the gallery) */}
-          {product.description && (
-            <div className="lg:hidden">
-              <h3 className="text-sm font-semibold mb-2">Description</h3>
-              <div className="overflow-x-auto">
-                <div
-                  className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-img:rounded-lg prose-img:my-4 prose-img:max-w-full prose-img:mx-auto"
-                  dangerouslySetInnerHTML={{ __html: product.description }}
-                />
-              </div>
-            </div>
-          )}
-
           {/* Tags */}
           {product.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -665,6 +641,20 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
           {product.store && <StoreInfoCard store={product.store} />}
         </div>
       </div>
+
+      {/* Description — full width below the product grid */}
+      {product.description && (
+        <>
+          <Separator />
+          <div>
+            <h2 className="text-base font-semibold mb-4">Description</h2>
+            <div
+              className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-img:rounded-lg prose-img:my-4 prose-img:max-w-full prose-img:mx-auto"
+              dangerouslySetInnerHTML={{ __html: product.description }}
+            />
+          </div>
+        </>
+      )}
 
       {/* Reviews + Q&A below the fold */}
       <Separator />
