@@ -10,6 +10,7 @@ const AUTH_PUBLIC = [
   "/reset-password",
   "/api/auth",
   "/shop",
+  "/cart",
   "/access",
 ];
 
