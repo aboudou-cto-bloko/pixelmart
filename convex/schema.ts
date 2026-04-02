@@ -302,6 +302,7 @@ export default defineSchema({
       v.object({
         product_id: v.id("products"),
         variant_id: v.optional(v.id("product_variants")),
+        variant_title: v.optional(v.string()),
         title: v.string(),
         sku: v.optional(v.string()),
         image_url: v.string(),
