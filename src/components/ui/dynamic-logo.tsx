@@ -51,7 +51,7 @@ export function DynamicLogo({
 
   // Determine current theme and styles
   const isDarkMode = mounted && resolvedTheme === "dark";
-  const logoSrc = isDarkMode ? "/Pixel-Mart-1.png" : "/Pixel-Mart.jpg";
+  const logoSrc = isDarkMode ? "/Pixel-Mart-1.png" : "/Pixel-Mart.png";
 
   // Get dimensions and styling for current theme
   const currentStyle = isDarkMode ? darkModeStyle : lightModeStyle;
