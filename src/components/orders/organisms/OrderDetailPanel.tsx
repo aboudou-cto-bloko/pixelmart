@@ -23,6 +23,7 @@ import { Mail, Phone, MapPin } from "lucide-react";
 interface OrderItem {
   product_id: string;
   variant_id?: string;
+  variant_title?: string;
   title: string;
   sku?: string;
   image_url: string;
@@ -279,6 +280,11 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm line-clamp-1">{item.title}</p>
+                {item.variant_title && (
+                  <p className="text-xs text-muted-foreground font-medium">
+                    {item.variant_title}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {item.quantity} ×{" "}
                   {formatPrice(item.unit_price, order.currency)}
