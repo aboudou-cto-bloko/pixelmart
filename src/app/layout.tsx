@@ -7,6 +7,7 @@ import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import { CartProvider } from "@/providers/CartProvider";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Toaster } from "sonner";
 
 const poppins = Poppins({
@@ -23,7 +24,8 @@ const montserrat = Montserrat({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -127,12 +129,14 @@ export default function RootLayout({
       >
         <ConvexClientProvider>
           <ThemeProvider>
-            <CartProvider>
-              <TooltipProvider>
-                {children}
-                <Toaster richColors position="bottom-right" />
-              </TooltipProvider>
-            </CartProvider>
+            <ErrorBoundary>
+              <CartProvider>
+                <TooltipProvider>
+                  {children}
+                  <Toaster richColors position="bottom-right" />
+                </TooltipProvider>
+              </CartProvider>
+            </ErrorBoundary>
           </ThemeProvider>
         </ConvexClientProvider>
       </body>
