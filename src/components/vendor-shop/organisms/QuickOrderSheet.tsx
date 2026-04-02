@@ -251,9 +251,10 @@ export function QuickOrderSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-lg overflow-y-auto p-0"
+        className="w-full sm:max-w-lg p-0 flex flex-col"
       >
-        <SheetHeader className="sticky top-0 z-10 bg-background border-b px-6 py-4">
+        {/* Sticky header */}
+        <SheetHeader className="shrink-0 bg-background border-b px-6 py-4">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-base font-semibold">
               Finaliser ma commande
@@ -269,137 +270,146 @@ export function QuickOrderSheet({
           </div>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-6">
-          {/* Product recap */}
-          <div className="flex items-center gap-3 rounded-xl border p-3 bg-muted/20">
-            {product.images?.[0] && (
-              <div className="relative size-16 shrink-0 rounded-lg overflow-hidden bg-muted">
-                <Image
-                  src={product.images[0]}
-                  alt={product.title}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
+        <form
+          id="quick-order-form"
+          onSubmit={handleSubmit}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          {/* Scrollable fields */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+            {/* Product recap */}
+            <div className="flex items-center gap-3 rounded-xl border p-3 bg-muted/20">
+              {product.images?.[0] && (
+                <div className="relative size-16 shrink-0 rounded-lg overflow-hidden bg-muted">
+                  <Image
+                    src={product.images[0]}
+                    alt={product.title}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{product.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  Qté : {quantity}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p
+                  className="font-bold text-sm"
+                  style={{ color: "var(--shop-primary, #6366f1)" }}
+                >
+                  {formatPrice(product.price * quantity, currency)}
+                </p>
+              </div>
+            </div>
+
+            {/* Delivery */}
+            <DeliverySection
+              value={deliveryConfig}
+              onChange={setDeliveryConfig}
+              estimatedWeightKg={0}
+            />
+
+            {/* Address */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold">Adresse de livraison</h3>
+              <AddressForm
+                address={address}
+                onChange={setAddress}
+                errors={addressErrors}
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="quick-notes" className="text-sm">
+                Note pour le vendeur (optionnel)
+              </Label>
+              <Textarea
+                id="quick-notes"
+                rows={2}
+                placeholder="Instructions spéciales…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Sticky footer — always visible */}
+          <div className="shrink-0 border-t bg-background px-6 py-4 space-y-3">
+            {/* Order summary */}
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Sous-total</span>
+                <span>{formatPrice(totalAmount, currency)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Livraison</span>
+                <span>
+                  {(deliveryConfig.deliveryFee ?? 0) > 0
+                    ? formatPrice(deliveryConfig.deliveryFee ?? 0, currency)
+                    : "À définir"}
+                </span>
+              </div>
+              <div className="flex justify-between font-bold text-base pt-1 border-t">
+                <span>Total</span>
+                <span style={{ color: "var(--shop-primary, #6366f1)" }}>
+                  {formatPrice(orderTotal, currency)}
+                </span>
+              </div>
+            </div>
+
+            {/* Auth notice */}
+            {!authLoading && !isAuthenticated && (
+              <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
+                Un compte est requis pour passer une commande.{" "}
+                <strong>Vous serez redirigé vers la connexion.</strong>
               </div>
             )}
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{product.title}</p>
-              <p className="text-xs text-muted-foreground">Qté : {quantity}</p>
-            </div>
-            <div className="text-right shrink-0">
-              <p
-                className="font-bold text-sm"
-                style={{ color: "var(--shop-primary, #6366f1)" }}
-              >
-                {formatPrice(product.price * quantity, currency)}
-              </p>
-            </div>
-          </div>
 
-          {/* Delivery */}
-          <DeliverySection
-            value={deliveryConfig}
-            onChange={setDeliveryConfig}
-            estimatedWeightKg={0}
-          />
-
-          {/* Address */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold">Adresse de livraison</h3>
-            <AddressForm
-              address={address}
-              onChange={setAddress}
-              errors={addressErrors}
-            />
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="quick-notes" className="text-sm">
-              Note pour le vendeur (optionnel)
-            </Label>
-            <Textarea
-              id="quick-notes"
-              rows={2}
-              placeholder="Instructions spéciales…"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="resize-none"
-            />
-          </div>
-
-          <Separator />
-
-          {/* Order summary */}
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Sous-total</span>
-              <span>{formatPrice(totalAmount, currency)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Livraison</span>
-              <span>
-                {(deliveryConfig.deliveryFee ?? 0) > 0
-                  ? formatPrice(deliveryConfig.deliveryFee ?? 0, currency)
-                  : "À définir"}
-              </span>
-            </div>
-            <Separator />
-            <div className="flex justify-between font-bold text-base">
-              <span>Total</span>
-              <span style={{ color: "var(--shop-primary, #6366f1)" }}>
-                {formatPrice(orderTotal, currency)}
-              </span>
-            </div>
-          </div>
-
-          {/* Auth notice */}
-          {!authLoading && !isAuthenticated && (
-            <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
-              Un compte est requis pour passer une commande.{" "}
-              <strong>Vous serez redirigé vers la connexion.</strong>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
-              <AlertCircle className="size-4 shrink-0 mt-0.5" />
-              <p>{error}</p>
-            </div>
-          )}
-
-          {/* Submit */}
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full"
-            disabled={isSubmitting}
-            style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 mr-2 animate-spin" />
-                Traitement…
-              </>
-            ) : deliveryConfig.paymentMode === "cod" ? (
-              <>
-                <Banknote className="size-4 mr-2" />
-                Confirmer (paiement à la livraison)
-              </>
-            ) : (
-              <>
-                <CreditCard className="size-4 mr-2" />
-                Payer {formatPrice(orderTotal, currency)}
-              </>
+            {/* Error */}
+            {error && (
+              <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+                <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                <p>{error}</p>
+              </div>
             )}
-          </Button>
 
-          <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-            <ShieldCheck className="size-3.5 text-green-500" />
-            Paiement 100% sécurisé
-          </p>
+            {/* Submit */}
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full h-14 text-base"
+              disabled={isSubmitting}
+              style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-5 mr-2 animate-spin" />
+                  Traitement…
+                </>
+              ) : deliveryConfig.paymentMode === "cod" ? (
+                <>
+                  <Banknote className="size-5 mr-2" />
+                  Confirmer (paiement à la livraison)
+                </>
+              ) : (
+                <>
+                  <CreditCard className="size-5 mr-2" />
+                  Payer {formatPrice(orderTotal, currency)}
+                </>
+              )}
+            </Button>
+
+            <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
+              <ShieldCheck className="size-3.5 text-green-500" />
+              Paiement 100% sécurisé
+            </p>
+          </div>
         </form>
       </SheetContent>
     </Sheet>
