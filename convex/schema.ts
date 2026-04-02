@@ -20,14 +20,14 @@ export default defineSchema({
     phone: v.optional(v.string()), // E.164 format: +22961234567
 
     role: v.union(
-      v.literal("admin"),      // Super Admin — accès total
-      v.literal("finance"),    // Responsable Financier — retraits, revenus, stockage facturation
-      v.literal("logistics"),  // Gestionnaire Livraisons — tarifs, pays, stockage réception
-      v.literal("developer"),  // Développeur — lecture audit & config
-      v.literal("marketing"),  // Gestionnaire Contenu — catégories, publicités
+      v.literal("admin"), // Super Admin — accès total
+      v.literal("finance"), // Responsable Financier — retraits, revenus, stockage facturation
+      v.literal("logistics"), // Gestionnaire Livraisons — tarifs, pays, stockage réception
+      v.literal("developer"), // Développeur — lecture audit & config
+      v.literal("marketing"), // Gestionnaire Contenu — catégories, publicités
       v.literal("vendor"),
       v.literal("customer"),
-      v.literal("agent"),      // Agent entrepôt — réception & saisie physique
+      v.literal("agent"), // Agent entrepôt — réception & saisie physique
     ),
 
     // Security (app-level, not managed by Better Auth)
@@ -1141,9 +1141,9 @@ export default defineSchema({
   // ============================================
   push_subscriptions: defineTable({
     user_id: v.id("users"),
-    endpoint: v.string(),       // Push service URL (unique per device/browser)
-    p256dh: v.string(),         // Client public key
-    auth: v.string(),           // Client auth secret
+    endpoint: v.string(), // Push service URL (unique per device/browser)
+    p256dh: v.string(), // Client public key
+    auth: v.string(), // Client auth secret
     user_agent: v.optional(v.string()), // Browser/device info
     created_at: v.number(),
   })
@@ -1154,36 +1154,34 @@ export default defineSchema({
   // COUNTRY CONFIG — activation/désactivation pays
   // ============================================
   country_config: defineTable({
-    country_code: v.string(),  // "BJ", "SN", etc.
+    country_code: v.string(), // "BJ", "SN", etc.
     is_active: v.boolean(),
     updated_at: v.number(),
     updated_by: v.optional(v.id("users")),
-  })
-    .index("by_code", ["country_code"]),
+  }).index("by_code", ["country_code"]),
 
   // ============================================
   // PLATFORM CONFIG — constantes éditables admin
   // ============================================
   platform_config: defineTable({
-    key: v.string(),        // identifiant unique, ex: "commission_free"
-    value: v.number(),      // valeur numérique (basis points, centimes ou ms)
-    label: v.string(),      // libellé lisible, ex: "Commission Free (bp)"
+    key: v.string(), // identifiant unique, ex: "commission_free"
+    value: v.number(), // valeur numérique (basis points, centimes ou ms)
+    label: v.string(), // libellé lisible, ex: "Commission Free (bp)"
     updated_at: v.number(),
     updated_by: v.optional(v.id("users")),
-  })
-    .index("by_key", ["key"]),
+  }).index("by_key", ["key"]),
 
   // ============================================
   // PLATFORM EVENTS — journal d'audit admin
   // ============================================
   platform_events: defineTable({
-    type: v.string(),                      // "user_banned" | "config_changed" | "payout_approved" | …
-    actor_id: v.id("users"),
+    type: v.string(), // "user_banned" | "config_changed" | "payout_approved" | "client_error" | …
+    actor_id: v.optional(v.id("users")),
     actor_name: v.optional(v.string()),
-    target_type: v.optional(v.string()),   // "user" | "store" | "payout" | "config" | "category" | …
-    target_id: v.optional(v.string()),     // ID Convex de l'entité cible
-    target_label: v.optional(v.string()),  // libellé lisible
-    metadata: v.optional(v.string()),      // JSON sérialisé (context additionnel)
+    target_type: v.optional(v.string()), // "user" | "store" | "payout" | "config" | "category" | …
+    target_id: v.optional(v.string()), // ID Convex de l'entité cible
+    target_label: v.optional(v.string()), // libellé lisible
+    metadata: v.optional(v.string()), // JSON sérialisé (context additionnel)
     created_at: v.number(),
   })
     .index("by_type", ["type", "created_at"])

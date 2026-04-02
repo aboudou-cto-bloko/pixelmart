@@ -11,6 +11,7 @@ import {
   requireSuperAdmin,
   requireRoles,
   ADMIN_ROLES,
+  getAppUser,
 } from "../users/helpers";
 
 // ─── Audit log helper ─────────────────────────────────────────
@@ -1236,6 +1237,36 @@ export const adminUpdateOrderStatus = mutation({
       target_id: args.orderId,
       target_label: order.order_number,
       metadata: { from: order.status, to: args.status },
+    });
+  },
+});
+
+// ─── logClientError ───────────────────────────────────────────
+// Called by the React ErrorBoundary on the frontend.
+// No auth required — logs errors from any user (or anonymous).
+
+export const logClientError = mutation({
+  args: {
+    message: v.string(),
+    stack: v.optional(v.string()),
+    componentStack: v.optional(v.string()),
+    url: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAppUser(ctx).catch(() => null);
+
+    const meta: Record<string, string> = { message: args.message };
+    if (args.stack) meta.stack = args.stack;
+    if (args.componentStack) meta.componentStack = args.componentStack;
+
+    await ctx.db.insert("platform_events", {
+      type: "client_error",
+      actor_id: user?._id,
+      actor_name: user?.name,
+      target_type: "client",
+      target_label: args.url,
+      metadata: JSON.stringify(meta),
+      created_at: Date.now(),
     });
   },
 });
