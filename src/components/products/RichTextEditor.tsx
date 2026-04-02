@@ -9,6 +9,7 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Image from "@tiptap/extension-image";
 import { useMutation, useConvex } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import {
   Bold,
   Italic,
@@ -128,7 +129,9 @@ export function RichTextEditor({
       for (const [storageId, src] of uploadedImages.current.entries()) {
         if (!currentSrcs.has(src)) {
           uploadedImages.current.delete(storageId);
-          deleteFileRef.current({ storageId }).catch(() => {});
+          deleteFileRef
+            .current({ storageId: storageId as Id<"_storage"> })
+            .catch(() => {});
         }
       }
     },
@@ -195,7 +198,7 @@ export function RichTextEditor({
   // Sync async value into editor once it arrives (editor initializes with empty string)
   useEffect(() => {
     if (!editor || !value || initializedRef.current) return;
-    editor.commands.setContent(value, false);
+    editor.commands.setContent(value, { emitUpdate: false });
     initializedRef.current = true;
   }, [editor, value]);
 
