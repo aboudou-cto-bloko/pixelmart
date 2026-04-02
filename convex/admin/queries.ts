@@ -934,7 +934,8 @@ export const listBatchesAdmin = query({
     const batches = args.status
       ? await ctx.db
           .query("delivery_batches")
-          .withIndex("by_status", (q) => q.eq("status", args.status as string))
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          .withIndex("by_status", (q) => q.eq("status", args.status!))
           .order("desc")
           .take(limit)
       : await ctx.db.query("delivery_batches").order("desc").take(limit);
@@ -1013,7 +1014,8 @@ export const listAuditLog = query({
     if (args.type) {
       events = await ctx.db
         .query("platform_events")
-        .withIndex("by_type", (q) => q.eq("type", args.type as string))
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        .withIndex("by_type", (q) => q.eq("type", args.type!))
         .order("desc")
         .take(n);
     } else {
