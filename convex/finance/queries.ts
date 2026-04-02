@@ -4,6 +4,8 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getVendorStore } from "../users/helpers";
+import { getEffectiveCommissionRates } from "../lib/getConfig";
+import { getCommissionRate } from "../orders/helpers";
 import {
   getPeriodBounds,
   timestampToDateKey,
@@ -83,13 +85,19 @@ export const getOverview = query({
           ? 100
           : 0;
 
+    const commissionRatesConfig = await getEffectiveCommissionRates(ctx);
+    const effectiveCommissionRate = getCommissionRate(
+      store.subscription_tier,
+      commissionRatesConfig,
+    );
+
     return {
       // ── Champs schema stores ──
       balance: store.balance,
       pendingBalance: store.pending_balance,
       currency: store.currency, // ✅ corrigé (était default_currency)
       subscriptionTier: store.subscription_tier,
-      commissionRate: store.commission_rate,
+      commissionRate: effectiveCommissionRate,
 
       // ── Calculés depuis transactions ──
       totalRevenue: totalCredits, // ✅ corrigé (était store.total_revenue)
@@ -271,6 +279,11 @@ export const getMarginAnalysis = query({
     const { store } = await getVendorStore(ctx);
     const period = args.period ?? "30d";
     const { start } = getPeriodBounds(period);
+    const marginCommissionRates = await getEffectiveCommissionRates(ctx);
+    const storeCommissionRate = getCommissionRate(
+      store.subscription_tier,
+      marginCommissionRates,
+    );
 
     const orders = await ctx.db
       .query("orders")
@@ -323,7 +336,7 @@ export const getMarginAnalysis = query({
         const costPrice = product?.cost_price ?? 0;
         const totalCost = costPrice * entry.totalQuantity;
 
-        const commissionRate = store.commission_rate;
+        const commissionRate = storeCommissionRate;
         const commissionAmount = Math.round(
           (entry.totalRevenue * commissionRate) / 10000,
         );
