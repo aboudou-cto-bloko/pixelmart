@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["dev"],
+      "port": 3000
+    },
+    {
+      "name": "Convex",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["convex", "dev"],
+      "port": 3210
+    },
+    {
+      "name": "React Email",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["email:dev"],
+      "port": 3002
+    },
+    {
+      "name": "Remotion Studio",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "pixel-mart-promo", "start"],
+      "port": 3001
+    }
+  ]
+}
