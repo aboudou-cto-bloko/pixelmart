@@ -22,6 +22,7 @@ export interface VariantFormData {
 interface VariantEditorProps {
   variants: VariantFormData[];
   onChange: (variants: VariantFormData[]) => void;
+  onRemoveExisting?: (id: string) => void;
   currency?: string;
 }
 
@@ -37,6 +38,7 @@ const EMPTY_VARIANT: VariantFormData = {
 export function VariantEditor({
   variants,
   onChange,
+  onRemoveExisting,
   currency = "XOF",
 }: VariantEditorProps) {
   function addVariant() {
@@ -47,6 +49,10 @@ export function VariantEditor({
   }
 
   function removeVariant(index: number) {
+    const variant = variants[index];
+    if (variant.id && onRemoveExisting) {
+      onRemoveExisting(variant.id);
+    }
     onChange(variants.filter((_, i) => i !== index));
   }
 

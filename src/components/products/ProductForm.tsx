@@ -137,12 +137,15 @@ function ProductFormInner({
   const createProduct = useMutation(api.products.mutations.create);
   const updateProduct = useMutation(api.products.mutations.update);
   const createVariant = useMutation(api.variants.mutations.create);
+  const updateVariant = useMutation(api.variants.mutations.update);
+  const deleteVariant = useMutation(api.variants.mutations.remove);
   const createSpecs = useMutation(api.product_specs.mutations.createMany);
 
   const [form, setForm] = useState<FormState>(initialState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([]);
   const lastSubmissionTime = useRef<number>(0);
 
   // ── Storage request dialog ──
@@ -297,6 +300,34 @@ function ProductFormInner({
               spec_value: s.spec_value,
             })),
           });
+        }
+
+        // Sync variants in edit mode
+        for (const id of deletedVariantIds) {
+          await deleteVariant({ id: id as Id<"product_variants"> });
+        }
+        for (const variant of form.variants) {
+          if (variant.id) {
+            await updateVariant({
+              id: variant.id as Id<"product_variants">,
+              title: variant.title || undefined,
+              options: variant.options.length > 0 ? variant.options : undefined,
+              price: variant.price,
+              quantity: variant.quantity,
+              is_available: variant.is_available,
+              sku: variant.sku || undefined,
+            });
+          } else if (variant.title && variant.options.length > 0) {
+            await createVariant({
+              product_id: productId,
+              title: variant.title,
+              options: variant.options,
+              price: variant.price,
+              quantity: variant.quantity,
+              is_available: variant.is_available,
+              sku: variant.sku || undefined,
+            });
+          }
         }
 
         router.push("/vendor/products");
@@ -715,6 +746,7 @@ function ProductFormInner({
               <VariantEditor
                 variants={form.variants}
                 onChange={(val) => updateField("variants", val)}
+                onRemoveExisting={(id) => setDeletedVariantIds((prev) => [...prev, id])}
               />
             </CardContent>
           </Card>
@@ -916,8 +948,13 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
     mode === "edit" && productId ? { product_id: productId } : "skip",
   );
 
-  // En mode edit, attendre le chargement du produit
-  if (mode === "edit" && !existingProduct) {
+  const existingVariants = useQuery(
+    api.variants.queries.listByProduct,
+    mode === "edit" && productId ? { productId } : "skip",
+  );
+
+  // En mode edit, attendre le chargement du produit et des variantes
+  if (mode === "edit" && (!existingProduct || existingVariants === undefined)) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -953,7 +990,16 @@ export function ProductForm({ mode, productId }: ProductFormProps) {
           seoTitle: existingProduct.seo_title ?? "",
           seoDescription: existingProduct.seo_description ?? "",
           seoKeywords: existingProduct.seo_keywords ?? "",
-          variants: [],
+          variants:
+            existingVariants?.map((v) => ({
+              id: v._id,
+              title: v.title,
+              options: v.options,
+              price: v.price,
+              sku: v.sku ?? "",
+              quantity: v.quantity,
+              is_available: v.is_available,
+            })) ?? [],
           specs:
             existingSpecs?.map((s) => ({
               id: s._id,
