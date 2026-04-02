@@ -4,7 +4,7 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type Period = "7d" | "30d" | "90d" | "12m";
+type Period = "1d" | "7d" | "30d" | "90d" | "12m";
 
 interface PeriodSelectorProps {
   value: Period;
@@ -12,6 +12,7 @@ interface PeriodSelectorProps {
 }
 
 const PERIOD_OPTIONS: Array<{ value: Period; label: string }> = [
+  { value: "1d", label: "Aujourd'hui" },
   { value: "7d", label: "7 jours" },
   { value: "30d", label: "30 jours" },
   { value: "90d", label: "90 jours" },

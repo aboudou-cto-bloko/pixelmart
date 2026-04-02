@@ -4,8 +4,8 @@
 // Analytics utility functions
 // ──────────────────────────────────────────────
 
-export type AnalyticsPeriod = "7d" | "30d" | "90d" | "12m";
-export type Granularity = "day" | "week" | "month";
+export type AnalyticsPeriod = "1d" | "7d" | "30d" | "90d" | "12m";
+export type Granularity = "hour" | "day" | "week" | "month";
 
 interface DateRange {
   start: number; // Unix ms
@@ -22,6 +22,17 @@ export function getDateRanges(period: AnalyticsPeriod): {
 } {
   const now = Date.now();
   const msPerDay = 86_400_000;
+
+  // "1d" uses calendar day boundaries (midnight → now), not a rolling window
+  if (period === "1d") {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayStart = startOfToday.getTime();
+    return {
+      current: { start: todayStart, end: now },
+      previous: { start: todayStart - msPerDay, end: todayStart },
+    };
+  }
 
   let durationMs: number;
   switch (period) {
@@ -65,6 +76,10 @@ export function groupByDate(
   const date = new Date(timestamp);
 
   switch (granularity) {
+    case "hour":
+      // "2026-04-02T14"
+      return `${date.toISOString().slice(0, 10)}T${String(date.getHours()).padStart(2, "0")}`;
+
     case "day":
       return date.toISOString().slice(0, 10); // "2026-02-23"
 
@@ -101,6 +116,9 @@ export function generateDateBuckets(
 
   let step: number;
   switch (granularity) {
+    case "hour":
+      step = 3_600_000;
+      break;
     case "day":
       step = msPerDay;
       break;
@@ -128,6 +146,8 @@ export function generateDateBuckets(
  */
 export function inferGranularity(period: AnalyticsPeriod): Granularity {
   switch (period) {
+    case "1d":
+      return "hour";
     case "7d":
       return "day";
     case "30d":
@@ -147,6 +167,12 @@ export function formatBucketLabel(
   granularity: Granularity,
 ): string {
   switch (granularity) {
+    case "hour": {
+      // bucket = "2026-04-02T14" → "14h"
+      const hour = bucket.split("T")[1];
+      return `${hour}h`;
+    }
+
     case "day": {
       const d = new Date(bucket);
       return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });

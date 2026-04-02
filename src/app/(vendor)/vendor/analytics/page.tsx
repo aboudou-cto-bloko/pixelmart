@@ -7,7 +7,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { AnalyticsTemplate } from "@/components/analytics/templates/AnalyticsTemplate";
 
-type Period = "7d" | "30d" | "90d" | "12m";
+type Period = "1d" | "7d" | "30d" | "90d" | "12m";
 type Source = "all" | "marketplace" | "vendor_shop";
 
 export default function VendorAnalyticsPage() {

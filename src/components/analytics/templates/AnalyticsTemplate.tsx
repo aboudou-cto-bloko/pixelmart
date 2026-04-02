@@ -12,7 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const SalesChart = dynamic(
   () => import("../organisms/SalesChart").then((mod) => mod.SalesChart),
-  { loading: () => <Skeleton className="h-80 w-full rounded-md" />, ssr: false },
+  {
+    loading: () => <Skeleton className="h-80 w-full rounded-md" />,
+    ssr: false,
+  },
 );
 
 const RevenueByCategoryChart = dynamic(
@@ -20,10 +23,13 @@ const RevenueByCategoryChart = dynamic(
     import("../organisms/RevenueByCategoryChart").then(
       (mod) => mod.RevenueByCategoryChart,
     ),
-  { loading: () => <Skeleton className="h-64 w-full rounded-md" />, ssr: false },
+  {
+    loading: () => <Skeleton className="h-64 w-full rounded-md" />,
+    ssr: false,
+  },
 );
 
-type Period = "7d" | "30d" | "90d" | "12m";
+type Period = "1d" | "7d" | "30d" | "90d" | "12m";
 type Source = "all" | "marketplace" | "vendor_shop";
 
 interface SalesOverviewData {

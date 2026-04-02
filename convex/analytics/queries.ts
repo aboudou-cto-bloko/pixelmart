@@ -26,6 +26,7 @@ const SOURCE_ARG = v.optional(
 export const getSalesOverview = query({
   args: {
     period: v.union(
+      v.literal("1d"),
       v.literal("7d"),
       v.literal("30d"),
       v.literal("90d"),
@@ -135,13 +136,19 @@ export const getSalesOverview = query({
 export const getSalesChart = query({
   args: {
     period: v.union(
+      v.literal("1d"),
       v.literal("7d"),
       v.literal("30d"),
       v.literal("90d"),
       v.literal("12m"),
     ),
     granularity: v.optional(
-      v.union(v.literal("day"), v.literal("week"), v.literal("month")),
+      v.union(
+        v.literal("hour"),
+        v.literal("day"),
+        v.literal("week"),
+        v.literal("month"),
+      ),
     ),
     source: SOURCE_ARG,
   },
@@ -215,6 +222,7 @@ export const getSalesChart = query({
 export const getTopProducts = query({
   args: {
     period: v.union(
+      v.literal("1d"),
       v.literal("7d"),
       v.literal("30d"),
       v.literal("90d"),
@@ -300,6 +308,7 @@ export const getTopProducts = query({
 export const getRevenueByCategory = query({
   args: {
     period: v.union(
+      v.literal("1d"),
       v.literal("7d"),
       v.literal("30d"),
       v.literal("90d"),
@@ -404,6 +413,7 @@ export const getRevenueByCategory = query({
 export const getCustomerInsights = query({
   args: {
     period: v.union(
+      v.literal("1d"),
       v.literal("7d"),
       v.literal("30d"),
       v.literal("90d"),
