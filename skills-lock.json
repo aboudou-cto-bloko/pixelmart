@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "515ba75178bd44875812d9a560bdf14651f86709f89cf1d4f209638e879807f3"
     },
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "computedHash": "2f673b7710813ac07c71c0a54657f740078aec6585f15edf351494499e1f9ac3"
+    },
     "vercel-react-best-practices": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
