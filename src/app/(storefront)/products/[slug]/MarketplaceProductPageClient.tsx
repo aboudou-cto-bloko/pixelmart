@@ -312,10 +312,8 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
     : product.quantity;
   const isOutOfStock =
     !product.is_digital &&
-    (hasVariants
-      ? selectedVariantId === null ||
-        !selectedVariant?.is_available ||
-        selectedVariant.quantity <= 0
+    (hasVariants && selectedVariantId
+      ? !selectedVariant?.is_available || selectedVariant.quantity <= 0
       : maxQuantity <= 0);
   const isLowStock =
     !product.is_digital &&
@@ -451,7 +449,7 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
           <Separator />
 
           {/* Buy section */}
-          {!isOutOfStock || (hasVariants && !selectedVariantId) ? (
+          {!isOutOfStock ? (
             <div className="space-y-4">
               {/* Variant selector */}
               {hasVariants && variants && (
@@ -467,10 +465,10 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
               )}
               {hasVariants && !selectedVariantId && (
                 <p className="text-sm text-muted-foreground">
-                  Sélectionnez une variante pour continuer
+                  Sélectionnez une variante ou commandez le produit standard
                 </p>
               )}
-              {(!hasVariants || selectedVariantId) && !isOutOfStock && (
+              {!isOutOfStock && (
                 <QuantitySelector
                   value={quantity}
                   max={product.is_digital ? 99 : maxQuantity}
@@ -482,11 +480,7 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                   size="lg"
                   className="w-full"
                   onClick={handleAddToCart}
-                  disabled={
-                    isAdding ||
-                    isOutOfStock ||
-                    (hasVariants && !selectedVariantId)
-                  }
+                  disabled={isAdding || isOutOfStock}
                 >
                   {isAdding ? (
                     "Ajout..."
@@ -502,11 +496,7 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                   variant="secondary"
                   className="w-full"
                   onClick={handleBuyNow}
-                  disabled={
-                    isAdding ||
-                    isOutOfStock ||
-                    (hasVariants && !selectedVariantId)
-                  }
+                  disabled={isAdding || isOutOfStock}
                 >
                   {isAdding ? "Ajout..." : "Commander maintenant"}
                 </Button>
