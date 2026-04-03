@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,6 @@ import { z } from "zod";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/dashboard";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -89,7 +87,7 @@ export default function RegisterPage() {
         name: validatedData.name,
         email: validatedData.email,
         password: validatedData.password,
-        callbackURL: redirectUrl,
+        callbackURL: "/dashboard",
       });
 
       setIsLoading(false);
