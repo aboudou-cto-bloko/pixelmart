@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { PriceInput } from "./PriceInput";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, ArrowLeftRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
 
 export interface VariantFormData {
   id?: string; // undefined = new, string = existing
@@ -24,6 +28,12 @@ interface VariantEditorProps {
   onChange: (variants: VariantFormData[]) => void;
   onRemoveExisting?: (id: string) => void;
   currency?: string;
+  /** ID du produit en base (mode édition uniquement) */
+  productId?: Id<"products">;
+  /** Stock actuel du produit (pour affichage + transfert) */
+  productStock?: number;
+  /** Callback pour rafraîchir le stock produit après transfert */
+  onProductStockChange?: (newStock: number) => void;
 }
 
 const EMPTY_VARIANT: VariantFormData = {
@@ -40,7 +50,72 @@ export function VariantEditor({
   onChange,
   onRemoveExisting,
   currency = "XOF",
+  productId,
+  productStock,
+  onProductStockChange,
 }: VariantEditorProps) {
+  const transferFromProduct = useMutation(
+    api.variants.mutations.transferFromProduct,
+  );
+  const transferToProduct = useMutation(
+    api.variants.mutations.transferToProduct,
+  );
+  const [transferQtys, setTransferQtys] = useState<Record<number, string>>({});
+  const [transferLoading, setTransferLoading] = useState<
+    Record<number, boolean>
+  >({});
+
+  async function handleTransferToVariant(
+    variantIndex: number,
+    variantDbId: string,
+  ) {
+    const qty = parseInt(transferQtys[variantIndex] || "0");
+    if (!qty || qty <= 0) return;
+    setTransferLoading((p) => ({ ...p, [variantIndex]: true }));
+    try {
+      const result = await transferFromProduct({
+        variantId: variantDbId as Id<"product_variants">,
+        quantity: qty,
+      });
+      onProductStockChange?.(result.productQuantity);
+      // Met à jour la quantité de la variante dans le form
+      updateVariant(variantIndex, { quantity: result.variantQuantity });
+      setTransferQtys((p) => ({ ...p, [variantIndex]: "" }));
+      toast.success(
+        `${qty} unité${qty > 1 ? "s" : ""} transférée${qty > 1 ? "s" : ""} vers la variante`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur de transfert");
+    } finally {
+      setTransferLoading((p) => ({ ...p, [variantIndex]: false }));
+    }
+  }
+
+  async function handleTransferToProduct(
+    variantIndex: number,
+    variantDbId: string,
+  ) {
+    const qty = parseInt(transferQtys[variantIndex] || "0");
+    if (!qty || qty <= 0) return;
+    setTransferLoading((p) => ({ ...p, [variantIndex]: true }));
+    try {
+      const result = await transferToProduct({
+        variantId: variantDbId as Id<"product_variants">,
+        quantity: qty,
+      });
+      onProductStockChange?.(result.productQuantity);
+      updateVariant(variantIndex, { quantity: result.variantQuantity });
+      setTransferQtys((p) => ({ ...p, [variantIndex]: "" }));
+      toast.success(
+        `${qty} unité${qty > 1 ? "s" : ""} transférée${qty > 1 ? "s" : ""} vers le stock produit`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur de transfert");
+    } finally {
+      setTransferLoading((p) => ({ ...p, [variantIndex]: false }));
+    }
+  }
+
   function addVariant() {
     onChange([
       ...variants,
@@ -103,6 +178,19 @@ export function VariantEditor({
 
   return (
     <div className="space-y-4">
+      {/* Bandeau stock produit (mode édition) */}
+      {productId !== undefined && productStock !== undefined && (
+        <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+          <ArrowLeftRight className="size-4 text-muted-foreground shrink-0" />
+          <span className="text-muted-foreground">
+            Stock produit standard :
+          </span>
+          <span className="font-semibold">
+            {productStock} unité{productStock !== 1 ? "s" : ""}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">Variantes</p>
@@ -230,6 +318,53 @@ export function VariantEditor({
                 Supprimer
               </Button>
             </div>
+
+            {/* Transfert de stock — uniquement pour les variantes déjà en DB */}
+            {productId && variant.id && (
+              <div className="border-t pt-3 space-y-2">
+                <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                  <ArrowLeftRight className="size-3" />
+                  Transfert de stock
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Qté"
+                    value={transferQtys[vIndex] || ""}
+                    onChange={(e) =>
+                      setTransferQtys((p) => ({
+                        ...p,
+                        [vIndex]: e.target.value,
+                      }))
+                    }
+                    className="w-20 h-8 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={transferLoading[vIndex] || !transferQtys[vIndex]}
+                    onClick={() => handleTransferToVariant(vIndex, variant.id!)}
+                    title="Transférer du stock produit vers cette variante"
+                  >
+                    Produit → Variante
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={transferLoading[vIndex] || !transferQtys[vIndex]}
+                    onClick={() => handleTransferToProduct(vIndex, variant.id!)}
+                    title="Transférer du stock de cette variante vers le produit"
+                  >
+                    Variante → Produit
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       ))}

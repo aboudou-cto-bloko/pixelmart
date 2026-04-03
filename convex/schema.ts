@@ -9,7 +9,7 @@ export default defineSchema({
   // ============================================
   users: defineTable({
     // ---- Link to Better Auth ----
-    better_auth_user_id: v.string(), // ID from Better Auth component's user table
+    better_auth_user_id: v.optional(v.string()), // optional for provisional guest users
 
     // ---- Denormalized from Better Auth (synced via triggers) ----
     email: v.string(),
@@ -47,6 +47,10 @@ export default defineSchema({
 
     // Notifications
     push_notifications_enabled: v.optional(v.boolean()), // default: true
+
+    // Guest account setup (provisional users created at guest checkout)
+    guest_setup_token: v.optional(v.string()),
+    guest_setup_expires_at: v.optional(v.number()),
 
     // Metadata
     updated_at: v.number(),

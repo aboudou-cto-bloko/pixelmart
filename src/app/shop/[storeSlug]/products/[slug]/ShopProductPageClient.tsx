@@ -143,7 +143,9 @@ export function ShopProductPageClient({
 
   const [quantity, setQuantity] = useState(1);
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    null,
+  );
 
   // Hydrate from server-preloaded data (no loading flash)
   const product = usePreloadedQuery(preloadedProduct);
@@ -194,10 +196,13 @@ export function ShopProductPageClient({
   }
 
   const hasVariants = variants !== undefined && variants.length > 0;
-  const selectedVariant = variants?.find((v) => v._id === selectedVariantId) ?? null;
+  const selectedVariant =
+    variants?.find((v) => v._id === selectedVariantId) ?? null;
 
   const activePrice =
-    selectedVariant?.price !== undefined ? selectedVariant.price : product.price;
+    selectedVariant?.price !== undefined
+      ? selectedVariant.price
+      : product.price;
   const hasDiscount =
     product.compare_price !== undefined &&
     product.compare_price > product.price;
@@ -205,11 +210,13 @@ export function ShopProductPageClient({
   const discountPercent = hasDiscount
     ? Math.round(((comparePrice - product.price) / comparePrice) * 100)
     : 0;
-  const isOutOfStock = !product.is_digital && (
-    hasVariants
-      ? selectedVariantId === null || !selectedVariant?.is_available || selectedVariant.quantity <= 0
-      : (product.quantity !== undefined && product.quantity <= 0)
-  );
+  const isOutOfStock =
+    !product.is_digital &&
+    (hasVariants
+      ? selectedVariantId === null ||
+        !selectedVariant?.is_available ||
+        selectedVariant.quantity <= 0
+      : product.quantity !== undefined && product.quantity <= 0);
   const currency = store?.currency ?? "XOF";
   const maxQty = product.is_digital
     ? 99
@@ -374,7 +381,9 @@ export function ShopProductPageClient({
                       size="lg"
                       className="w-full h-12 text-base font-semibold gap-2"
                       onClick={() => setQuickOrderOpen(true)}
-                      style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
+                      style={{
+                        backgroundColor: "var(--shop-primary, #6366f1)",
+                      }}
                     >
                       <ShoppingCart className="size-5" />
                       Commander
@@ -535,7 +544,7 @@ export function ShopProductPageClient({
             <div>
               <h2 className="text-base font-semibold mb-4">Description</h2>
               <div
-                className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-img:rounded-lg prose-img:my-4 prose-img:max-w-full prose-img:mx-auto"
+                className="prose prose-sm max-w-none text-left prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-img:rounded-lg prose-img:my-4 prose-img:max-w-full prose-img:h-auto"
                 dangerouslySetInnerHTML={{ __html: product.description }}
               />
             </div>

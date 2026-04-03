@@ -746,7 +746,14 @@ function ProductFormInner({
               <VariantEditor
                 variants={form.variants}
                 onChange={(val) => updateField("variants", val)}
-                onRemoveExisting={(id) => setDeletedVariantIds((prev) => [...prev, id])}
+                onRemoveExisting={(id) =>
+                  setDeletedVariantIds((prev) => [...prev, id])
+                }
+                productId={mode === "edit" ? productId : undefined}
+                productStock={form.quantity}
+                onProductStockChange={(newStock) =>
+                  updateField("quantity", newStock)
+                }
               />
             </CardContent>
           </Card>

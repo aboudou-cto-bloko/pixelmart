@@ -1,5 +1,5 @@
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getVendorStore } from "../users/helpers";
 import { safeDeleteFile } from "../products/helpers";
 
@@ -157,5 +157,97 @@ export const adjustStock = mutation({
 
     await ctx.db.patch(args.id, updates);
     return { newQuantity };
+  },
+});
+
+/**
+ * Transfère du stock depuis le produit vers une variante.
+ * Utile lors du passage d'un produit standard à un produit avec variantes.
+ */
+export const transferFromProduct = mutation({
+  args: {
+    variantId: v.id("product_variants"),
+    quantity: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    if (args.quantity <= 0)
+      throw new ConvexError("La quantité doit être positive");
+
+    const variant = await ctx.db.get(args.variantId);
+    if (!variant) throw new ConvexError("Variante introuvable");
+    if (variant.store_id !== store._id)
+      throw new ConvexError("Cette variante n'appartient pas à votre boutique");
+
+    const product = await ctx.db.get(variant.product_id);
+    if (!product) throw new ConvexError("Produit introuvable");
+
+    const productStock = product.quantity ?? 0;
+    if (productStock < args.quantity) {
+      throw new ConvexError(
+        `Stock produit insuffisant (disponible : ${productStock})`,
+      );
+    }
+
+    await ctx.db.patch(variant.product_id, {
+      quantity: productStock - args.quantity,
+    });
+
+    const newVariantQty = variant.quantity + args.quantity;
+    await ctx.db.patch(args.variantId, {
+      quantity: newVariantQty,
+      is_available: newVariantQty > 0,
+    });
+
+    return {
+      productQuantity: productStock - args.quantity,
+      variantQuantity: newVariantQty,
+    };
+  },
+});
+
+/**
+ * Transfère du stock depuis une variante vers le produit (opération inverse).
+ */
+export const transferToProduct = mutation({
+  args: {
+    variantId: v.id("product_variants"),
+    quantity: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    if (args.quantity <= 0)
+      throw new ConvexError("La quantité doit être positive");
+
+    const variant = await ctx.db.get(args.variantId);
+    if (!variant) throw new ConvexError("Variante introuvable");
+    if (variant.store_id !== store._id)
+      throw new ConvexError("Cette variante n'appartient pas à votre boutique");
+
+    if (variant.quantity < args.quantity) {
+      throw new ConvexError(
+        `Stock variante insuffisant (disponible : ${variant.quantity})`,
+      );
+    }
+
+    const product = await ctx.db.get(variant.product_id);
+    if (!product) throw new ConvexError("Produit introuvable");
+
+    const newVariantQty = variant.quantity - args.quantity;
+    await ctx.db.patch(args.variantId, {
+      quantity: newVariantQty,
+      is_available: newVariantQty > 0,
+    });
+
+    await ctx.db.patch(variant.product_id, {
+      quantity: (product.quantity ?? 0) + args.quantity,
+    });
+
+    return {
+      productQuantity: (product.quantity ?? 0) + args.quantity,
+      variantQuantity: newVariantQty,
+    };
   },
 });
