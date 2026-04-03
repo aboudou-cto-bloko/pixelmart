@@ -37,10 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES, ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
-import {
-  calculateDistance,
-  DEFAULT_COLLECTION_POINT,
-} from "@/lib/geocoding";
+import { calculateDistance, DEFAULT_COLLECTION_POINT } from "@/lib/geocoding";
 import type { Coordinates } from "@/lib/geocoding";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
@@ -286,6 +283,11 @@ export default function ShopCheckoutPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">{item.title}</p>
+                  {item.variantTitle && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {item.variantTitle}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     Qté : {item.quantity}
                   </p>

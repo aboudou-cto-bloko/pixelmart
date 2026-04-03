@@ -398,9 +398,10 @@ Middleware enforces session at the edge. `AuthGuard` is a second layer.
 ## Authentication
 
 - **Provider**: Better Auth (email/password only — Google OAuth removed)
-- **Session cookie**: `better-auth.session_token` (HTTP-only)
+- **Session cookie**: `pm.session_token` — `httpOnly: true`, `secure: true`, `sameSite: "strict"` — durée **2 jours** (réduit de 7)
 - **Logout**: `authClient.signOut()` + `window.location.href = "/login"` (full reload to clear Convex cache)
 - **Multi-store**: After login, vendor with multiple stores sees `/vendor/select-store` to pick active store. `active_store_id` stored on `users` table.
+- **Guest checkout**: Un client peut commander sans compte depuis le shop vendeur (`QuickOrderSheet`). L'email est collecté au checkout. Si l'email est inconnu → compte provisoire (`better_auth_user_id = null`) + email de setup (token 7j). Si l'email existe → commande associée. À l'inscription (Better Auth `onCreate`), les comptes provisoires sont automatiquement liés.
 
 ---
 
@@ -425,6 +426,7 @@ Sender: `Pixel-Mart <noreply@pixel-mart-bj.com>` — defined as `EMAIL_FROM` in 
 | `StorageRejected` | Admin rejects | Vendor |
 | `StorageInvoiceCreated` | Invoice generated | Vendor |
 | `StorageDebtDeducted` | Debt deducted on payout | Vendor |
+| `GuestAccountSetup` | Guest order created (provisional account) | Guest customer |
 
 ---
 
@@ -549,7 +551,7 @@ main                    ← production (protected, auto-deploys to Vercel)
 
 ### Better Auth
 - Email/password only (Google OAuth removed)
-- Session cookie: `better-auth.session_token` (HTTP-only)
+- Session cookie: `pm.session_token` — `httpOnly`, `secure`, `sameSite: "strict"` — expires 2 days
 
 ### Web Push
 - VAPID keys in env: `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT`
@@ -594,6 +596,7 @@ Key behaviours:
 - **Async sync**: `useEffect` syncs the `value` prop into the editor **once** (on first non-empty value) via `editor.commands.setContent(value, { emitUpdate: false })`. Prevents overwriting user edits on re-renders.
 - **Image deletion**: Tracks uploaded images (`storageId → src` Map ref). On every `onUpdate`, images removed from editor content trigger `api.files.mutations.deleteFile` automatically.
 - **Upload flow**: `generateUploadUrl` → POST → `getUrl` → `editor.setImage` → tracked in `uploadedImages` ref.
+- **Image NodeView**: Custom `ReactNodeViewRenderer` (`ImageNodeView`) wraps each image with a hover-visible delete button (×). Clicking it calls `deleteNode()` which removes the node and triggers the cleanup above. Uses `@tiptap/react` `NodeViewWrapper` + `NodeViewProps`.
 
 ## VendorSidebar
 
@@ -603,6 +606,30 @@ Footer order (bottom to top when collapsed):
 1. `UserFooter` — profile dropdown
 2. `WhatsAppCommunity` — vendor WhatsApp group link (hidden when collapsed)
 3. `SetupProgress` — onboarding progress bar (hidden when collapsed or complete)
+
+## Security (OWASP Top 10 Measures)
+
+Configured in `next.config.ts` via `headers()`:
+
+| Header | Value | Purpose |
+|--------|-------|---------|
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline' https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' [convex/nominatim/moneroo/facebook]; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests` | XSS, clickjacking, injection |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Force HTTPS (HSTS) |
+| `X-Frame-Options` | `DENY` | Clickjacking (legacy support alongside CSP) |
+| `X-Content-Type-Options` | `nosniff` | MIME sniffing |
+| `X-XSS-Protection` | `0` | Disabled — modern browsers use CSP instead |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Privacy |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` | Feature restriction |
+
+**Session hardening** (`convex/auth.ts`):
+- Duration: **2 days** (down from 7), refresh window: **4 hours**
+- Cookie: `httpOnly: true`, `secure: true`, `sameSite: "strict"`, prefix: `pm`
+
+**Input validation**: Zod at all system boundaries (forms, webhooks). Webhook signatures verified via HMAC-SHA256 before any DB write.
+
+**Rate limiting**: Convex rate limits on mutations (see `convex/lib/ratelimits.ts`).
+
+---
 
 ## Do NOT
 

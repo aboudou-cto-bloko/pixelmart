@@ -7,6 +7,7 @@ import { CTAButton } from "./components/CTAButton";
 
 interface OrderItem {
   title: string;
+  variant_title?: string;
   quantity: number;
   total_price: string;
   sku?: string;
@@ -52,7 +53,16 @@ export default function NewOrder({
         {items.map((item, i) => (
           <Row key={i} style={styles.tableRow}>
             <Column style={styles.itemName}>
-              {item.title} × {item.quantity}
+              {item.title}
+              {item.variant_title && (
+                <span
+                  style={{ color: emailTheme.colors.muted, fontSize: "11px" }}
+                >
+                  {" "}
+                  — {item.variant_title}
+                </span>
+              )}{" "}
+              × {item.quantity}
               {item.sku && (
                 <span
                   style={{ color: emailTheme.colors.muted, fontSize: "11px" }}
