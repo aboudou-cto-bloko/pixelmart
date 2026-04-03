@@ -8,7 +8,6 @@ import { useQuery, usePreloadedQuery } from "convex/react";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import type { Preloaded } from "convex/react";
 import { useCart } from "@/hooks/useCart";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -197,7 +196,6 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
   const router = useRouter();
   const product = usePreloadedQuery(preloadedProduct);
   const { addItem } = useCart();
-  const { isAuthenticated } = useCurrentUser();
 
   const specs = useQuery(
     api.product_specs.queries.listByProduct,
@@ -211,7 +209,9 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
 
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    null,
+  );
 
   const handleShare = async () => {
     if (!product) return;
@@ -225,12 +225,6 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
 
   const handleAddToCart = async () => {
     if (!product?.store || isAdding) return;
-    if (!isAuthenticated) {
-      router.push(
-        `${ROUTES.LOGIN}?callbackUrl=${encodeURIComponent(window.location.pathname)}`,
-      );
-      return;
-    }
     setIsAdding(true);
     try {
       await addItem({
@@ -258,12 +252,6 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
 
   const handleBuyNow = async () => {
     if (!product?.store || isAdding) return;
-    if (!isAuthenticated) {
-      router.push(
-        `${ROUTES.LOGIN}?callbackUrl=${encodeURIComponent(window.location.pathname)}`,
-      );
-      return;
-    }
     setIsAdding(true);
     try {
       await addItem({
@@ -305,10 +293,13 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
   if (!product) return null;
 
   const hasVariants = variants !== undefined && variants.length > 0;
-  const selectedVariant = variants?.find((v) => v._id === selectedVariantId) ?? null;
+  const selectedVariant =
+    variants?.find((v) => v._id === selectedVariantId) ?? null;
 
   const activePrice =
-    selectedVariant?.price !== undefined ? selectedVariant.price : product.price;
+    selectedVariant?.price !== undefined
+      ? selectedVariant.price
+      : product.price;
   const activeComparePrice = product.compare_price;
   const comparePrice = activeComparePrice ?? 0;
   const hasDiscount =
@@ -319,13 +310,18 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
   const maxQuantity = selectedVariant
     ? selectedVariant.quantity
     : product.quantity;
-  const isOutOfStock = !product.is_digital && (
-    hasVariants
-      ? selectedVariantId === null || !selectedVariant?.is_available || selectedVariant.quantity <= 0
-      : maxQuantity <= 0
-  );
+  const isOutOfStock =
+    !product.is_digital &&
+    (hasVariants
+      ? selectedVariantId === null ||
+        !selectedVariant?.is_available ||
+        selectedVariant.quantity <= 0
+      : maxQuantity <= 0);
   const isLowStock =
-    !product.is_digital && !isOutOfStock && maxQuantity > 0 && maxQuantity <= 10;
+    !product.is_digital &&
+    !isOutOfStock &&
+    maxQuantity > 0 &&
+    maxQuantity <= 10;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 space-y-10">
@@ -486,7 +482,11 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                   size="lg"
                   className="w-full"
                   onClick={handleAddToCart}
-                  disabled={isAdding || isOutOfStock || (hasVariants && !selectedVariantId)}
+                  disabled={
+                    isAdding ||
+                    isOutOfStock ||
+                    (hasVariants && !selectedVariantId)
+                  }
                 >
                   {isAdding ? (
                     "Ajout..."
@@ -502,7 +502,11 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                   variant="secondary"
                   className="w-full"
                   onClick={handleBuyNow}
-                  disabled={isAdding || isOutOfStock || (hasVariants && !selectedVariantId)}
+                  disabled={
+                    isAdding ||
+                    isOutOfStock ||
+                    (hasVariants && !selectedVariantId)
+                  }
                 >
                   {isAdding ? "Ajout..." : "Commander maintenant"}
                 </Button>
