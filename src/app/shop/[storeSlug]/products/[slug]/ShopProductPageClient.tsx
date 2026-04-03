@@ -143,9 +143,7 @@ export function ShopProductPageClient({
 
   const [quantity, setQuantity] = useState(1);
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
-    null,
-  );
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
 
   // Hydrate from server-preloaded data (no loading flash)
   const product = usePreloadedQuery(preloadedProduct);
@@ -196,13 +194,10 @@ export function ShopProductPageClient({
   }
 
   const hasVariants = variants !== undefined && variants.length > 0;
-  const selectedVariant =
-    variants?.find((v) => v._id === selectedVariantId) ?? null;
+  const selectedVariant = variants?.find((v) => v._id === selectedVariantId) ?? null;
 
   const activePrice =
-    selectedVariant?.price !== undefined
-      ? selectedVariant.price
-      : product.price;
+    selectedVariant?.price !== undefined ? selectedVariant.price : product.price;
   const hasDiscount =
     product.compare_price !== undefined &&
     product.compare_price > product.price;
@@ -210,13 +205,11 @@ export function ShopProductPageClient({
   const discountPercent = hasDiscount
     ? Math.round(((comparePrice - product.price) / comparePrice) * 100)
     : 0;
-  const isOutOfStock =
-    !product.is_digital &&
-    (hasVariants
-      ? selectedVariantId === null ||
-        !selectedVariant?.is_available ||
-        selectedVariant.quantity <= 0
-      : product.quantity !== undefined && product.quantity <= 0);
+  const isOutOfStock = !product.is_digital && (
+    hasVariants
+      ? selectedVariantId === null || !selectedVariant?.is_available || selectedVariant.quantity <= 0
+      : (product.quantity !== undefined && product.quantity <= 0)
+  );
   const currency = store?.currency ?? "XOF";
   const maxQty = product.is_digital
     ? 99
@@ -332,85 +325,90 @@ export function ShopProductPageClient({
             <Separator />
 
             {/* Buy section */}
-            {!isOutOfStock || (hasVariants && !selectedVariantId) ? (
-              <div className="space-y-4">
-                {hasVariants && variants && (
-                  <VariantSelector
-                    variants={variants}
-                    selectedVariantId={selectedVariantId}
-                    onSelect={(id) => {
-                      setSelectedVariantId(id);
-                      setQuantity(1);
-                    }}
-                    onClear={() => {
-                      setSelectedVariantId(null);
-                      setQuantity(1);
-                    }}
-                    currency={currency}
-                  />
-                )}
-                {hasVariants && !selectedVariantId && (
-                  <p className="text-sm text-muted-foreground">
-                    Sélectionnez une variante ou commandez le produit standard
-                  </p>
-                )}
-                {!product.is_digital && (!hasVariants || selectedVariantId) && (
-                  <QuantitySelector
-                    value={quantity}
-                    max={maxQty}
-                    onChange={setQuantity}
-                  />
-                )}
-                <div className="flex flex-col gap-3">
-                  <Button
-                    size="lg"
-                    className="w-full h-12 text-base font-semibold gap-2"
-                    onClick={() => setQuickOrderOpen(true)}
-                    disabled={hasVariants && !selectedVariantId}
-                    style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
-                  >
-                    <ShoppingCart className="size-5" />
-                    Commander
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full h-12"
-                    title="Partager"
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: product.title,
-                          url: window.location.href,
-                        });
-                      } else {
-                        navigator.clipboard.writeText(window.location.href);
-                      }
-                    }}
-                  >
-                    <Share2 className="size-5" />
-                    <span className="sm:hidden ml-2">Partager</span>
-                  </Button>
+            <div className="space-y-4">
+              {/* Variant selector — always visible when variants exist */}
+              {hasVariants && variants && (
+                <VariantSelector
+                  variants={variants}
+                  selectedVariantId={selectedVariantId}
+                  onSelect={(id) => {
+                    setSelectedVariantId(id);
+                    setQuantity(1);
+                  }}
+                  currency={currency}
+                />
+              )}
+
+              {/* State-based content */}
+              {!hasVariants && isOutOfStock ? (
+                <div className="rounded-xl border-2 border-dashed border-muted p-6 text-center space-y-3">
+                  <Package className="size-8 mx-auto text-muted-foreground/40" />
+                  <div>
+                    <p className="font-semibold">Rupture de stock</p>
+                    <p className="text-sm text-muted-foreground">
+                      Ce produit est temporairement indisponible.
+                    </p>
+                  </div>
                 </div>
-                {!product.is_digital && maxQty <= 10 && maxQty > 0 && (
-                  <p className="flex items-center gap-1.5 text-sm text-orange-600 font-medium">
-                    <span className="inline-block size-2 rounded-full bg-orange-500 animate-pulse" />
-                    Plus que {maxQty} unité{maxQty > 1 ? "s" : ""} disponible
-                    {maxQty > 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-xl border-2 border-dashed border-muted p-6 text-center space-y-3">
-                <Package className="size-8 mx-auto text-muted-foreground/40" />
-                <div>
-                  <p className="font-semibold">Rupture de stock</p>
-                  <p className="text-sm text-muted-foreground">
-                    Ce produit est temporairement indisponible.
-                  </p>
+              ) : hasVariants && selectedVariantId && isOutOfStock ? (
+                <div className="flex items-center gap-2 text-sm bg-destructive/10 border border-destructive/20 text-destructive rounded-lg px-3 py-2.5">
+                  <span className="size-1.5 rounded-full bg-destructive shrink-0" />
+                  Cette variante est en rupture — choisissez-en une autre
                 </div>
-              </div>
-            )}
+              ) : hasVariants && !selectedVariantId ? (
+                <div className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-lg px-3 py-2.5">
+                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  Sélectionnez une option ci-dessus pour continuer
+                </div>
+              ) : (
+                <>
+                  {!product.is_digital && (
+                    <QuantitySelector
+                      value={quantity}
+                      max={maxQty}
+                      onChange={setQuantity}
+                    />
+                  )}
+                  <div className="flex flex-col gap-3">
+                    <Button
+                      size="lg"
+                      className="w-full h-12 text-base font-semibold gap-2"
+                      onClick={() => setQuickOrderOpen(true)}
+                      style={{ backgroundColor: "var(--shop-primary, #6366f1)" }}
+                    >
+                      <ShoppingCart className="size-5" />
+                      Commander
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="w-full h-12"
+                      title="Partager"
+                      onClick={() => {
+                        if (navigator.share) {
+                          navigator.share({
+                            title: product.title,
+                            url: window.location.href,
+                          });
+                        } else {
+                          navigator.clipboard.writeText(window.location.href);
+                        }
+                      }}
+                    >
+                      <Share2 className="size-5" />
+                      <span className="sm:hidden ml-2">Partager</span>
+                    </Button>
+                  </div>
+                  {!product.is_digital && maxQty <= 10 && maxQty > 0 && (
+                    <p className="flex items-center gap-1.5 text-sm text-orange-600 font-medium">
+                      <span className="inline-block size-2 rounded-full bg-orange-500 animate-pulse" />
+                      Plus que {maxQty} unité{maxQty > 1 ? "s" : ""} disponible
+                      {maxQty > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Trust badges */}
             <div className="grid grid-cols-3 gap-3 py-1">
