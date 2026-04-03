@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
+import { X } from "lucide-react";
 
 type VariantOption = { name: string; value: string };
 
@@ -19,6 +20,7 @@ interface VariantSelectorProps {
   variants: Variant[];
   selectedVariantId: string | null;
   onSelect: (variantId: string) => void;
+  onClear?: () => void;
   currency?: string;
 }
 
@@ -26,12 +28,15 @@ export function VariantSelector({
   variants,
   selectedVariantId,
   onSelect,
+  onClear,
   currency = "XOF",
 }: VariantSelectorProps) {
   if (variants.length === 0) return null;
 
   const optionNames = Array.from(
-    new Set(variants.flatMap((v) => v.options.map((o) => o.name)).filter(Boolean))
+    new Set(
+      variants.flatMap((v) => v.options.map((o) => o.name)).filter(Boolean),
+    ),
   );
 
   const optionGroups = optionNames.map((name) => ({
@@ -39,13 +44,16 @@ export function VariantSelector({
     values: Array.from(
       new Set(
         variants
-          .flatMap((v) => v.options.filter((o) => o.name === name).map((o) => o.value))
-          .filter(Boolean)
-      )
+          .flatMap((v) =>
+            v.options.filter((o) => o.name === name).map((o) => o.value),
+          )
+          .filter(Boolean),
+      ),
     ),
   }));
 
-  const selectedVariant = variants.find((v) => v._id === selectedVariantId) ?? null;
+  const selectedVariant =
+    variants.find((v) => v._id === selectedVariantId) ?? null;
   const selectedValues: Record<string, string> = {};
   if (selectedVariant) {
     for (const opt of selectedVariant.options) {
@@ -57,8 +65,8 @@ export function VariantSelector({
     const newSelection = { ...selectedValues, [optionName]: optionValue };
     const match = variants.find((v) =>
       Object.entries(newSelection).every(([name, val]) =>
-        v.options.some((o) => o.name === name && o.value === val)
-      )
+        v.options.some((o) => o.name === name && o.value === val),
+      ),
     );
     if (match) onSelect(match._id);
   }
@@ -70,13 +78,27 @@ export function VariantSelector({
         v.is_available &&
         v.quantity > 0 &&
         Object.entries(tentative).every(([name, val]) =>
-          v.options.some((o) => o.name === name && o.value === val)
-        )
+          v.options.some((o) => o.name === name && o.value === val),
+        ),
     );
   }
 
   return (
     <div className="space-y-4">
+      {/* Clear selection button */}
+      {selectedVariantId && onClear && (
+        <div className="flex justify-between items-center">
+          <p className="text-sm font-medium">Variantes disponibles</p>
+          <button
+            type="button"
+            onClick={onClear}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="size-3" />
+            Produit standard
+          </button>
+        </div>
+      )}
       {optionGroups.map((group) => (
         <div key={group.name} className="space-y-2">
           <p className="text-sm font-medium">
@@ -95,7 +117,9 @@ export function VariantSelector({
                 <button
                   key={val}
                   type="button"
-                  onClick={() => available && handleOptionClick(group.name, val)}
+                  onClick={() =>
+                    available && handleOptionClick(group.name, val)
+                  }
                   className={cn(
                     "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
                     isSelected
@@ -123,11 +147,14 @@ export function VariantSelector({
           )}
           {selectedVariant.quantity > 0 && selectedVariant.quantity <= 5 && (
             <span className="text-amber-600 font-medium">
-              {selectedVariant.quantity} restant{selectedVariant.quantity !== 1 ? "s" : ""}
+              {selectedVariant.quantity} restant
+              {selectedVariant.quantity !== 1 ? "s" : ""}
             </span>
           )}
           {!selectedVariant.is_available || selectedVariant.quantity === 0 ? (
-            <span className="text-destructive font-medium">Rupture de stock</span>
+            <span className="text-destructive font-medium">
+              Rupture de stock
+            </span>
           ) : null}
         </div>
       )}

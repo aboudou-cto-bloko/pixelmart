@@ -460,6 +460,10 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                     setSelectedVariantId(id);
                     setQuantity(1);
                   }}
+                  onClear={() => {
+                    setSelectedVariantId(null);
+                    setQuantity(1);
+                  }}
                   currency="XOF"
                 />
               )}

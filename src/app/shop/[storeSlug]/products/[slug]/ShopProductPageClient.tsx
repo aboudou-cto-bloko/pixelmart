@@ -143,7 +143,9 @@ export function ShopProductPageClient({
 
   const [quantity, setQuantity] = useState(1);
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
+    null,
+  );
 
   // Hydrate from server-preloaded data (no loading flash)
   const product = usePreloadedQuery(preloadedProduct);
@@ -194,10 +196,13 @@ export function ShopProductPageClient({
   }
 
   const hasVariants = variants !== undefined && variants.length > 0;
-  const selectedVariant = variants?.find((v) => v._id === selectedVariantId) ?? null;
+  const selectedVariant =
+    variants?.find((v) => v._id === selectedVariantId) ?? null;
 
   const activePrice =
-    selectedVariant?.price !== undefined ? selectedVariant.price : product.price;
+    selectedVariant?.price !== undefined
+      ? selectedVariant.price
+      : product.price;
   const hasDiscount =
     product.compare_price !== undefined &&
     product.compare_price > product.price;
@@ -205,11 +210,13 @@ export function ShopProductPageClient({
   const discountPercent = hasDiscount
     ? Math.round(((comparePrice - product.price) / comparePrice) * 100)
     : 0;
-  const isOutOfStock = !product.is_digital && (
-    hasVariants
-      ? selectedVariantId === null || !selectedVariant?.is_available || selectedVariant.quantity <= 0
-      : (product.quantity !== undefined && product.quantity <= 0)
-  );
+  const isOutOfStock =
+    !product.is_digital &&
+    (hasVariants
+      ? selectedVariantId === null ||
+        !selectedVariant?.is_available ||
+        selectedVariant.quantity <= 0
+      : product.quantity !== undefined && product.quantity <= 0);
   const currency = store?.currency ?? "XOF";
   const maxQty = product.is_digital
     ? 99
@@ -335,12 +342,16 @@ export function ShopProductPageClient({
                       setSelectedVariantId(id);
                       setQuantity(1);
                     }}
+                    onClear={() => {
+                      setSelectedVariantId(null);
+                      setQuantity(1);
+                    }}
                     currency={currency}
                   />
                 )}
                 {hasVariants && !selectedVariantId && (
                   <p className="text-sm text-muted-foreground">
-                    Sélectionnez une variante pour continuer
+                    Sélectionnez une variante ou commandez le produit standard
                   </p>
                 )}
                 {!product.is_digital && (!hasVariants || selectedVariantId) && (
