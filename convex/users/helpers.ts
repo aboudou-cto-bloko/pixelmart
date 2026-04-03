@@ -23,7 +23,14 @@ type Ctx = QueryCtx | MutationCtx;
  * Retourne null si pas de session ou pas d'utilisateur app.
  */
 export async function getAppUser(ctx: Ctx) {
-  const betterAuthUser = await authComponent.getAuthUser(ctx);
+  let betterAuthUser;
+  try {
+    betterAuthUser = await authComponent.getAuthUser(ctx);
+  } catch {
+    // No authentication token or invalid session - return null for guest users
+    return null;
+  }
+
   if (!betterAuthUser) return null;
 
   const appUser = await ctx.db
