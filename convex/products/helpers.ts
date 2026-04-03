@@ -103,10 +103,7 @@ export function sanitizeHTML(html: string): string {
   if (!html) return "";
 
   // Remove script/style tags and their content
-  let sanitized = html.replace(
-    /<(script|style)[^>]*>[\s\S]*?<\/\1>/gi,
-    "",
-  );
+  let sanitized = html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, "");
 
   // Remove dangerous event handlers
   sanitized = sanitized.replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*')/gi, "");
@@ -115,12 +112,25 @@ export function sanitizeHTML(html: string): string {
   sanitized = sanitized.replace(/(?:javascript|data|vbscript):/gi, "");
 
   const allowedTags = new Set([
-    "p", "br",
-    "strong", "b", "em", "i", "u", "s",
-    "ul", "ol", "li",
-    "h2", "h3", "h4", "h5", "h6",
+    "p",
+    "br",
+    "strong",
+    "b",
+    "em",
+    "i",
+    "u",
+    "s",
+    "ul",
+    "ol",
+    "li",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
     "blockquote",
     "a",
+    "img",
     "span",
     "mark",
   ]);
@@ -129,49 +139,59 @@ export function sanitizeHTML(html: string): string {
   const safeStyleProps = /^(color|text-align)\s*:/i;
 
   function sanitizeStyleAttr(style: string): string {
-    return style
-      .split(";")
-      .map((s) => s.trim())
-      .filter((s) => s && safeStyleProps.test(s))
-      // Disallow color values that could embed urls or expressions
-      .filter((s) => !/url\s*\(|expression\s*\(/i.test(s))
-      .join("; ");
+    return (
+      style
+        .split(";")
+        .map((s) => s.trim())
+        .filter((s) => s && safeStyleProps.test(s))
+        // Disallow color values that could embed urls or expressions
+        .filter((s) => !/url\s*\(|expression\s*\(/i.test(s))
+        .join("; ")
+    );
   }
 
-  const tagRegex =
-    /<(\/?)([a-zA-Z][a-zA-Z0-9]*)(\s[^>]*)?\s*\/?>/g;
+  const tagRegex = /<(\/?)([a-zA-Z][a-zA-Z0-9]*)(\s[^>]*)?\s*\/?>/g;
 
-  sanitized = sanitized.replace(
-    tagRegex,
-    (match, closing, tagName, attrs) => {
-      const tag = tagName.toLowerCase();
-      if (!allowedTags.has(tag)) return "";
-      if (closing) return `</${tag}>`;
+  sanitized = sanitized.replace(tagRegex, (match, closing, tagName, attrs) => {
+    const tag = tagName.toLowerCase();
+    if (!allowedTags.has(tag)) return "";
+    if (closing) return `</${tag}>`;
 
-      let safeAttrs = "";
+    let safeAttrs = "";
 
-      if (attrs) {
-        // href on <a> — allow http/https only
-        if (tag === "a") {
-          const hrefMatch = attrs.match(/href\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
-          const href = hrefMatch?.[1] ?? hrefMatch?.[2] ?? "";
-          if (/^https?:\/\//i.test(href)) {
-            safeAttrs += ` href="${href}" target="_blank" rel="noopener noreferrer"`;
-          }
-        }
-
-        // style attribute — allowed on all tags, restricted to safe props
-        const styleMatch = attrs.match(/style\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
-        const rawStyle = styleMatch?.[1] ?? styleMatch?.[2] ?? "";
-        if (rawStyle) {
-          const cleaned = sanitizeStyleAttr(rawStyle);
-          if (cleaned) safeAttrs += ` style="${cleaned}"`;
+    if (attrs) {
+      // href on <a> — allow http/https only
+      if (tag === "a") {
+        const hrefMatch = attrs.match(/href\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+        const href = hrefMatch?.[1] ?? hrefMatch?.[2] ?? "";
+        if (/^https?:\/\//i.test(href)) {
+          safeAttrs += ` href="${href}" target="_blank" rel="noopener noreferrer"`;
         }
       }
 
-      return `<${tag}${safeAttrs}>`;
-    },
-  );
+      // src/alt on <img> — allow http/https URLs only (no data: or javascript:)
+      if (tag === "img") {
+        const srcMatch = attrs.match(/src\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+        const src = srcMatch?.[1] ?? srcMatch?.[2] ?? "";
+        if (/^https?:\/\//i.test(src)) {
+          safeAttrs += ` src="${src}"`;
+        }
+        const altMatch = attrs.match(/alt\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+        const alt = altMatch?.[1] ?? altMatch?.[2] ?? "";
+        safeAttrs += ` alt="${alt}"`;
+      }
+
+      // style attribute — allowed on all tags, restricted to safe props
+      const styleMatch = attrs.match(/style\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+      const rawStyle = styleMatch?.[1] ?? styleMatch?.[2] ?? "";
+      if (rawStyle) {
+        const cleaned = sanitizeStyleAttr(rawStyle);
+        if (cleaned) safeAttrs += ` style="${cleaned}"`;
+      }
+    }
+
+    return `<${tag}${safeAttrs}>`;
+  });
 
   return sanitized.trim();
 }

@@ -4,7 +4,7 @@ import { z } from "zod";
 import DOMPurify from "dompurify";
 import type { Id } from "../../../convex/_generated/dataModel";
 
-// HTML sanitization configuration
+// HTML sanitization configuration — must match TipTap output
 const ALLOWED_TAGS = [
   "p",
   "br",
@@ -13,16 +13,23 @@ const ALLOWED_TAGS = [
   "em",
   "i",
   "u",
+  "s",
   "ul",
   "ol",
   "li",
+  "h2",
   "h3",
   "h4",
   "h5",
   "h6",
+  "blockquote",
+  "a",
+  "img",
+  "span",
+  "mark",
 ];
 
-const ALLOWED_ATTR = ["style"];
+const ALLOWED_ATTR = ["style", "href", "target", "rel", "src", "alt", "class"];
 
 /**
  * Sanitizes HTML content to prevent XSS attacks
