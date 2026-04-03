@@ -118,7 +118,8 @@ pixelmart/
 | `orders` | queries, mutations | Cycle de vie des commandes, stock |
 | `payments` | webhooks, mutations, helpers, actions | Moneroo, confirmations, refunds |
 | `payouts` | queries, mutations, actions | Retraits vendeurs vers Mobile Money |
-| `products` | queries, mutations | Catalogue produits, variantes, specs |
+| `products` | queries, mutations | Catalogue produits, specs |
+| `variants` | mutations | Variantes produits — transfert de stock produit ↔ variante |
 | `stores` | queries, mutations | Boutiques, thèmes, settings, progression onboarding |
 | `storage` | queries, mutations | Module entrepôt Pixel-Mart |
 | `notifications` | send, mutations, queries, helpers | Dispatch dual-channel in-app + email |
@@ -152,7 +153,7 @@ pixelmart/
 | `marketing` | `/admin/categories`, `/admin/ads` | `requireAdmin` | Contenu, publicités |
 
 **Double couche de protection** :
-1. **Edge** : `src/middleware.ts` vérifie la présence du cookie `better-auth.session_token`
+1. **Edge** : `src/middleware.ts` vérifie la présence du cookie `pm.session_token`
 2. **Client** : `AuthGuard` composant vérifie `user.role ∈ allowedRoles[]`
 3. **Backend** : chaque mutation/query appelle le helper guard approprié (throw si non autorisé)
 
@@ -185,6 +186,10 @@ Devises sans sous-unité (pas de division par 100) : `XOF`, `XAF`, `GNF`, `CDF`.
 | **F-04** | Commission = `total_amount × commission_rate / 10_000` | `orders/mutations.createOrder`, `payments/mutations.confirmPayment` |
 | **F-05** | `storage_debt` déduit en priorité avant calcul des frais de retrait | `payouts/mutations.requestPayout` |
 | **F-06** | Retrait bloqué si facture stockage impayée > 30 jours | `payouts/mutations.requestPayout`, `crons.notifyOverdueStorageDebts` |
+| **F-07** | Commandes COD créées avec `payment_status = "paid"` — pas de webhook Moneroo. Transactions (sale + fee) et notifications générées inline dans `createOrder` | `orders/mutations.createOrder` |
+| **F-08** | Remboursement : `cancelOrder` sur une commande `payment_status = "paid"` → `requestRefund` via Moneroo. COD sans `payment_reference` → remboursement marqué directement | `payments/mutations` |
+| **F-09** | Protection contre le sur-crédit : `releasableAmount = Math.min(netAmount, store.pending_balance)`. Si ≤ 0, la commande est ignorée | `crons.releaseBalances` |
+| **F-10** | Expiration commandes : si `payment_reference` présent → `verifyPayment` (check Moneroo) avant annulation. Sans référence → annulation directe | `crons.expirePendingOrders` |
 
 ---
 
@@ -292,6 +297,21 @@ Le champ `use_pixelmart_service` + `has_storage_plan` sur `stores` forme un **tr
 | `full` | `true` | `true` | Livraison + entrepôt Pixel-Mart |
 | `delivery_only` | `true` | `false` | Livraison Pixel-Mart, stockage chez le vendeur (pickup custom requis) |
 | `none` | `false` | `false` | Tout géré par le vendeur (livraison + stock) |
+
+---
+
+## En-têtes de sécurité (next.config.ts)
+
+Configurés via `headers()` pour toutes les routes :
+
+| En-tête | Valeur | Protection |
+|---------|--------|-----------|
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' 'unsafe-inline' https://connect.facebook.net; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests` | XSS, clickjacking, injection |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | HTTPS forcé (HSTS) |
+| `X-Frame-Options` | `DENY` | Clickjacking (rétrocompatibilité) |
+| `X-Content-Type-Options` | `nosniff` | MIME sniffing |
+| `X-XSS-Protection` | `0` | Désactivé — CSP gère la protection XSS |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` | Restriction fonctionnalités navigateur |
 
 ---
 
