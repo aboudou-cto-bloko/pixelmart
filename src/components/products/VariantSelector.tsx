@@ -95,7 +95,7 @@ export function VariantSelector({
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="size-3" />
-            Produit standard
+            Déselectionner
           </button>
         </div>
       )}
