@@ -1,6 +1,12 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import {
+  useEditor,
+  EditorContent,
+  NodeViewWrapper,
+  ReactNodeViewRenderer,
+} from "@tiptap/react";
+import type { NodeViewProps } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -27,6 +33,7 @@ import {
   Link2Off,
   ImagePlus,
   Loader2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -68,6 +75,31 @@ function ToolbarButton({
 
 function ToolbarSeparator() {
   return <div className="w-px h-5 bg-border mx-1 shrink-0" />;
+}
+
+function ImageNodeView({ node, deleteNode }: NodeViewProps) {
+  return (
+    <NodeViewWrapper>
+      <div className="relative inline-block group max-w-full my-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={node.attrs.src as string}
+          alt={(node.attrs.alt as string) || ""}
+          className="rounded-lg max-w-full h-auto block"
+          style={{ maxHeight: "400px", objectFit: "contain" }}
+        />
+        <button
+          type="button"
+          contentEditable={false}
+          onClick={() => deleteNode()}
+          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-black/60 hover:bg-destructive text-white rounded-full p-1 transition-all"
+          title="Supprimer l'image"
+        >
+          <X className="size-3" />
+        </button>
+      </div>
+    </NodeViewWrapper>
+  );
 }
 
 export function RichTextEditor({
@@ -114,7 +146,11 @@ export function RichTextEditor({
       }),
       TextStyle,
       Color,
-      Image.configure({
+      Image.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(ImageNodeView);
+        },
+      }).configure({
         inline: false,
         allowBase64: false,
       }),

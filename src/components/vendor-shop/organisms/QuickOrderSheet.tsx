@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   AddressForm,
   validateAddress,
@@ -122,6 +123,8 @@ export function QuickOrderSheet({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestEmailError, setGuestEmailError] = useState<string | null>(null);
 
   // Two-segment distances for pickup-collection scenario
   const isPickupScenario =
@@ -161,12 +164,17 @@ export function QuickOrderSheet({
     async (e: React.FormEvent) => {
       e.preventDefault();
 
-      // Non connecté → rediriger vers login pour tous les modes de paiement
+      // Validation email invité si non connecté
       if (!isAuthenticated) {
-        router.push(
-          `${ROUTES.LOGIN}?callbackUrl=${encodeURIComponent(window.location.pathname)}`,
-        );
-        return;
+        if (!guestEmail.trim()) {
+          setGuestEmailError("Votre email est requis pour commander");
+          return;
+        }
+        if (!guestEmail.includes("@")) {
+          setGuestEmailError("Email invalide");
+          return;
+        }
+        setGuestEmailError(null);
       }
 
       const errors = validateAddress(address);
@@ -183,7 +191,13 @@ export function QuickOrderSheet({
       try {
         const { orderId } = await createOrder({
           storeId: store._id,
-          items: [{ productId: product._id, quantity, variantId: variantId as Id<"product_variants"> | undefined }],
+          items: [
+            {
+              productId: product._id,
+              quantity,
+              variantId: variantId as Id<"product_variants"> | undefined,
+            },
+          ],
           shippingAddress: address,
           notes: notes.trim() || undefined,
           deliveryFee: deliveryConfig.deliveryFee,
@@ -195,6 +209,13 @@ export function QuickOrderSheet({
           deliveryType: deliveryConfig.deliveryType,
           paymentMode: deliveryConfig.paymentMode,
           source: "vendor_shop",
+          // Guest checkout
+          guestEmail: !isAuthenticated
+            ? guestEmail.trim().toLowerCase()
+            : undefined,
+          guestName: !isAuthenticated
+            ? address.full_name || undefined
+            : undefined,
         });
 
         trackEvent(
@@ -241,6 +262,7 @@ export function QuickOrderSheet({
       storeSlug,
       user,
       isAuthenticated,
+      guestEmail,
       router,
       createOrder,
       initializePayment,
@@ -299,7 +321,9 @@ export function QuickOrderSheet({
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{product.title}</p>
                 {variantTitle && (
-                  <p className="text-xs text-muted-foreground">{variantTitle}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {variantTitle}
+                  </p>
                 )}
                 <p className="text-xs text-muted-foreground">
                   Qté : {quantity}
@@ -331,6 +355,33 @@ export function QuickOrderSheet({
                 errors={addressErrors}
               />
             </div>
+
+            {/* Email invité — visible uniquement si non connecté */}
+            {!authLoading && !isAuthenticated && (
+              <div className="space-y-2">
+                <Label htmlFor="guest-email" className="text-sm font-semibold">
+                  Votre email
+                </Label>
+                <Input
+                  id="guest-email"
+                  type="email"
+                  placeholder="vous@exemple.com"
+                  value={guestEmail}
+                  onChange={(e) => {
+                    setGuestEmail(e.target.value);
+                    if (guestEmailError) setGuestEmailError(null);
+                  }}
+                  className={guestEmailError ? "border-destructive" : ""}
+                />
+                {guestEmailError ? (
+                  <p className="text-xs text-destructive">{guestEmailError}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Pour recevoir la confirmation et suivre votre commande.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Notes */}
             <div className="space-y-2">
@@ -371,14 +422,6 @@ export function QuickOrderSheet({
                 </span>
               </div>
             </div>
-
-            {/* Auth notice */}
-            {!authLoading && !isAuthenticated && (
-              <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3">
-                Un compte est requis pour passer une commande.{" "}
-                <strong>Vous serez redirigé vers la connexion.</strong>
-              </div>
-            )}
 
             {/* Error */}
             {error && (

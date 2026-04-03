@@ -13,6 +13,7 @@ import NewOrder from "../../emails/NewOrder";
 import OrderShipped from "../../emails/OrderShipped";
 import OrderDelivered from "../../emails/OrderDelivered";
 import OrderCancelled from "../../emails/OrderCancelled";
+import { GuestAccountSetup } from "../../emails/GuestAccountSetup";
 
 const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
@@ -263,6 +264,35 @@ export const sendOrderCancelled = internalAction({
       from: EMAIL_FROM,
       to: args.customerEmail,
       subject: `Commande ${args.orderNumber} annulée — Pixel-Mart`,
+      html,
+    });
+  },
+});
+
+// ─── Guest Account Setup ────────────────────────────────────
+
+export const sendGuestAccountSetup = internalAction({
+  args: {
+    customerEmail: v.string(),
+    customerName: v.string(),
+    orderNumber: v.string(),
+    setupUrl: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const resend = getResend();
+
+    const html = await render(
+      GuestAccountSetup({
+        customerName: args.customerName,
+        orderNumber: args.orderNumber,
+        setupUrl: args.setupUrl,
+      }),
+    );
+
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: args.customerEmail,
+      subject: `Commande ${args.orderNumber} confirmée — Créez votre compte Pixel-Mart`,
       html,
     });
   },

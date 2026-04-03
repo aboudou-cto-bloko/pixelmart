@@ -30,18 +30,38 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
   triggers: {
     user: {
       onCreate: async (ctx, betterAuthUser) => {
-        await ctx.db.insert("users", {
-          better_auth_user_id: betterAuthUser._id,
-          email: betterAuthUser.email,
-          name: betterAuthUser.name,
-          avatar_url: betterAuthUser.image ?? undefined,
-          role: "customer",
-          is_2fa_enabled: false,
-          is_verified: false,
-          is_banned: false,
-          locale: "fr",
-          updated_at: Date.now(),
-        });
+        // Si un compte provisoire (invité) existe avec cet email, on le lie plutôt que d'en créer un nouveau
+        const existingProvisional = await ctx.db
+          .query("users")
+          .withIndex("by_email", (q) => q.eq("email", betterAuthUser.email))
+          .unique();
+
+        if (existingProvisional && !existingProvisional.better_auth_user_id) {
+          // Lier le compte provisoire au nouveau compte Better Auth
+          await ctx.db.patch(existingProvisional._id, {
+            better_auth_user_id: betterAuthUser._id,
+            name: betterAuthUser.name || existingProvisional.name,
+            avatar_url: betterAuthUser.image ?? undefined,
+            is_verified: true,
+            guest_setup_token: undefined,
+            guest_setup_expires_at: undefined,
+            updated_at: Date.now(),
+          });
+        } else if (!existingProvisional) {
+          // Inscription normale
+          await ctx.db.insert("users", {
+            better_auth_user_id: betterAuthUser._id,
+            email: betterAuthUser.email,
+            name: betterAuthUser.name,
+            avatar_url: betterAuthUser.image ?? undefined,
+            role: "customer",
+            is_2fa_enabled: false,
+            is_verified: false,
+            is_banned: false,
+            locale: "fr",
+            updated_at: Date.now(),
+          });
+        }
       },
 
       onUpdate: async (ctx, newDoc, _oldDoc) => {

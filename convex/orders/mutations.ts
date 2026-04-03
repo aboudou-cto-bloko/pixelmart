@@ -6,7 +6,7 @@ import { v, ConvexError } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
-import { requireAppUser, getVendorStore } from "../users/helpers";
+import { requireAppUser, getAppUser, getVendorStore } from "../users/helpers";
 import { logOrderEvent } from "./events";
 import { DEFAULT_CURRENCY } from "../lib/constants";
 import {
@@ -86,9 +86,52 @@ export const createOrder = mutation({
     source: v.optional(
       v.union(v.literal("marketplace"), v.literal("vendor_shop")),
     ),
+    // ── GUEST CHECKOUT ──
+    guestEmail: v.optional(v.string()),
+    guestName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireAppUser(ctx);
+    let user = await getAppUser(ctx);
+
+    if (!user) {
+      // Guest checkout — email requis
+      if (!args.guestEmail) {
+        throw new ConvexError(
+          "Authentification requise ou email invité manquant",
+        );
+      }
+      const email = args.guestEmail.trim().toLowerCase();
+      if (!email.includes("@")) throw new ConvexError("Email invalide");
+
+      // Chercher un utilisateur existant par email
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .unique();
+
+      if (!user) {
+        // Créer un compte provisoire
+        const token = crypto.randomUUID();
+        const name = args.guestName?.trim() || email.split("@")[0];
+        const userId = await ctx.db.insert("users", {
+          email,
+          name,
+          role: "customer",
+          is_2fa_enabled: false,
+          is_verified: false,
+          is_banned: false,
+          locale: "fr",
+          guest_setup_token: token,
+          guest_setup_expires_at: Date.now() + 7 * 24 * 60 * 60 * 1000,
+          updated_at: Date.now(),
+        });
+        user = await ctx.db.get(userId);
+      }
+
+      if (!user) throw new ConvexError("Impossible de créer le compte invité");
+    }
+
+    if (user.is_banned) throw new ConvexError("Compte suspendu");
 
     // 1. Rate limiting — token bucket 5 commandes/minute via @convex-dev/ratelimiter
     const { ok, retryAfter } = await rateLimiter.limit(ctx, "createOrder", {
@@ -256,8 +299,14 @@ export const createOrder = mutation({
     // 8. Commission — calculée sur le sous-total produits uniquement (hors livraison)
     // Règle métier : les frais de livraison ne font pas partie du CA du vendeur
     const commissionRates = await getEffectiveCommissionRates(ctx);
-    const commissionRate = getCommissionRate(store.subscription_tier, commissionRates);
-    const commissionAmount = calculateCommission(subtotal - discountAmount, commissionRate);
+    const commissionRate = getCommissionRate(
+      store.subscription_tier,
+      commissionRates,
+    );
+    const commissionAmount = calculateCommission(
+      subtotal - discountAmount,
+      commissionRate,
+    );
 
     // 9. Générer le numéro de commande
     const orderNumber = await generateOrderNumber(ctx);
@@ -456,6 +505,22 @@ export const createOrder = mutation({
           },
         );
       }
+    }
+
+    // Si c'est un nouvel invité (compte provisoire), envoyer l'email de setup
+    if (user.guest_setup_token && args.guestEmail) {
+      const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
+      const setupUrl = `${siteUrl}/register?token=${user.guest_setup_token}&email=${encodeURIComponent(user.email)}`;
+      await ctx.scheduler.runAfter(
+        0,
+        internal.emails.send.sendGuestAccountSetup,
+        {
+          customerEmail: user.email,
+          customerName: user.name,
+          orderNumber,
+          setupUrl,
+        },
+      );
     }
 
     return {
@@ -804,14 +869,10 @@ export const cancelOrder = mutation({
 
     // Si déjà payé, déclencher le remboursement via Moneroo
     if (order.payment_status === "paid") {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.payments.moneroo.requestRefund,
-        {
-          orderId: order._id,
-          reason: args.reason ?? "Commande annulée",
-        },
-      );
+      await ctx.scheduler.runAfter(0, internal.payments.moneroo.requestRefund, {
+        orderId: order._id,
+        reason: args.reason ?? "Commande annulée",
+      });
     }
 
     return { success: true };
