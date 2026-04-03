@@ -56,6 +56,7 @@ export const sendOrderConfirmation = internalAction({
     items: v.array(
       v.object({
         title: v.string(),
+        variant_title: v.optional(v.string()),
         quantity: v.number(),
         unit_price: v.number(),
         total_price: v.number(),
@@ -80,6 +81,7 @@ export const sendOrderConfirmation = internalAction({
         storeName: args.storeName,
         items: args.items.map((i) => ({
           title: i.title,
+          variant_title: i.variant_title,
           quantity: i.quantity,
           unit_price: formatAmount(i.unit_price, args.currency),
           total_price: formatAmount(i.total_price, args.currency),
@@ -120,6 +122,7 @@ export const sendNewOrderNotification = internalAction({
     items: v.array(
       v.object({
         title: v.string(),
+        variant_title: v.optional(v.string()),
         quantity: v.number(),
         total_price: v.number(),
         sku: v.optional(v.string()),
@@ -142,6 +145,7 @@ export const sendNewOrderNotification = internalAction({
         customerName: args.customerName,
         items: args.items.map((i) => ({
           title: i.title,
+          variant_title: i.variant_title,
           quantity: i.quantity,
           total_price: formatAmount(i.total_price, args.currency),
           sku: i.sku,

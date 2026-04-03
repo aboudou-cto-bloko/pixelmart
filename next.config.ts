@@ -15,17 +15,43 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Headers HTTP — sécurité + cache assets statiques
+  // Headers HTTP — sécurité OWASP + cache assets statiques
   async headers() {
+    // Content-Security-Policy
+    // 'unsafe-inline' requis pour Next.js App Router (hydration scripts + JSON-LD inline)
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.convex.cloud https://picsum.photos https://www.facebook.com",
+      "font-src 'self'",
+      "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://nominatim.openstreetmap.org https://api.moneroo.io https://www.facebook.com https://connect.facebook.net",
+      "frame-src 'none'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "upgrade-insecure-requests",
+    ].join("; ");
+
     const securityHeaders = [
       { key: "X-Content-Type-Options", value: "nosniff" },
-      { key: "X-Frame-Options", value: "SAMEORIGIN" },
-      { key: "X-XSS-Protection", value: "1; mode=block" },
+      // frame-ancestors 'none' dans le CSP couvre les browsers modernes
+      // X-Frame-Options reste pour les anciens browsers
+      { key: "X-Frame-Options", value: "DENY" },
+      // X-XSS-Protection est déprécié — la protection est assurée par le CSP
+      { key: "X-XSS-Protection", value: "0" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       {
         key: "Permissions-Policy",
-        value: "camera=(), microphone=(), geolocation=(self)",
+        value: "camera=(), microphone=(), geolocation=(self), payment=()",
       },
+      // HSTS — force HTTPS pour 2 ans (inclut sous-domaines + preload list)
+      {
+        key: "Strict-Transport-Security",
+        value: "max-age=63072000; includeSubDomains; preload",
+      },
+      { key: "Content-Security-Policy", value: csp },
     ];
 
     return [

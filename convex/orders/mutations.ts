@@ -451,6 +451,7 @@ export const createOrder = mutation({
             storeName: store.name,
             items: validatedItems.map((i) => ({
               title: i.title,
+              variant_title: i.variant_title,
               quantity: i.quantity,
               unit_price: i.unit_price,
               total_price: i.total_price,
@@ -480,6 +481,7 @@ export const createOrder = mutation({
             customerName: user.name ?? "Client",
             items: validatedItems.map((i) => ({
               title: i.title,
+              variant_title: i.variant_title,
               quantity: i.quantity,
               total_price: i.total_price,
               sku: i.sku,

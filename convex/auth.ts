@@ -237,24 +237,32 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       resetFailedAttemptsAfter: 24 * 60 * 60 * 1000, // Reset counter after 24 hours
     },
 
-    // ---- Advanced Security ----
-    advanced: {
-      crossSubDomainCookies: {
-        enabled: false, // Prevent cross-subdomain attacks
-      },
-      generateId: () => {
-        // Use crypto-secure ID generation
-        return crypto.randomUUID();
+    // ---- Session Security ----
+    session: {
+      expiresIn: 60 * 60 * 24 * 2, // 2 jours (réduit de 7 — meilleure sécurité)
+      updateAge: 60 * 60 * 4, // Rafraîchir la session toutes les 4h
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60, // Cache côté serveur : 5 minutes
       },
     },
 
-    // ---- Session Security ----
-    session: {
-      expiresIn: 60 * 60 * 24 * 7, // 7 days instead of default 30
-      updateAge: 60 * 60 * 24, // Update session every 24 hours
-      cookieCache: {
-        enabled: true,
-        maxAge: 5 * 60 * 1000, // 5 minutes cache
+    // ---- Advanced Security ----
+    advanced: {
+      crossSubDomainCookies: {
+        enabled: false, // Pas de partage cross-subdomain
+      },
+      generateId: () => crypto.randomUUID(), // ID cryptographiquement sécurisé
+      cookiePrefix: "pm",
+      cookies: {
+        session_token: {
+          attributes: {
+            httpOnly: true, // Inaccessible via JS (anti-XSS)
+            secure: true, // HTTPS uniquement
+            sameSite: "strict" as const, // Anti-CSRF strict
+            path: "/",
+          },
+        },
       },
     },
 
