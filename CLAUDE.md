@@ -1,5 +1,34 @@
 # PIXEL-MART — Claude Code Context
 
+## Pour Claude — Comment travailler sur ce projet
+
+Avant de toucher au code, consulte la documentation dans `/docs/` :
+
+| Besoin | Fichier |
+|--------|---------|
+| Comprendre l'architecture globale | `docs/ARCHITECTURE.md` |
+| Tracer un flux bout en bout (commande, paiement, stockage…) | `docs/FLOWS.md` |
+| Trouver une fonction Convex (query/mutation/action) | `docs/API_REFERENCE.md` |
+| Règles de code, naming, patterns Convex | `docs/CODE_STYLE_GUIDE.md` + `docs/CONVEX_PATTERNS.md` |
+| Règles de commit, branches, PR | `docs/CONTRIBUTING.md` |
+| Schéma DB complet | `docs/DATA_MODEL.md` |
+| Dashboard admin | `docs/ADMIN_DASHBOARD_GUIDE.md` |
+
+### Skills à utiliser
+
+- **`/commit`** — pour créer un commit (applique automatiquement le format conventionnel)
+- **Plan agent** (`subagent_type: "Plan"`) — avant d'implémenter une fonctionnalité non triviale, utilise l'agent Plan pour concevoir l'approche
+- **Explore agent** (`subagent_type: "Explore"`) — pour explorer le codebase avant de modifier un module inconnu
+
+### Règles de workflow
+
+1. Lire les fichiers avant de les modifier
+2. Créer une branche `feat/` ou `fix/` (jamais pousser sur `main`)
+3. Commit avec le format `type(scope): description` — voir `docs/CONTRIBUTING.md` §4
+4. Ouvrir une PR → squash merge → supprimer la branche
+
+---
+
 ## Project Overview
 
 **Pixel-Mart** is a multi-vendor e-commerce marketplace targeting West African markets (primarily Benin/Cotonou).
