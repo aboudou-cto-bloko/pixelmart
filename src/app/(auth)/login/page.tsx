@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,8 @@ import { z } from "zod";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || "/dashboard";
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -73,14 +75,14 @@ export default function LoginPage() {
       const { error: signInError } = await authClient.signIn.email({
         email: validatedData.email,
         password: validatedData.password,
-        callbackURL: "/dashboard",
+        callbackURL: redirectUrl,
       });
 
       setIsLoading(false);
       if (signInError) {
         setError(getSafeErrorMessage(signInError));
       } else {
-        router.push("/dashboard");
+        router.push(redirectUrl);
       }
     } catch (err) {
       setIsLoading(false);
