@@ -11,7 +11,7 @@ Ce document décrit chaque flux bout en bout avec les acteurs, les mutations/act
 ```
 [Client] /register
     │
-    ├── Formulaire : email, password (min 12 chars, maj + chiffre + spécial)
+    ├── Formulaire : email, password (min 8 chars)
     │
     ▼
 authClient.signUp.email()          ← Better Auth client SDK
@@ -48,8 +48,8 @@ Better Auth marque is_verified: true
 Better Auth
     ├── Vérifie credentials
     ├── Rate limiting : 5 tentatives / 15min, lockout 30min après 5 échecs
-    ├── Crée session (7 jours, refresh auto toutes les 24h)
-    └── Set cookie HTTP-only better-auth.session_token
+    ├── Crée session (2 jours, refresh auto toutes les 4h)
+    └── Set cookie HTTP-only pm.session_token (httpOnly, secure, sameSite=strict)
 
 [Middleware Next.js — edge]
     ├── Chaque requête → vérifie présence du cookie
@@ -93,7 +93,8 @@ orders.mutations.createOrder({
     storeId, items, shippingAddress,
     deliveryLat, deliveryLon, deliveryDistanceKm,
     deliveryType, paymentMode, deliveryFee,
-    couponCode?, notes?
+    couponCode?, notes?,
+    guestEmail?, guestName?      ← checkout invité (sans compte)
 })
     │
     ├── Rate limit : 5 créations/min par user
@@ -115,7 +116,54 @@ orders.mutations.createOrder({
     ├── decrementInventory(items) → patch product.quantity - qty
     │   (et product_variants.quantity si variante)
     │
+    ├── Si COD + guestEmail + email inconnu → compte provisoire :
+    │   ├── Insert users {better_auth_user_id: null, guest_setup_token: uuid(), guest_setup_expires_at: now+7j}
+    │   └── scheduler → emails.send.sendGuestAccountSetup {email, setupUrl}
+    │
     └── logOrderEvent("created", actor_type: "customer")
+```
+
+### 2.1b Checkout invité (sans compte — QuickOrderSheet / shop vendeur)
+
+```
+[Visiteur non authentifié] QuickOrderSheet ou shop checkout
+    │
+    ├── Saisit son email (et éventuellement son nom)
+    │
+    ▼
+orders.mutations.createOrder({
+    storeId, items, shippingAddress,
+    guestEmail, guestName?,
+    paymentMode: "cod", ...
+})
+    │
+    ├── getAppUser(ctx) → null (pas de session)
+    ├── Cherche utilisateur par email dans users :
+    │   ├── Trouvé + better_auth_user_id valide → commande liée à ce compte
+    │   ├── Trouvé + better_auth_user_id null (provisoire) → réutilise le compte
+    │   └── Non trouvé → crée compte provisoire :
+    │           Insert users {
+    │               better_auth_user_id: null,
+    │               email: guestEmail, name: guestName,
+    │               role: "customer", is_verified: false,
+    │               guest_setup_token: uuid(),
+    │               guest_setup_expires_at: now + 7j
+    │           }
+    │
+    ├── Commande créée normalement (COD only pour invités)
+    │
+    └── Si compte provisoire (guest_setup_token présent) :
+        scheduler → emails.send.sendGuestAccountSetup({
+            email: guestEmail,
+            customerName, orderNumber,
+            setupUrl: "/register?token=<guest_setup_token>"
+        })
+            └── Email : lien d'activation valable 7 jours
+
+[Invité clique le lien d'activation]
+    └── /register?token=xxx → inscription normale Better Auth
+        └── onCreate trigger → lie better_auth_user_id au compte provisoire
+                └── Historique de commandes préservé
 ```
 
 ### 2.2 Paiement en ligne (Moneroo)
@@ -630,7 +678,9 @@ Better Auth (interne)
     │
     ├── onCreate (nouvel utilisateur)
     │   └── auth.ts onCreateUser callback
-    │       └── ctx.runMutation(internal.users.mutations.createUser, {
+    │       ├── Cherche compte provisoire par email (better_auth_user_id === null)
+    │       │   └── Si trouvé → patch {better_auth_user_id, is_verified: true} (liaison)
+    │       └── Si non trouvé → ctx.runMutation(internal.users.mutations.createUser, {
     │               better_auth_user_id,
     │               email, name, role: "customer"
     │           })

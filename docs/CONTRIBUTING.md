@@ -131,7 +131,7 @@ type(scope): description courte
 auth · users · stores · products · orders · payments · transactions
 payouts · reviews · coupons · messages · notifications · categories
 dashboard · storefront · checkout · analytics · admin · ai · ads
-themes · deps · ci
+themes · deps · ci · storage · agent · emails · variants
 ```
 
 ### Règles
@@ -258,7 +258,7 @@ Toutes les cases de la checklist doivent être cochées avant de demander une re
 | Phase | Statut | Contenu |
 |-------|--------|---------|
 | **Phase 0** | ✅ Complète | Catalogue, commandes, paiements, dashboard vendeur |
-| **Phase 1** | 🔄 En cours | Analytics, ads, thèmes, reviews, notifications |
+| **Phase 1** | 🔄 En cours | Analytics, ads, thèmes, reviews, notifications, variantes, stockage, checkout invité, sécurité |
 | Phase 2 | ⏳ Planifiée | Couche IA |
 | Phase 3+ | ⏳ Planifiée | Features avancées |
 

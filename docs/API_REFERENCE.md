@@ -93,6 +93,17 @@ Toutes les fonctions Convex exposées au frontend via `api.*` et les fonctions i
 
 ---
 
+## `variants`
+
+### Mutations
+
+| Fonction | Accès | Args | Description |
+|----------|-------|------|-------------|
+| `api.variants.mutations.transferFromProduct` | 🏪 | `{variantId, quantity}` | Transfère du stock du produit vers la variante |
+| `api.variants.mutations.transferToProduct` | 🏪 | `{variantId, quantity}` | Transfère du stock de la variante vers le produit |
+
+---
+
 ## `orders`
 
 ### Queries
@@ -108,7 +119,7 @@ Toutes les fonctions Convex exposées au frontend via `api.*` et les fonctions i
 
 | Fonction | Accès | Args | Description |
 |----------|-------|------|-------------|
-| `api.orders.mutations.createOrder` | 👤 | `{storeId, items, shippingAddress, deliveryLat/Lon, deliveryFee, deliveryType, paymentMode, ...}` | Crée commande, décrémente stock |
+| `api.orders.mutations.createOrder` | 🔓 | `{storeId, items, shippingAddress, deliveryFee, deliveryType, paymentMode, guestEmail?, guestName?, couponCode?, notes?, ...}` | Crée commande, décrémente stock. Accepte invités via guestEmail |
 | `api.orders.mutations.updateStatus` | 🏪 | `{orderId, status, trackingNumber?, carrier?}` | Transitions vendeur (processing/shipped/delivered) |
 | `api.orders.mutations.cancelOrder` | 🛒 | `{orderId}` | Annule dans la fenêtre 2h |
 | `api.orders.mutations.confirmDelivery` | 🛒 | `{orderId}` | Confirmation de réception |
@@ -122,6 +133,7 @@ Toutes les fonctions Convex exposées au frontend via `api.*` et les fonctions i
 | Fonction | Accès | Args | Description |
 |----------|-------|------|-------------|
 | `api.payments.actions.initiatePayment` | 👤 | `{orderId, returnUrl}` | Initie paiement Moneroo, retourne `{checkout_url, reference}` |
+| `api.payments.moneroo.initializeShopPayment` | 👤 | `{orderId, storeSlug}` | Initie paiement depuis une boutique vendeur, retourne `{checkoutUrl}` |
 
 ### Mutations internes
 
@@ -431,6 +443,7 @@ Envoi d'emails via Resend (actions "use node").
 | `sendOrderShipped` | `OrderShipped` | `updateStatus(shipped)` |
 | `sendOrderDelivered` | `OrderDelivered` | `updateStatus(delivered)` |
 | `sendOrderCancelled` | `OrderCancelled` | `cancelOrder` / `updateStatus(cancelled)` |
+| `sendGuestAccountSetup` | `GuestAccountSetup` | `createOrder` (invité — compte provisoire créé) |
 
 ### `internal.push.actions.sendToUser`
 Action "use node". Envoie une notification Web Push à tous les appareils d'un utilisateur.
