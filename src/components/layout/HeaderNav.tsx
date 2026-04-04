@@ -170,7 +170,11 @@ export function HeaderNav() {
                   type="button"
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    (window as typeof window & { Chatway?: (cmd: string) => void }).Chatway?.("open");
+                    (
+                      window as typeof window & {
+                        Chatway?: (cmd: string) => void;
+                      }
+                    ).Chatway?.("open");
                   }}
                   className="text-sm text-sidebar-foreground/70 hover:text-sidebar-accent-foreground transition-colors"
                 >
@@ -227,7 +231,13 @@ export function HeaderNav() {
               <NavigationMenuLink asChild>
                 <button
                   type="button"
-                  onClick={() => (window as typeof window & { Chatway?: (cmd: string) => void }).Chatway?.("open")}
+                  onClick={() =>
+                    (
+                      window as typeof window & {
+                        Chatway?: (cmd: string) => void;
+                      }
+                    ).Chatway?.("open")
+                  }
                   className="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
                 >
                   Contact
@@ -260,10 +270,16 @@ export function HeaderNav() {
             <Link href={ROUTES.CART}>
               <ShoppingCart className="size-5" />
               <span className="sr-only">Panier</span>
+              <span aria-live="polite" aria-atomic="true" className="sr-only">
+                {totalItems > 0
+                  ? `${totalItems} article${totalItems > 1 ? "s" : ""} dans le panier`
+                  : "Panier vide"}
+              </span>
               {totalItems > 0 && (
                 <Badge
+                  key={totalItems}
                   variant="destructive"
-                  className="absolute -top-1 -right-1 size-5 p-0 flex items-center justify-center text-[10px]"
+                  className="absolute -top-1 -right-1 size-5 p-0 flex items-center justify-center text-[10px] animate-badge-pop"
                 >
                   {totalItems > 99 ? "99+" : totalItems}
                 </Badge>
