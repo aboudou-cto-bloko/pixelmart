@@ -2,6 +2,7 @@
 
 import { query } from "../_generated/server";
 import { getVendorStore } from "../users/helpers";
+import { resolveImageUrl } from "../products/helpers";
 
 /**
  * Stats globales du dashboard vendor.
@@ -109,27 +110,29 @@ export const getVendorDashboard = query({
     const outOfStock = allProducts.filter((p) => p.status === "out_of_stock");
 
     // Stock faible : produits qui track l'inventaire avec quantité <= 5
-    const lowStock = allProducts
-      .filter(
-        (p) =>
-          p.track_inventory &&
-          p.status === "active" &&
-          p.quantity <= 5 &&
-          p.quantity > 0,
-      )
-      .sort((a, b) => a.quantity - b.quantity)
-      .slice(0, 10)
-      .map((p) => ({
-        _id: p._id,
-        title: p.title,
-        slug: p.slug,
-        quantity: p.quantity,
-        image: p.images[0] ?? null,
-      }));
+    const lowStock = await Promise.all(
+      allProducts
+        .filter(
+          (p) =>
+            p.track_inventory &&
+            p.status === "active" &&
+            p.quantity <= 5 &&
+            p.quantity > 0,
+        )
+        .sort((a, b) => a.quantity - b.quantity)
+        .slice(0, 10)
+        .map(async (p) => ({
+          _id: p._id,
+          title: p.title,
+          slug: p.slug,
+          quantity: p.quantity,
+          image: p.images[0] ? await resolveImageUrl(ctx, p.images[0]) : null,
+        })),
+    );
 
     type ProductSales = {
       title: string;
-      image: string | null;
+      rawImage: string | null;
       totalSold: number;
       revenue: number;
     };
@@ -146,7 +149,7 @@ export const getVendorDashboard = query({
         } else {
           productSalesMap.set(key, {
             title: item.title,
-            image: item.image_url || null,
+            rawImage: item.image_url || null,
             totalSold: item.quantity,
             revenue: item.total_price,
           });
@@ -154,9 +157,15 @@ export const getVendorDashboard = query({
       }
     }
 
-    const topProducts = Array.from(productSalesMap.values())
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+    const topProducts = await Promise.all(
+      Array.from(productSalesMap.values())
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5)
+        .map(async ({ rawImage, ...rest }) => ({
+          ...rest,
+          image: rawImage ? await resolveImageUrl(ctx, rawImage) : null,
+        })),
+    );
 
     return {
       store: {
