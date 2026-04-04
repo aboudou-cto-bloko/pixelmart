@@ -37,6 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
@@ -246,6 +247,8 @@ export default function CheckoutPage() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestEmailError, setGuestEmailError] = useState<string | null>(null);
 
   // ── Coupon handlers ──
   function handleCouponApply(storeId: string, code: string, discount: number) {
@@ -320,9 +323,17 @@ export default function CheckoutPage() {
 
   // ── Submit ──
   async function handleSubmit() {
+    // Validation email invité
     if (!isAuthenticated) {
-      router.push(`${ROUTES.LOGIN}?redirect=${ROUTES.CHECKOUT}`);
-      return;
+      if (!guestEmail.trim()) {
+        setGuestEmailError("Votre email est requis pour commander");
+        return;
+      }
+      if (!guestEmail.includes("@")) {
+        setGuestEmailError("Email invalide");
+        return;
+      }
+      setGuestEmailError(null);
     }
 
     // Valider l'adresse de facturation/contact
@@ -366,6 +377,9 @@ export default function CheckoutPage() {
             variantId: item.variantId,
             quantity: item.quantity,
           })),
+          guestEmail: !isAuthenticated
+            ? guestEmail.trim().toLowerCase()
+            : undefined,
           shippingAddress: {
             full_name: address.full_name,
             line1: deliveryConfig.deliveryAddress ?? address.line1,
@@ -449,29 +463,6 @@ export default function CheckoutPage() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="mx-auto max-w-4xl px-4 py-16 text-center">
-        <h1 className="mb-4">Connectez-vous pour commander</h1>
-        <p className="text-muted-foreground mb-6">
-          Un compte est nécessaire pour passer commande.
-        </p>
-        <div className="flex gap-3 justify-center">
-          <Button asChild>
-            <Link href={`${ROUTES.LOGIN}?redirect=${ROUTES.CHECKOUT}`}>
-              Se connecter
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href={`${ROUTES.REGISTER}?redirect=${ROUTES.CHECKOUT}`}>
-              Créer un compte
-            </Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       {/* Header */}
@@ -514,7 +505,35 @@ export default function CheckoutPage() {
                 Informations de contact
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {!isAuthenticated && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="guest-email" className="text-sm font-medium">
+                    Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="guest-email"
+                    type="email"
+                    placeholder="votre@email.com"
+                    value={guestEmail}
+                    onChange={(e) => {
+                      setGuestEmail(e.target.value);
+                      if (guestEmailError) setGuestEmailError(null);
+                    }}
+                    className={guestEmailError ? "border-destructive" : ""}
+                  />
+                  {guestEmailError ? (
+                    <p className="text-xs text-destructive">
+                      {guestEmailError}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Votre confirmation de commande sera envoyée à cette
+                      adresse.
+                    </p>
+                  )}
+                </div>
+              )}
               <AddressForm
                 address={address}
                 onChange={(addr) => {
