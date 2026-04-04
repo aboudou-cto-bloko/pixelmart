@@ -226,9 +226,9 @@ export default function PrivacyPage() {
 
             <h3 className="text-lg font-medium">3.1 Partenaires de paiement</h3>
             <p>
-              <strong>Moneroo</strong> — traite les paiements Mobile Money (MTN,
-              Orange Money, Wave, Flooz) et les retraits vendeurs. Nous lui
-              transmettons votre e-mail, le montant de la transaction,
+              Notre prestataire de paiement traite les transactions Mobile Money
+              (MTN, Orange Money, Wave, Flooz) et les retraits vendeurs. Nous
+              lui transmettons votre e-mail, le montant de la transaction,
               l'identifiant de commande et, pour les retraits, les détails de
               votre compte (nom, numéro masqué, téléphone).
             </p>
@@ -237,58 +237,56 @@ export default function PrivacyPage() {
               3.2 Service d'envoi d'e-mails
             </h3>
             <p>
-              <strong>Resend</strong> — délivre nos e-mails transactionnels
-              (confirmations de commande, notifications de statut, etc.). Nous
-              lui transmettons votre e-mail, votre nom et le contenu HTML de
-              l'e-mail (détails de commande, noms de produits, prix, adresses).
+              Notre prestataire d'e-mails délivre nos communications
+              transactionnelles (confirmations de commande, notifications de
+              statut, etc.). Nous lui transmettons votre e-mail, votre nom et le
+              contenu de l'e-mail (détails de commande, noms de produits, prix,
+              adresses).
             </p>
 
             <h3 className="text-lg font-medium">3.3 Géocodage d'adresses</h3>
             <p>
-              <strong>Nominatim / OpenStreetMap</strong> — fournit
-              l'autocomplétion d'adresses et le géocodage lors du paiement. Les
-              requêtes d'adresse et les coordonnées sont envoyées à leurs
-              serveurs.
+              Notre service de cartographie fournit l'autocomplétion d'adresses
+              et le géocodage lors du paiement. Les requêtes d'adresse et les
+              coordonnées sont envoyées à leurs serveurs.
             </p>
 
             <h3 className="text-lg font-medium">
               3.4 Hébergement et infrastructure
             </h3>
             <p>
-              <strong>Convex</strong> — héberge notre base de données, notre
-              backend et le stockage de fichiers (images produits, logos, photos
-              d'avis). Toutes les données listées dans la section 1 y sont
-              stockées.
+              Nos prestataires d'hébergement et d'infrastructure cloud stockent
+              notre base de données, notre backend et les fichiers uploadés
+              (images produits, logos, photos d'avis). Toutes les données
+              listées dans la section 1 y sont stockées.
             </p>
             <p>
-              <strong>Vercel</strong> — héberge notre application et notre CDN.
-              Ils peuvent collecter votre adresse IP, les en-têtes de requête et
-              les journaux serveur.
+              Notre fournisseur d'hébergement web et de CDN peut collecter votre
+              adresse IP, les en-têtes de requête et les journaux serveur.
             </p>
 
             <h3 className="text-lg font-medium">3.5 Notifications push</h3>
             <p>
-              <strong>Services de push du navigateur (FCM / APNs)</strong> —
-              délivrent nos notifications push. Nous transmettons les clés de
-              subscription push et le contenu de la notification (titre, corps,
-              URL).
+              Les services de notification push de votre navigateur délivrent
+              nos notifications. Nous transmettons les identifiants de
+              subscription et le contenu de la notification (titre, corps, URL).
             </p>
 
             <h3 className="text-lg font-medium">3.6 Support en direct</h3>
             <p>
-              <strong>Chatway</strong> — widget de chat en direct présent sur
-              toutes les pages. Les messages échangés et les informations du
-              navigateur sont transmis à leurs serveurs.
+              Notre prestataire de chat en direct, présent sur toutes les pages,
+              reçoit les messages échangés et les informations du navigateur.
             </p>
 
             <h3 className="text-lg font-medium">
-              3.7 Meta Pixel (vendeurs uniquement)
+              3.7 Pixels publicitaires (vendeurs uniquement)
             </h3>
             <p>
-              Les vendeurs peuvent configurer leur propre Meta Pixel sur leur
-              boutique. Dans ce cas, le vendeur est responsable des données
-              collectées via son pixel. Pixel-Mart n'est pas responsable du
-              traitement des données par Meta/Facebook dans ce contexte.
+              Les vendeurs peuvent configurer leur propre pixel de suivi
+              publicitaire sur leur boutique. Dans ce cas, le vendeur est
+              responsable des données collectées via son pixel. Pixel-Mart n'est
+              pas responsable du traitement des données par les plateformes
+              publicitaires dans ce contexte.
             </p>
           </section>
 
@@ -328,31 +326,10 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold">5. Sécurité</h2>
             <p>
               Nous mettons en œuvre des mesures de sécurité techniques et
-              organisationnelles pour protéger vos données personnelles :
+              organisationnelles appropriées pour protéger vos données
+              personnelles contre tout accès non autorisé, toute perte ou
+              altération.
             </p>
-            <ul>
-              <li>
-                Chiffrement des mots de passe et des secrets TOTP (AES-256)
-              </li>
-              <li>
-                Cookies de session sécurisés (httpOnly, secure, sameSite=strict)
-              </li>
-              <li>
-                Politiques de sécurité HTTP (Content-Security-Policy,
-                Strict-Transport-Security, X-Frame-Options)
-              </li>
-              <li>
-                Limitation de taux (rate limiting) sur les opérations sensibles
-              </li>
-              <li>
-                Vérification des signatures de webhooks (HMAC-SHA256) pour les
-                paiements
-              </li>
-              <li>
-                Sanitisation des contenus HTML (DOMPurify) pour les descriptions
-                de produits et de boutiques
-              </li>
-            </ul>
           </section>
 
           <section>
