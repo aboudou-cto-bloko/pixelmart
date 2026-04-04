@@ -100,7 +100,7 @@ export default function VendorLeaderboardPage() {
                     <RankIcon rank={rank} />
                   </div>
                   <p className="font-semibold text-sm leading-tight line-clamp-2">
-                    {store.name}
+                    {store.owner_name}
                   </p>
                   {store.is_verified && (
                     <span className="text-[10px] text-blue-600 font-medium">
@@ -153,7 +153,7 @@ export default function VendorLeaderboardPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm truncate">
-                        {store.name}
+                        {store.owner_name}
                       </span>
                       {store.is_verified && (
                         <span className="text-[10px] text-blue-600 font-medium shrink-0">
