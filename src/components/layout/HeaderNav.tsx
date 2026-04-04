@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import {
-  Search,
   ShoppingCart,
   User,
   Menu,
@@ -26,7 +25,6 @@ import { authClient } from "@/lib/auth-client";
 import { ROUTES } from "@/constants/routes";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,6 +53,7 @@ import {
 import { MobileCategoryAccordion } from "@/components/ui/mobile-category-accordion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DynamicLogo } from "@/components/ui/dynamic-logo";
+import { SearchBar } from "@/components/layout/SearchBar";
 
 // Type attendu pour l'arbre des catégories
 type CategoryNode = {
@@ -72,7 +71,6 @@ export function HeaderNav() {
     | undefined;
   const router = useRouter();
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const categories = categoryTree ?? [];
@@ -97,16 +95,6 @@ export function HeaderNav() {
     router.push(ROUTES.HOME);
   }
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(
-        `${ROUTES.PRODUCTS}?q=${encodeURIComponent(searchQuery.trim())}`,
-      );
-      setMobileMenuOpen(false);
-    }
-  }
-
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-0 px-4">
@@ -127,18 +115,7 @@ export function HeaderNav() {
             </SheetHeader>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Recherche mobile */}
-              <form onSubmit={handleSearch} className="flex">
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Rechercher..."
-                  className="rounded-r-none bg-background"
-                  autoComplete="off"
-                />
-                <Button type="submit" size="icon" className="rounded-l-none">
-                  <Search className="size-4" />
-                </Button>
-              </form>
+              <SearchBar compact onSubmit={() => setMobileMenuOpen(false)} />
               <MobileCategoryAccordion
                 categories={categories}
                 onClose={() => setMobileMenuOpen(false)}
@@ -197,22 +174,7 @@ export function HeaderNav() {
         </div>
 
         {/* Search Desktop */}
-        <form
-          onSubmit={handleSearch}
-          className="hidden lg:flex flex-1 max-w-md mx-4"
-        >
-          <div className="relative flex w-full">
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher un produit, une boutique..."
-              className="rounded-r-none pr-10"
-            />
-            <Button type="submit" size="icon" className="rounded-l-none">
-              <Search className="size-4" />
-            </Button>
-          </div>
-        </form>
+        <SearchBar className="hidden lg:flex flex-1 max-w-md mx-4" />
 
         {/* Desktop Navigation avec mega menu */}
         <NavigationMenu className="hidden lg:flex">
