@@ -8,6 +8,16 @@ import { centimesToMonerooAmount, monerooAmountToCentimes } from "./helpers";
 const MONEROO_API_URL = "https://api.moneroo.io/v1";
 const MONEROO_TIMEOUT_MS = 10_000;
 
+/** Moneroo may return currency as a string "XOF" or as an object {code:"XOF",...} */
+function parseCurrencyCode(value: unknown, fallback: string): string {
+  if (typeof value === "string" && value.length > 0) return value;
+  if (value !== null && typeof value === "object" && "code" in value) {
+    const code = (value as { code: unknown }).code;
+    if (typeof code === "string" && code.length > 0) return code;
+  }
+  return fallback;
+}
+
 function fetchWithTimeout(
   url: string,
   options: RequestInit,
@@ -299,14 +309,12 @@ export const verifyPayment = action({
 
     // Mettre à jour selon le statut
     if (monerooStatus === "success") {
+      const currency = parseCurrencyCode(result.data?.currency, order.currency);
       await ctx.runMutation(internal.payments.mutations.confirmPayment, {
         orderId: args.orderId,
         paymentReference: order.payment_reference,
-        amountPaid: monerooAmountToCentimes(
-          result.data?.amount ?? 0,
-          result.data?.currency ?? order.currency,
-        ),
-        currency: result.data?.currency ?? order.currency,
+        amountPaid: monerooAmountToCentimes(result.data?.amount ?? 0, currency),
+        currency,
       });
     } else if (monerooStatus === "failed" || monerooStatus === "cancelled") {
       await ctx.runMutation(internal.payments.mutations.failPayment, {

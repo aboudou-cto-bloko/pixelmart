@@ -5,6 +5,16 @@ import { internal } from "../_generated/api";
 import { verifyMonerooSignature, monerooAmountToCentimes } from "./helpers";
 import type { Id } from "../_generated/dataModel";
 
+/** Moneroo may return currency as a string "XOF" or as an object {code:"XOF",...} */
+function parseCurrencyCode(value: unknown, fallback = "XOF"): string {
+  if (typeof value === "string" && value.length > 0) return value;
+  if (value !== null && typeof value === "object" && "code" in value) {
+    const code = (value as { code: unknown }).code;
+    if (typeof code === "string" && code.length > 0) return code;
+  }
+  return fallback;
+}
+
 export const handleMonerooWebhook = httpAction(async (ctx, request) => {
   const rawBody = await request.text();
 
@@ -165,14 +175,12 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
     if (orderId) {
       switch (data.status) {
         case "success": {
+          const currency = parseCurrencyCode(data.currency);
           await ctx.runMutation(internal.payments.mutations.confirmPayment, {
             orderId,
             paymentReference: data.id,
-            amountPaid: monerooAmountToCentimes(
-              data.amount,
-              data.currency ?? "XOF",
-            ),
-            currency: data.currency ?? "XOF",
+            amountPaid: monerooAmountToCentimes(data.amount, currency),
+            currency,
           });
           // Track Purchase Meta CAPI (seulement si source = vendor_shop et pixel configuré)
           await ctx.runMutation(internal.meta.mutations.trackPurchase, {
