@@ -108,7 +108,7 @@ export default function VendorTermsPage() {
             </p>
             <ul>
               <li>
-                <strong>Free</strong> — commission de 7 % sur chaque vente.
+                <strong>Free</strong> — commission de 5 % sur chaque vente.
               </li>
               <li>
                 <strong>Pro</strong> — commission de 3 % sur chaque vente.

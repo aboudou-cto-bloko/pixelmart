@@ -15,6 +15,7 @@ const FOOTER_LINKS = {
   support: [
     { label: "Centre d'aide", href: "/help" },
     { label: "CGV", href: "/terms" },
+    { label: "CGV Vendeurs", href: "/vendor-terms" },
     { label: "Confidentialité", href: "/privacy" },
   ],
 } as const;

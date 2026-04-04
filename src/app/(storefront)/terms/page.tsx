@@ -272,7 +272,7 @@ export default function TermsPage() {
               9. Retours et remboursements
             </h2>
             <p>
-              Le client dispose d'un délai de <strong>48 heures</strong> à
+              Le client dispose d'un délai de <strong>14 jours</strong> à
               compter de la réception de sa commande pour demander un retour.
               Les retours sont soumis aux conditions suivantes :
             </p>
@@ -385,14 +385,24 @@ export default function TermsPage() {
 
           <section>
             <h2 className="text-xl font-semibold">
-              14. Cookies et données de navigation
+              14. Cookies et stockage local
             </h2>
-            <p>
-              La Plateforme utilise des cookies et des technologies similaires
-              pour assurer son bon fonctionnement, mémoriser vos préférences et
-              vous informer de l'état de vos commandes. Vous pouvez gérer vos
-              préférences via les paramètres de votre navigateur.
-            </p>
+            <p>La Plateforme utilise :</p>
+            <ul>
+              <li>
+                <strong>Cookies de session</strong> — nécessaires à
+                l'authentification et au bon fonctionnement de la Plateforme.
+              </li>
+              <li>
+                <strong>Stockage local (localStorage)</strong> — utilisé pour
+                conserver le panier d'achat entre les sessions de navigation.
+              </li>
+              <li>
+                <strong>Notifications push</strong> — avec votre consentement,
+                pour vous informer de l'état de vos commandes et des
+                notifications importantes.
+              </li>
+            </ul>
           </section>
 
           <section>
