@@ -314,9 +314,11 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
     : product.quantity;
   const isOutOfStock =
     !product.is_digital &&
-    (hasVariants && selectedVariantId
-      ? !selectedVariant?.is_available || selectedVariant.quantity <= 0
+    (hasVariants
+      ? selectedVariantId !== null &&
+        (!selectedVariant?.is_available || selectedVariant.quantity <= 0)
       : maxQuantity <= 0);
+  const mustSelectVariant = hasVariants && selectedVariantId === null;
   const isLowStock =
     !product.is_digital &&
     !isOutOfStock &&
@@ -469,44 +471,46 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
                   currency="XOF"
                 />
               )}
-              {hasVariants && !selectedVariantId && (
-                <p className="text-sm text-muted-foreground">
-                  Sélectionnez une variante ou commandez le produit standard
-                </p>
+              {mustSelectVariant ? (
+                <div className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-lg px-3 py-2.5">
+                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  Sélectionnez une option ci-dessus pour continuer
+                </div>
+              ) : (
+                <>
+                  <QuantitySelector
+                    value={quantity}
+                    max={product.is_digital ? 99 : maxQuantity}
+                    onChange={setQuantity}
+                  />
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      onClick={handleAddToCart}
+                      disabled={isAdding || isOutOfStock}
+                    >
+                      {isAdding ? (
+                        "Ajout..."
+                      ) : (
+                        <>
+                          <ShoppingCart className="size-4 mr-2" />
+                          Ajouter au panier
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={handleBuyNow}
+                      disabled={isAdding || isOutOfStock}
+                    >
+                      {isAdding ? "Ajout..." : "Commander maintenant"}
+                    </Button>
+                  </div>
+                </>
               )}
-              {!isOutOfStock && (
-                <QuantitySelector
-                  value={quantity}
-                  max={product.is_digital ? 99 : maxQuantity}
-                  onChange={setQuantity}
-                />
-              )}
-              <div className="flex flex-col gap-2">
-                <Button
-                  size="lg"
-                  className="w-full"
-                  onClick={handleAddToCart}
-                  disabled={isAdding || isOutOfStock}
-                >
-                  {isAdding ? (
-                    "Ajout..."
-                  ) : (
-                    <>
-                      <ShoppingCart className="size-4 mr-2" />
-                      Ajouter au panier
-                    </>
-                  )}
-                </Button>
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="w-full"
-                  onClick={handleBuyNow}
-                  disabled={isAdding || isOutOfStock}
-                >
-                  {isAdding ? "Ajout..." : "Commander maintenant"}
-                </Button>
-              </div>
             </div>
           ) : (
             <div className="rounded-lg border border-dashed border-destructive/30 bg-destructive/5 p-4 text-center">
