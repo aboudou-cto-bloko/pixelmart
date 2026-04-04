@@ -98,13 +98,13 @@ export default function StoreVitrinePage() {
       <div>
         {/* Banner */}
         {store.banner_url && (
-          <div className="relative h-48 sm:h-64 bg-muted overflow-hidden">
+          <div className="relative aspect-[3/1] sm:aspect-[4/1] bg-muted overflow-hidden">
             <Image
               src={store.banner_url}
               alt={`Bannière ${store.name}`}
               fill
               sizes="100vw"
-              className="object-cover"
+              className="object-cover object-center"
               priority
             />
           </div>
