@@ -1201,4 +1201,15 @@ export default defineSchema({
     subscribed_at: v.number(),
     source: v.optional(v.string()), // "storefront"
   }).index("by_email", ["email"]),
+
+  // ============================================
+  // WISHLISTS
+  // ============================================
+  wishlists: defineTable({
+    user_id: v.id("users"),
+    product_id: v.id("products"),
+    added_at: v.number(),
+  })
+    .index("by_user", ["user_id"])
+    .index("by_user_product", ["user_id", "product_id"]),
 });

@@ -691,25 +691,17 @@ Configured in `next.config.ts` via `headers()`:
 | #170 | `feat/ux-storefront` | A11y : skip link, focus-visible ring, `aria-live` badge panier, `ScrollToTop` FAB, badge filtres count, stepper checkout 3 étapes, swipe galerie mobile |
 | #171 | `feat/shop-storefront-parity` | Shop vendeur : skip link, validation warnings panier, bouton `-` disabled à qty=1, tri produits client-side |
 
+### Prêt à merger (branches locales, push bloqué — pas de réseau)
+
+| Branche | Description |
+|---------|-------------|
+| `feat/newsletter` | Table `newsletter_subscribers`, mutation `subscribe` (dedup), `NewsletterBar` wired |
+| `feat/wishlist` | Table `wishlists`, mutation `toggle`, query `listByUser`, `WishlistButton` atom sur `ProductCard` ; + `aria-live` filtres + keyboard lightbox |
+
 ### Reste à faire
-
-#### Priorité haute
-
-- **Newsletter** — `NewsletterBar.tsx` affiche un toast de succès sans sauvegarder l'email.
-  Implémenter : mutation Convex `newsletter.mutations.subscribe` (table `newsletter_subscribers`) **ou** appel Mailchimp via une action Convex.
-  Fichier : `src/components/storefront/organisms/NewsletterBar.tsx`
-
-- **Wishlist** — fonctionnalité absente ; le composant `StorefrontProductCard` a un TODO.
-  Implémenter : table `wishlists` (userId + productId), mutation toggle, query `getByUser`, icône cœur sur les cartes produits.
-  Point de départ : `src/components/products/ProductCard.tsx` (bouton cœur en overlay, comme les badges discount)
 
 #### Priorité moyenne
 
 - **Homepage SuggestToday** — section "Suggestions du jour" marquée "à implémenter dans un second temps" dans `HomepageTemplate.tsx`.
   Idée : produits les plus consultés dans les 24h (nouveau champ `view_count` sur `products` incrémenté via action) ou sélection manuelle admin.
   Fichier : `src/components/storefront/templates/HomepageTemplate.tsx`
-
-#### Déjà bon, pas urgent
-
-- Aria-live sur le contenu filtré de la page produits (annonce "X produits trouvés") — cosmétique, faible impact réel
-- Focus trap dans le lightbox galerie (Dialog shadcn gère déjà l'essentiel)

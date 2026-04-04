@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,20 @@ export function ProductGallery({
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
+  const prev = () =>
+    setLightboxIndex((i) => (i - 1 + images.length) % images.length);
+  const next = () => setLightboxIndex((i) => (i + 1) % images.length);
+
+  useEffect(() => {
+    if (!lightboxOpen || images.length <= 1) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") prev();
+      else if (e.key === "ArrowRight") next();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightboxOpen, images.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (images.length === 0) {
     return (
       <div className="aspect-square rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
@@ -39,10 +53,6 @@ export function ProductGallery({
     setLightboxIndex(index);
     setLightboxOpen(true);
   };
-
-  const prev = () =>
-    setLightboxIndex((i) => (i - 1 + images.length) % images.length);
-  const next = () => setLightboxIndex((i) => (i + 1) % images.length);
 
   function handleTouchStart(e: React.TouchEvent) {
     setTouchStartX(e.touches[0].clientX);
@@ -134,7 +144,10 @@ export function ProductGallery({
 
       {/* Lightbox */}
       <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
-        <DialogContent className="max-w-5xl w-full p-0 bg-black/95 border-none">
+        <DialogContent
+          className="max-w-5xl w-full p-0 bg-black/95 border-none"
+          aria-label={`Galerie — ${title}`}
+        >
           <div className="relative flex items-center justify-center min-h-[50vh] max-h-[90vh]">
             {/* Close */}
             <button
