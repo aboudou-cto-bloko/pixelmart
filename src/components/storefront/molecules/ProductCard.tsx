@@ -6,9 +6,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { PriceTag, DiscountBadge } from "../atoms";
 import { StarRating } from "@/components/reviews/atoms/StarRating";
-import { Heart, ShoppingCart, ZoomIn, X, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ShoppingCart,
+  ZoomIn,
+  X,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { WishlistButton } from "@/components/atoms/WishlistButton";
 import { cn } from "@/lib/utils";
 import { useState, useCallback } from "react";
 
@@ -41,15 +48,12 @@ export function ProductCard({
   const images = product.images.filter(Boolean);
   const hasImages = images.length > 0;
 
-  const openLightbox = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setLightboxIndex(0);
-      setLightboxOpen(true);
-    },
-    [],
-  );
+  const openLightbox = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLightboxIndex(0);
+    setLightboxOpen(true);
+  }, []);
 
   const prev = useCallback(
     (e: React.MouseEvent) => {
@@ -129,17 +133,10 @@ export function ProductCard({
                 <ZoomIn className="size-4" />
               </Button>
             )}
-            <Button
-              variant="secondary"
-              size="icon"
-              className="size-8"
-              onClick={(e) => {
-                e.preventDefault();
-                // TODO: wishlist
-              }}
-            >
-              <Heart className="size-4" />
-            </Button>
+            <WishlistButton
+              productId={product._id}
+              className="size-8 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            />
           </div>
         </div>
 
@@ -247,7 +244,9 @@ export function ProductCard({
 
             {/* Titre produit */}
             <div className="px-4 py-3 border-t border-white/10">
-              <p className="text-sm text-white/80 line-clamp-1">{product.title}</p>
+              <p className="text-sm text-white/80 line-clamp-1">
+                {product.title}
+              </p>
             </div>
           </DialogContent>
         </Dialog>

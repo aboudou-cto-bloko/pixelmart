@@ -8,7 +8,7 @@ export const listByUser = query({
   args: {},
   handler: async (ctx) => {
     const user = await getAppUser(ctx);
-    if (!user) return [];
+    if (!user) return null;
 
     const entries = await ctx.db
       .query("wishlists")
