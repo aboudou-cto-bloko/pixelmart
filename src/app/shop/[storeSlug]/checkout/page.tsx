@@ -34,8 +34,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
-import { SHOP_ROUTES, ROUTES } from "@/constants/routes";
+import { SHOP_ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
 import { calculateDistance, DEFAULT_COLLECTION_POINT } from "@/lib/geocoding";
 import type { Coordinates } from "@/lib/geocoding";
@@ -138,6 +139,8 @@ export default function ShopCheckoutPage() {
   })();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestEmailError, setGuestEmailError] = useState<string | null>(null);
 
   // Track InitiateCheckout au mount
   useEffect(() => {
@@ -166,17 +169,22 @@ export default function ShopCheckoutPage() {
     return null;
   }
 
-  // Auth guard
-  if (!authLoading && !isAuthenticated) {
-    router.push(
-      `${ROUTES.LOGIN}?redirect=${encodeURIComponent(SHOP_ROUTES.CHECKOUT(storeSlug))}`,
-    );
-    return null;
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!store || !user || isSubmitting) return;
+    if (!store || isSubmitting) return;
+
+    // Validation email invité
+    if (!isAuthenticated) {
+      if (!guestEmail.trim()) {
+        setGuestEmailError("Votre email est requis pour commander");
+        return;
+      }
+      if (!guestEmail.includes("@")) {
+        setGuestEmailError("Email invalide");
+        return;
+      }
+      setGuestEmailError(null);
+    }
 
     const errors = validateAddress(address);
     if (errors && Object.keys(errors).length > 0) {
@@ -201,6 +209,9 @@ export default function ShopCheckoutPage() {
       const { orderId } = await createOrder({
         storeId: store._id as Id<"stores">,
         items: orderItems,
+        guestEmail: !isAuthenticated
+          ? guestEmail.trim().toLowerCase()
+          : undefined,
         shippingAddress: address,
         notes: notes.trim() || undefined,
         couponCode: coupon?.code,
@@ -250,7 +261,7 @@ export default function ShopCheckoutPage() {
   if (!store) return null;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
@@ -376,7 +387,32 @@ export default function ShopCheckoutPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Adresse de livraison</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {!authLoading && !isAuthenticated && (
+              <div className="space-y-1.5">
+                <Label htmlFor="guest-email" className="text-sm font-medium">
+                  Email <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="guest-email"
+                  type="email"
+                  placeholder="votre@email.com"
+                  value={guestEmail}
+                  onChange={(e) => {
+                    setGuestEmail(e.target.value);
+                    if (guestEmailError) setGuestEmailError(null);
+                  }}
+                  className={guestEmailError ? "border-destructive" : ""}
+                />
+                {guestEmailError ? (
+                  <p className="text-xs text-destructive">{guestEmailError}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Votre confirmation de commande sera envoyée à cette adresse.
+                  </p>
+                )}
+              </div>
+            )}
             <AddressForm
               address={address}
               onChange={setAddress}
