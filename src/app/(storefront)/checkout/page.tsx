@@ -392,8 +392,6 @@ export default function CheckoutPage() {
           },
           couponCode: coupon?.code,
           notes: notes.trim() || undefined,
-          paymentMethod:
-            deliveryConfig.paymentMode === "cod" ? "cod" : "moneroo",
           // ── Champs delivery OpenStreetMap ──
           deliveryLat: deliveryConfig.deliveryLat,
           deliveryLon: deliveryConfig.deliveryLon,

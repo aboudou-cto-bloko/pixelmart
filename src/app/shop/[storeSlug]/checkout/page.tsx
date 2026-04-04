@@ -158,6 +158,14 @@ export default function ShopCheckoutPage() {
     );
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const estimatedWeightKg = useMemo(() => {
+    const totalGrams = items.reduce(
+      (sum, item) => sum + (item.weight ?? 0) * item.quantity,
+      0,
+    );
+    return totalGrams / 1000;
+  }, [items]);
+
   const discountedSubtotal = coupon
     ? Math.max(0, totalAmount - coupon.discount)
     : totalAmount;
@@ -212,6 +220,9 @@ export default function ShopCheckoutPage() {
         guestEmail: !isAuthenticated
           ? guestEmail.trim().toLowerCase()
           : undefined,
+        guestName: !isAuthenticated
+          ? address.full_name || undefined
+          : undefined,
         shippingAddress: address,
         notes: notes.trim() || undefined,
         couponCode: coupon?.code,
@@ -224,6 +235,8 @@ export default function ShopCheckoutPage() {
         deliveryType: deliveryConfig.deliveryType,
         paymentMode: deliveryConfig.paymentMode,
         source: "vendor_shop",
+        estimatedWeightKg:
+          estimatedWeightKg > 0 ? estimatedWeightKg : undefined,
       });
 
       if (deliveryConfig.paymentMode === "cod") {
