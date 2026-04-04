@@ -28,15 +28,16 @@ export default function ShopHomePage() {
     <div className="space-y-10">
       {/* Hero / Banner */}
       {isLoading ? (
-        <div className="relative h-48 md:h-64 rounded-2xl overflow-hidden bg-muted animate-pulse" />
+        <div className="relative aspect-[3/1] sm:aspect-[4/1] rounded-2xl overflow-hidden bg-muted animate-pulse" />
       ) : store ? (
-        <div className="relative h-48 md:h-64 rounded-2xl overflow-hidden">
+        <div className="relative aspect-[3/1] sm:aspect-[4/1] rounded-2xl overflow-hidden">
           {store.banner_url ? (
             <Image
               src={store.banner_url}
               alt={store.name}
               fill
-              className="object-cover"
+              sizes="100vw"
+              className="object-cover object-center"
               priority
             />
           ) : (
