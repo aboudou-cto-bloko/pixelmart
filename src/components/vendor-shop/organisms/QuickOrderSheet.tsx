@@ -279,7 +279,7 @@ export function QuickOrderSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-lg p-0 flex flex-col"
+        className="data-[side=right]:w-full data-[side=right]:sm:max-w-lg p-0 flex flex-col"
         showCloseButton={false}
       >
         {/* Sticky header */}
