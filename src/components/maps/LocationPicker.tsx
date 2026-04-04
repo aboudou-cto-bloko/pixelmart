@@ -2,6 +2,7 @@
 
 "use client";
 
+import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -329,11 +330,6 @@ export function LocationPicker({
 
       {/* Map */}
       <div className="relative rounded-lg overflow-hidden border">
-        {/* Leaflet CSS injected inline to avoid next.config hassle */}
-        <style>{`
-          @import "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-          .leaflet-container { font-family: inherit; }
-        `}</style>
         <div ref={mapContainerRef} style={{ height }} className="w-full" />
         {readOnly && <div className="absolute inset-0 pointer-events-none" />}
       </div>

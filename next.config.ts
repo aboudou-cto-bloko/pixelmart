@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.convex.cloud https://picsum.photos https://www.facebook.com",
+      "img-src 'self' data: blob: https://*.convex.cloud https://picsum.photos https://www.facebook.com https://*.tile.openstreetmap.org https://unpkg.com",
       "font-src 'self'",
       "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://nominatim.openstreetmap.org https://api.moneroo.io https://www.facebook.com https://connect.facebook.net",
       "frame-src 'none'",
