@@ -129,6 +129,9 @@ export const VENDOR_NAV_SETTINGS: NavItem[] = [
     title: "Paramètres",
     url: ROUTES.VENDOR_SETTINGS,
     icon: Settings,
-    items: [{ title: "Compte", url: ROUTES.VENDOR_SETTINGS }],
+    items: [
+      { title: "Compte", url: ROUTES.VENDOR_SETTINGS },
+      { title: "Sécurité", url: ROUTES.VENDOR_SECURITY },
+    ],
   },
 ];

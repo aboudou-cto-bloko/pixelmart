@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,12 @@ import {
 } from "@/lib/validation/auth";
 import { z } from "zod";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const setupEmail = searchParams.get("email") ?? "";
+  const isSetupFlow = Boolean(searchParams.get("token") && setupEmail);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -42,10 +46,10 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Controlled form state
+  // Controlled form state — pré-remplissage email depuis URL (flux setup invité)
   const [formData, setFormData] = useState<RegisterFormData>({
     name: "",
-    email: "",
+    email: setupEmail,
     password: "",
     confirmPassword: "",
   });
@@ -148,9 +152,13 @@ export default function RegisterPage() {
   return (
     <Card>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Créer un compte</CardTitle>
+        <CardTitle className="text-2xl">
+          {isSetupFlow ? "Finalisez votre compte" : "Créer un compte"}
+        </CardTitle>
         <CardDescription>
-          Rejoignez Pixel-Mart, la marketplace africaine
+          {isSetupFlow
+            ? "Choisissez un mot de passe pour accéder à votre espace client et suivre vos commandes."
+            : "Rejoignez Pixel-Mart, la marketplace africaine"}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -190,7 +198,8 @@ export default function RegisterPage() {
               autoComplete="email"
               value={formData.email}
               onChange={(e) => updateField("email", e.target.value)}
-              className={fieldErrors.email ? "border-destructive" : ""}
+              readOnly={isSetupFlow}
+              className={`${fieldErrors.email ? "border-destructive" : ""} ${isSetupFlow ? "bg-muted cursor-not-allowed" : ""}`}
             />
             {fieldErrors.email && (
               <p className="text-sm text-destructive">{fieldErrors.email}</p>
@@ -346,7 +355,7 @@ export default function RegisterPage() {
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Créer mon compte
+            {isSetupFlow ? "Créer mon mot de passe" : "Créer mon compte"}
           </Button>
         </form>
       </CardContent>
@@ -359,5 +368,13 @@ export default function RegisterPage() {
         </p>
       </CardFooter>
     </Card>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
   );
 }
