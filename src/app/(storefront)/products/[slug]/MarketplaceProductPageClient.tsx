@@ -35,6 +35,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
+import { toast } from "sonner";
 
 // ─── Sub-components ──────────────────────────────────────────
 
@@ -220,6 +221,7 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
       await navigator.share({ title: product.title, url });
     } else {
       await navigator.clipboard.writeText(url);
+      toast.success("Lien copié !");
     }
   };
 
