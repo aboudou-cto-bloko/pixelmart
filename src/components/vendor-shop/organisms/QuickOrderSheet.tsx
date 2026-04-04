@@ -280,6 +280,7 @@ export function QuickOrderSheet({
       <SheetContent
         side="right"
         className="w-full sm:max-w-lg p-0 flex flex-col"
+        showCloseButton={false}
       >
         {/* Sticky header */}
         <SheetHeader className="shrink-0 bg-background border-b px-6 py-4">

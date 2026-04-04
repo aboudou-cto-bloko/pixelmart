@@ -453,72 +453,86 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
           <Separator />
 
           {/* Buy section */}
-          {!isOutOfStock ? (
-            <div className="space-y-4">
-              {/* Variant selector */}
-              {hasVariants && variants && (
-                <VariantSelector
-                  variants={variants}
-                  selectedVariantId={selectedVariantId}
-                  onSelect={(id) => {
-                    setSelectedVariantId(id);
-                    setQuantity(1);
-                  }}
-                  onClear={() => {
-                    setSelectedVariantId(null);
-                    setQuantity(1);
-                  }}
-                  currency="XOF"
+          <div className="space-y-4">
+            {/* Variant selector — toujours visible quand variantes disponibles */}
+            {hasVariants && variants && (
+              <VariantSelector
+                variants={variants}
+                selectedVariantId={selectedVariantId}
+                onSelect={(id) => {
+                  setSelectedVariantId(id);
+                  setQuantity(1);
+                }}
+                onClear={() => {
+                  setSelectedVariantId(null);
+                  setQuantity(1);
+                }}
+                currency="XOF"
+              />
+            )}
+
+            {/* État rupture sans variantes */}
+            {!hasVariants && isOutOfStock ? (
+              <div className="rounded-lg border border-dashed border-destructive/30 bg-destructive/5 p-4 text-center">
+                <p className="text-sm font-medium text-destructive">
+                  Ce produit est actuellement en rupture de stock.
+                </p>
+              </div>
+            ) : hasVariants && selectedVariantId && isOutOfStock ? (
+              /* Variante sélectionnée en rupture */
+              <div className="flex items-center gap-2 text-sm bg-destructive/10 border border-destructive/20 text-destructive rounded-lg px-3 py-2.5">
+                <span className="size-1.5 rounded-full bg-destructive shrink-0" />
+                Cette variante est en rupture — choisissez-en une autre
+              </div>
+            ) : mustSelectVariant ? (
+              /* Aucune variante sélectionnée */
+              <div className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-lg px-3 py-2.5">
+                <span className="size-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                Sélectionnez une option ci-dessus pour continuer
+              </div>
+            ) : (
+              <>
+                <QuantitySelector
+                  value={quantity}
+                  max={product.is_digital ? 99 : maxQuantity}
+                  onChange={setQuantity}
                 />
-              )}
-              {mustSelectVariant ? (
-                <div className="flex items-center gap-2 text-sm bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 rounded-lg px-3 py-2.5">
-                  <span className="size-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                  Sélectionnez une option ci-dessus pour continuer
+                {isLowStock && (
+                  <p className="flex items-center gap-1.5 text-sm text-orange-600 font-medium">
+                    <span className="inline-block size-2 rounded-full bg-orange-500 animate-pulse" />
+                    Plus que {maxQuantity} unité{maxQuantity > 1 ? "s" : ""}{" "}
+                    disponible{maxQuantity > 1 ? "s" : ""}
+                  </p>
+                )}
+                <div className="flex flex-col gap-2">
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={handleAddToCart}
+                    disabled={isAdding}
+                  >
+                    {isAdding ? (
+                      "Ajout..."
+                    ) : (
+                      <>
+                        <ShoppingCart className="size-4 mr-2" />
+                        Ajouter au panier
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={handleBuyNow}
+                    disabled={isAdding}
+                  >
+                    {isAdding ? "Ajout..." : "Commander maintenant"}
+                  </Button>
                 </div>
-              ) : (
-                <>
-                  <QuantitySelector
-                    value={quantity}
-                    max={product.is_digital ? 99 : maxQuantity}
-                    onChange={setQuantity}
-                  />
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      size="lg"
-                      className="w-full"
-                      onClick={handleAddToCart}
-                      disabled={isAdding || isOutOfStock}
-                    >
-                      {isAdding ? (
-                        "Ajout..."
-                      ) : (
-                        <>
-                          <ShoppingCart className="size-4 mr-2" />
-                          Ajouter au panier
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="lg"
-                      variant="secondary"
-                      className="w-full"
-                      onClick={handleBuyNow}
-                      disabled={isAdding || isOutOfStock}
-                    >
-                      {isAdding ? "Ajout..." : "Commander maintenant"}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-destructive/30 bg-destructive/5 p-4 text-center">
-              <p className="text-sm font-medium text-destructive">
-                Ce produit est actuellement en rupture de stock.
-              </p>
-            </div>
-          )}
+              </>
+            )}
+          </div>
 
           {/* Trust badges */}
           <div className="grid grid-cols-3 gap-2 py-3 border rounded-xl bg-muted/20">
