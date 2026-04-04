@@ -11,6 +11,7 @@ const AUTH_PUBLIC = [
   "/api/auth",
   "/shop",
   "/cart",
+  "/checkout",
   "/access",
 ];
 
