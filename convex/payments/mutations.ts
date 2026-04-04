@@ -371,3 +371,31 @@ export const markRefunded = internalMutation({
     return { success: true };
   },
 });
+
+/**
+ * Déduplication des webhooks Moneroo.
+ *
+ * Vérifie si un event_id a déjà été traité.
+ * Si oui, retourne { alreadyProcessed: true } sans rien faire.
+ * Si non, l'enregistre et retourne { alreadyProcessed: false }.
+ *
+ * Atomique : la vérification et l'insertion sont dans la même mutation Convex.
+ */
+export const markWebhookEventProcessed = internalMutation({
+  args: { event_id: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("webhook_events")
+      .withIndex("by_event_id", (q) => q.eq("event_id", args.event_id))
+      .unique();
+
+    if (existing) return { alreadyProcessed: true };
+
+    await ctx.db.insert("webhook_events", {
+      event_id: args.event_id,
+      processed_at: Date.now(),
+    });
+
+    return { alreadyProcessed: false };
+  },
+});
