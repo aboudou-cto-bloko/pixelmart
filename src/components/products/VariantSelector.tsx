@@ -138,30 +138,26 @@ export function VariantSelector({
             )}
           </p>
           <div className="flex flex-wrap gap-2">
-            {group.values.map((val) => {
-              const isSelected = selectedValues[group.name] === val;
-              const available = isValueAvailable(group.name, val);
-              return (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() =>
-                    available && handleOptionClick(group.name, val)
-                  }
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
-                    isSelected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : available
-                        ? "border-border hover:border-primary/60"
-                        : "border-border opacity-40 cursor-not-allowed line-through",
-                  )}
-                  disabled={!available}
-                >
-                  {val}
-                </button>
-              );
-            })}
+            {group.values
+              .filter((val) => isValueAvailable(group.name, val))
+              .map((val) => {
+                const isSelected = selectedValues[group.name] === val;
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => handleOptionClick(group.name, val)}
+                    className={cn(
+                      "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:border-primary/60",
+                    )}
+                  >
+                    {val}
+                  </button>
+                );
+              })}
           </div>
         </div>
       ))}
