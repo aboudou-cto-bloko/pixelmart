@@ -516,9 +516,9 @@ export default function OrderDetailPage({
             {order.items.map((item, i) => (
               <div key={i} className="flex items-center gap-3">
                 <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-muted">
-                  {item.image_url ? (
+                  {item.resolved_image_url ? (
                     <Image
-                      src={item.image_url}
+                      src={item.resolved_image_url}
                       alt={item.title}
                       fill
                       sizes="56px"
