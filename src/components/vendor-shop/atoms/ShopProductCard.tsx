@@ -12,6 +12,7 @@ import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { useShopCart } from "../providers";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import { toast } from "sonner";
 
 export interface ShopProductCardData {
   _id: string;
@@ -82,7 +83,7 @@ export function ShopProductCard({
       router.push(SHOP_ROUTES.CART(storeSlug));
     } catch (error) {
       console.error("Error adding to cart:", error);
-      // TODO: Show user-friendly error message
+      toast.error("Impossible d'ajouter au panier. Veuillez réessayer.");
     } finally {
       setIsAdding(false);
     }

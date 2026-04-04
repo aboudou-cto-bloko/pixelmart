@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { ProductCategoryBadge } from "@/components/ui/product-category-badge";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
+import { toast } from "sonner";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 export interface ProductCardData {
@@ -94,7 +95,7 @@ export function ProductCard({
       router.push(ROUTES.CART);
     } catch (error) {
       console.error("Error adding to cart:", error);
-      // TODO: Show user-friendly error message
+      toast.error("Impossible d'ajouter au panier. Veuillez réessayer.");
       setIsAdding(false);
     }
   };
