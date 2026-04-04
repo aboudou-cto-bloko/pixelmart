@@ -32,8 +32,18 @@ export const getById = query({
     const store = await ctx.db.get(order.store_id);
     const customer = await ctx.db.get(order.customer_id);
 
+    const itemsWithImages = await Promise.all(
+      order.items.map(async (item) => {
+        const resolvedImageUrl = item.image_url
+          ? await resolveImageUrl(ctx, item.image_url)
+          : null;
+        return { ...item, resolved_image_url: resolvedImageUrl };
+      }),
+    );
+
     return {
       ...order,
+      items: itemsWithImages,
       store_name: store?.name ?? "Boutique supprimée",
       store_slug: store?.slug ?? "",
       customer_name: customer?.name ?? "Utilisateur supprimé",
