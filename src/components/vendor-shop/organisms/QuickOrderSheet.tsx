@@ -55,6 +55,7 @@ interface QuickOrderProduct {
   quantity?: number;
   is_digital: boolean;
   slug: string;
+  weight?: number;
 }
 
 interface QuickOrderStore {
@@ -189,6 +190,11 @@ export function QuickOrderSheet({
       const eventId = generateEventId();
 
       try {
+        const estimatedWeightKg =
+          product.weight && product.weight > 0
+            ? (product.weight * quantity) / 1000
+            : undefined;
+
         const { orderId } = await createOrder({
           storeId: store._id,
           items: [
@@ -209,6 +215,7 @@ export function QuickOrderSheet({
           deliveryType: deliveryConfig.deliveryType,
           paymentMode: deliveryConfig.paymentMode,
           source: "vendor_shop",
+          estimatedWeightKg,
           // Guest checkout
           guestEmail: !isAuthenticated
             ? guestEmail.trim().toLowerCase()
