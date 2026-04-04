@@ -67,7 +67,7 @@ const FAQ_CATEGORIES = [
     questions: [
       {
         q: "Comment retourner un produit ?",
-        a: "Vous avez 7 jours après réception pour demander un retour. Allez dans 'Mes commandes', sélectionnez la commande concernée et cliquez sur 'Demander un retour'. Le vendeur examinera votre demande.",
+        a: "Vous avez 48h après réception pour demander un retour. Allez dans 'Mes commandes', sélectionnez la commande concernée et cliquez sur 'Demander un retour'. Le vendeur examinera votre demande.",
       },
       {
         q: "Dans quel délai suis-je remboursé ?",
