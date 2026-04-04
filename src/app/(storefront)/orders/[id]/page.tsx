@@ -537,6 +537,11 @@ export default function OrderDetailPage({
                       SKU : {item.sku}
                     </p>
                   )}
+                  {item.variant_title && (
+                    <p className="text-xs text-muted-foreground font-medium">
+                      {item.variant_title}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     {formatPrice(item.unit_price, order.currency)} ×{" "}
                     {item.quantity}

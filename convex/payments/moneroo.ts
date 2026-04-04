@@ -83,7 +83,10 @@ export const initializePayment = action({
     }
 
     // 2. Préparer le payload Moneroo
-    const monerooAmount = centimesToMonerooAmount(order.total_amount, order.currency);
+    const monerooAmount = centimesToMonerooAmount(
+      order.total_amount,
+      order.currency,
+    );
 
     const payload = {
       amount: monerooAmount,
@@ -173,7 +176,10 @@ export const initializeShopPayment = action({
     if (order.payment_status === "paid")
       throw new Error("Cette commande est déjà payée");
 
-    const monerooAmount = centimesToMonerooAmount(order.total_amount, order.currency);
+    const monerooAmount = centimesToMonerooAmount(
+      order.total_amount,
+      order.currency,
+    );
 
     const payload = {
       amount: monerooAmount,
@@ -364,21 +370,28 @@ export const requestRefund = internalAction({
     // Construire le customer requis par Moneroo
     const nameParts = (order.customer_name ?? "Client").trim().split(/\s+/);
     const customerPayload = {
-      email: order.customer_email || `customer+${order.customer_id}@pixel-mart-bj.com`,
+      email:
+        order.customer_email ||
+        `customer+${order.customer_id}@pixel-mart-bj.com`,
       first_name: nameParts[0] ?? "Client",
       last_name: nameParts.slice(1).join(" ") || "Pixel-Mart",
     };
 
     const payoutMethod = resolvePayoutMethod(order.payment_method);
-    const monerooAmount = centimesToMonerooAmount(order.total_amount, order.currency);
+    const monerooAmount = centimesToMonerooAmount(
+      order.total_amount,
+      order.currency,
+    );
 
     const payload: Record<string, unknown> = {
       amount: monerooAmount,
       currency: order.currency,
-      description: args.reason ?? `Remboursement commande ${order.order_number}`,
+      description:
+        args.reason ?? `Remboursement commande ${order.order_number}`,
       method: payoutMethod,
       customer: customerPayload,
       metadata: {
+        type: "refund_payout",
         order_id: order._id,
         order_number: order.order_number,
         original_payment_ref: order.payment_reference,

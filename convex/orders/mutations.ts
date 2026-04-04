@@ -593,6 +593,33 @@ export const updateStatus = mutation({
       }
     }
 
+    // ── Ready for delivery ──
+    if (args.status === "ready_for_delivery") {
+      await logOrderEvent(ctx, {
+        orderId: order._id,
+        storeId: store._id,
+        type: "note",
+        description: "Commande prête pour livraison",
+        actorType: "vendor",
+        actorId: user._id,
+      });
+      const customer = await ctx.db.get(order.customer_id);
+      if (customer) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.notifyOrderStatusGeneric,
+          {
+            customerUserId: customer._id,
+            customerEmail: customer.email,
+            orderNumber: order.order_number,
+            storeName: store.name,
+            previousStatus: "processing",
+            newStatus: "ready_for_delivery",
+          },
+        );
+      }
+    }
+
     // ── Shipped ──
     if (args.status === "shipped") {
       if (args.trackingNumber) updates.tracking_number = args.trackingNumber;
@@ -693,7 +720,7 @@ export const updateStatus = mutation({
       }
     }
 
-    // ── delivery_failed : notifier le vendeur ──
+    // ── delivery_failed : notifier vendeur + client ──
     if (args.status === "delivery_failed") {
       await logOrderEvent(ctx, {
         orderId: order._id,
@@ -704,6 +731,7 @@ export const updateStatus = mutation({
         actorId: user._id,
       });
 
+      // Vendeur : in-app + push
       await ctx.scheduler.runAfter(
         0,
         internal.notifications.send.createInAppNotification,
@@ -713,27 +741,31 @@ export const updateStatus = mutation({
           title: `Échec de livraison — Commande ${order.order_number}`,
           body: `La livraison de la commande ${order.order_number} a échoué. Veuillez contacter le client pour replanifier.`,
           link: `/vendor/orders/${order._id}`,
-          channels: ["in_app"],
+          channels: ["in_app", "push"],
           sentVia: ["in_app"],
           metadata: undefined,
         },
       );
+      await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+        userId: user._id,
+        title: `Échec de livraison — Commande ${order.order_number}`,
+        body: "Contactez le client pour replanifier la livraison.",
+        url: `/vendor/orders/${order._id}`,
+      });
 
-      // Notifier le client de l'échec de livraison
+      // Client : email + in-app + push via notifyOrderStatusGeneric
       const customer = await ctx.db.get(order.customer_id);
       if (customer) {
         await ctx.scheduler.runAfter(
           0,
-          internal.notifications.send.createInAppNotification,
+          internal.notifications.send.notifyOrderStatusGeneric,
           {
-            userId: customer._id,
-            type: "order_status",
-            title: `Échec de livraison — Commande ${order.order_number}`,
-            body: `La livraison de votre commande ${order.order_number} n'a pas pu être effectuée. Votre vendeur va vous recontacter.`,
-            link: `/orders`,
-            channels: ["in_app"],
-            sentVia: ["in_app"],
-            metadata: undefined,
+            customerUserId: customer._id,
+            customerEmail: customer.email,
+            orderNumber: order.order_number,
+            storeName: store.name,
+            previousStatus: "shipped",
+            newStatus: "delivery_failed",
           },
         );
       }

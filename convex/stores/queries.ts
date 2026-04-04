@@ -161,6 +161,7 @@ export const getBySlug = query({
       subscription_tier: store.subscription_tier,
       product_count: productCount,
       _creationTime: store._creationTime,
+      owner_id: store.owner_id,
       // Delivery & pickup fields (needed for two-segment distance calculation)
       use_pixelmart_service: store.use_pixelmart_service,
       has_storage_plan: store.has_storage_plan,

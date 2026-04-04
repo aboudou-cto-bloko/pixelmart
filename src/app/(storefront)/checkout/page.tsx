@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
+import { toast } from "sonner";
 import { ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
 import type { CartStore } from "@/types/cart";
@@ -433,6 +434,7 @@ export default function CheckoutPage() {
           ? error.message
           : "Erreur lors de la création de la commande";
       setSubmitError(message);
+      toast.error(message);
       setIsSubmitting(false);
     }
   }

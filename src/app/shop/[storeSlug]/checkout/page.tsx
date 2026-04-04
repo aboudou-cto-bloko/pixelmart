@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
+import { toast } from "sonner";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
 import { calculateDistance, DEFAULT_COLLECTION_POINT } from "@/lib/geocoding";
@@ -226,10 +227,16 @@ export default function ShopCheckoutPage() {
         shippingAddress: address,
         notes: notes.trim() || undefined,
         couponCode: coupon?.code,
-        deliveryFee: deliveryConfig.deliveryFee,
-        deliveryDistanceKm: deliveryConfig.deliveryDistanceKm,
-        deliveryDistanceVendorToHubKm: vendorToHubKm,
-        deliveryDistanceHubToClientKm: hubToClientKm,
+        deliveryFee: showDeliverySection ? deliveryConfig.deliveryFee : 0,
+        deliveryDistanceKm: showDeliverySection
+          ? deliveryConfig.deliveryDistanceKm
+          : undefined,
+        deliveryDistanceVendorToHubKm: showDeliverySection
+          ? vendorToHubKm
+          : undefined,
+        deliveryDistanceHubToClientKm: showDeliverySection
+          ? hubToClientKm
+          : undefined,
         deliveryLat: deliveryConfig.deliveryLat,
         deliveryLon: deliveryConfig.deliveryLon,
         deliveryType: deliveryConfig.deliveryType,
@@ -256,9 +263,10 @@ export default function ShopCheckoutPage() {
       clearCart();
       window.location.href = checkoutUrl;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Une erreur s'est produite.",
-      );
+      const msg =
+        err instanceof Error ? err.message : "Une erreur s'est produite.";
+      setError(msg);
+      toast.error(msg);
       setIsSubmitting(false);
     }
   }

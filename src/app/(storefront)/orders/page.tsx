@@ -211,6 +211,12 @@ export default function CustomerOrdersPage() {
 
                         <p className="text-sm truncate">
                           {firstItem?.title ?? "Article"}
+                          {firstItem?.variant_title && (
+                            <span className="text-muted-foreground">
+                              {" · "}
+                              {firstItem.variant_title}
+                            </span>
+                          )}
                           {remainingCount > 0 && (
                             <span className="text-muted-foreground">
                               {" "}

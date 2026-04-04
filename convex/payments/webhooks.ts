@@ -66,6 +66,12 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
   const isAdPayment = data.metadata?.type === "ad_payment" && !!bookingId;
   const isStoragePayment =
     data.metadata?.type === "storage_payment" && !!invoiceId;
+  const isRefundPayout = data.metadata?.type === "refund_payout";
+
+  // Payout de remboursement — déjà traité par requestRefund (markRefunded appelé immédiatement)
+  if (isRefundPayout) {
+    return new Response("OK", { status: 200 });
+  }
 
   // Aucun identifiant reconnu → on accepte silencieusement (évite les retries Moneroo)
   if (!orderId && !payoutId && !isAdPayment && !isStoragePayment) {
@@ -153,8 +159,11 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
           await ctx.runMutation(internal.payments.mutations.confirmPayment, {
             orderId,
             paymentReference: data.id,
-            amountPaid: monerooAmountToCentimes(data.amount, data.currency),
-            currency: data.currency,
+            amountPaid: monerooAmountToCentimes(
+              data.amount,
+              data.currency ?? "XOF",
+            ),
+            currency: data.currency ?? "XOF",
           });
           // Track Purchase Meta CAPI (seulement si source = vendor_shop et pixel configuré)
           await ctx.runMutation(internal.meta.mutations.trackPurchase, {

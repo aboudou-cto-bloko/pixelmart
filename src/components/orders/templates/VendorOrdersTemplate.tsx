@@ -21,7 +21,7 @@ interface OrderRow {
   customer_email: string;
   customer_phone?: string;
   _creationTime: number;
-  items: Array<{ title: string; quantity: number }>;
+  items: Array<{ title: string; variant_title?: string; quantity: number }>;
 }
 
 interface VendorOrdersTemplateProps {
