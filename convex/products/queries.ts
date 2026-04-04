@@ -151,7 +151,17 @@ export const listByCategory = query({
       .withIndex("by_category", (q) => q.eq("category_id", args.categoryId))
       .collect();
 
-    const activeProducts = products.filter((p) => p.status === "active");
+    // Exclure les boutiques masquées de la marketplace
+    const hiddenStores = await ctx.db
+      .query("stores")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) => q.eq(q.field("hide_from_marketplace"), true))
+      .collect();
+    const hiddenStoreIds = new Set(hiddenStores.map((s) => s._id as string));
+
+    const activeProducts = products.filter(
+      (p) => p.status === "active" && !hiddenStoreIds.has(p.store_id as string),
+    );
 
     return Promise.all(
       activeProducts.map(async (product) => {
@@ -258,6 +268,21 @@ export const search = query({
       }
     }
 
+    // Sur la marketplace (pas de filtre store), exclure les boutiques masquées
+    if (!args.storeId) {
+      const hiddenStores = await ctx.db
+        .query("stores")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .filter((q) => q.eq(q.field("hide_from_marketplace"), true))
+        .collect();
+      const hiddenStoreIds = new Set(hiddenStores.map((s) => s._id as string));
+      if (hiddenStoreIds.size > 0) {
+        products = products.filter(
+          (p) => !hiddenStoreIds.has(p.store_id as string),
+        );
+      }
+    }
+
     // --- Post-search filters (price, stock) ---
     if (args.minPrice !== undefined) {
       products = products.filter((p) => p.price >= args.minPrice!);
@@ -349,8 +374,19 @@ export const listLatest = query({
     // Récupérer les produits actifs, ordonnés par création (desc par défaut dans Convex)
     const allProducts = await ctx.db.query("products").order("desc").take(200);
 
+    // Exclure les boutiques masquées de la marketplace
+    const hiddenStores = await ctx.db
+      .query("stores")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .filter((q) => q.eq(q.field("hide_from_marketplace"), true))
+      .collect();
+    const hiddenStoreIds = new Set(hiddenStores.map((s) => s._id as string));
+
     const activeProducts = allProducts
-      .filter((p) => p.status === "active")
+      .filter(
+        (p) =>
+          p.status === "active" && !hiddenStoreIds.has(p.store_id as string),
+      )
       .slice(0, limit);
 
     const productsWithImages = await Promise.all(

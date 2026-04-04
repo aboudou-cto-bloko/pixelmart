@@ -72,14 +72,19 @@ export default function VendorMetaSettingsPage() {
   const router = useRouter();
   const store = useQuery(api.stores.queries.getMyStore, {});
   const updateMetaConfig = useMutation(api.meta.mutations.updateMetaConfig);
+  const toggleMarketplaceVisibility = useMutation(
+    api.stores.mutations.toggleMarketplaceVisibility,
+  );
 
   const [pixelId, setPixelId] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [testEventCode, setTestEventCode] = useState("");
   const [vendorShopEnabled, setVendorShopEnabled] = useState(false);
+  const [hideFromMarketplace, setHideFromMarketplace] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isTogglingShop, setIsTogglingShop] = useState(false);
+  const [isTogglingMarketplace, setIsTogglingMarketplace] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,7 +95,24 @@ export default function VendorMetaSettingsPage() {
     setAccessToken(store.meta_access_token ?? "");
     setTestEventCode(store.meta_test_event_code ?? "");
     setVendorShopEnabled(store.vendor_shop_enabled ?? false);
+    setHideFromMarketplace(store.hide_from_marketplace ?? false);
   }, [store]);
+
+  async function handleToggleMarketplace(hide: boolean) {
+    if (isTogglingMarketplace) return;
+    setHideFromMarketplace(hide);
+    setIsTogglingMarketplace(true);
+    try {
+      await toggleMarketplaceVisibility({ hide });
+    } catch (err) {
+      setHideFromMarketplace(!hide); // rollback
+      setError(
+        err instanceof Error ? err.message : "Erreur lors de la sauvegarde",
+      );
+    } finally {
+      setIsTogglingMarketplace(false);
+    }
+  }
 
   async function handleToggleShop(enabled: boolean) {
     if (isTogglingShop) return;
@@ -139,7 +161,8 @@ export default function VendorMetaSettingsPage() {
     );
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
   const shopUrl = store ? `${siteUrl}/shop/${store.slug}` : "";
 
   return (
@@ -195,6 +218,31 @@ export default function VendorMetaSettingsPage() {
                 </a>
               </Button>
             </div>
+          )}
+
+          {vendorShopEnabled && (
+            <>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="size-4 text-muted-foreground" />
+                    <p className="text-sm font-medium">
+                      Masquer mes produits de la marketplace
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground pl-6">
+                    Vos produits restent visibles sur votre boutique personnelle
+                    mais n&apos;apparaissent plus sur la marketplace Pixel-Mart.
+                  </p>
+                </div>
+                <Switch
+                  checked={hideFromMarketplace}
+                  onCheckedChange={handleToggleMarketplace}
+                  disabled={isTogglingMarketplace}
+                />
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -119,6 +119,7 @@ export default defineSchema({
     meta_access_token: v.optional(v.string()), // Token Conversions API (secret)
     meta_test_event_code: v.optional(v.string()), // Code test event Meta
     vendor_shop_enabled: v.optional(v.boolean()), // true = /shop/[slug] actif
+    hide_from_marketplace: v.optional(v.boolean()), // true = produits masqués sur la marketplace Pixel-Mart
 
     // Delivery & Pickup
     use_pixelmart_service: v.optional(v.boolean()), // default true — uses Pixel-Mart warehouse

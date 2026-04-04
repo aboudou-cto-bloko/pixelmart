@@ -461,7 +461,9 @@ export const createAdditionalStore = mutation({
       use_pixelmart_service: usePixelmartService,
       custom_pickup_lat: isDeliveryOnly ? args.custom_pickup_lat : undefined,
       custom_pickup_lon: isDeliveryOnly ? args.custom_pickup_lon : undefined,
-      custom_pickup_label: isDeliveryOnly ? args.custom_pickup_label : undefined,
+      custom_pickup_label: isDeliveryOnly
+        ? args.custom_pickup_label
+        : undefined,
       has_storage_plan: hasStoragePlan,
       contact_phone: args.contact_phone || undefined,
       contact_whatsapp: args.contact_whatsapp || undefined,
@@ -476,5 +478,31 @@ export const createAdditionalStore = mutation({
     });
 
     return { storeId, slug };
+  },
+});
+
+/**
+ * Active/désactive la visibilité des produits de cette boutique sur la marketplace.
+ * Réservé aux vendeurs ayant une boutique personnelle (vendor_shop_enabled).
+ */
+export const toggleMarketplaceVisibility = mutation({
+  args: {
+    hide: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    if (!store.vendor_shop_enabled) {
+      throw new ConvexError(
+        "Cette option est réservée aux vendeurs ayant une boutique personnelle activée.",
+      );
+    }
+
+    await ctx.db.patch(store._id, {
+      hide_from_marketplace: args.hide,
+      updated_at: Date.now(),
+    });
+
+    return { success: true };
   },
 });

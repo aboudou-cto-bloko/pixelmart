@@ -518,18 +518,22 @@ export const getVendorLeaderboard = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .collect();
 
-    const ranked = allStores
-      .map((s) => ({
-        _id: s._id,
-        name: s.name,
-        slug: s.slug,
-        subscription_tier: s.subscription_tier,
-        is_verified: s.is_verified,
-        avg_rating: s.avg_rating ?? 0,
-        revenue: storeRevenue[s._id as string] ?? 0,
-        order_count: storeOrders[s._id as string] ?? 0,
-      }))
-      .sort((a, b) => b.revenue - a.revenue);
+    const ranked = await Promise.all(
+      allStores.map(async (s) => {
+        const owner = await ctx.db.get(s.owner_id);
+        return {
+          _id: s._id,
+          owner_name: owner?.name ?? s.name,
+          subscription_tier: s.subscription_tier,
+          is_verified: s.is_verified,
+          avg_rating: s.avg_rating ?? 0,
+          revenue: storeRevenue[s._id as string] ?? 0,
+          order_count: storeOrders[s._id as string] ?? 0,
+        };
+      }),
+    );
+
+    ranked.sort((a, b) => b.revenue - a.revenue);
 
     return ranked;
   },
