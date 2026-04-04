@@ -678,3 +678,38 @@ Configured in `next.config.ts` via `headers()`:
 - ❌ Send XOF amounts to Moneroo ÷ 100 — use `centimesToMonerooAmount(amount, currency)`
 - ❌ Push directly to `main`
 - ❌ Forget `npx convex codegen` after adding a new convex module directory
+
+---
+
+## UX — Backlog (session 2026-04-04)
+
+### Fait (mergé sur main)
+
+| PR | Branche | Description |
+|----|---------|-------------|
+| #169 | `fix/cart-error-toast` | Toast d'erreur sonner quand `addItem()` échoue (ProductCard + ShopProductCard) |
+| #170 | `feat/ux-storefront` | A11y : skip link, focus-visible ring, `aria-live` badge panier, `ScrollToTop` FAB, badge filtres count, stepper checkout 3 étapes, swipe galerie mobile |
+| #171 | `feat/shop-storefront-parity` | Shop vendeur : skip link, validation warnings panier, bouton `-` disabled à qty=1, tri produits client-side |
+
+### Reste à faire
+
+#### Priorité haute
+
+- **Newsletter** — `NewsletterBar.tsx` affiche un toast de succès sans sauvegarder l'email.
+  Implémenter : mutation Convex `newsletter.mutations.subscribe` (table `newsletter_subscribers`) **ou** appel Mailchimp via une action Convex.
+  Fichier : `src/components/storefront/organisms/NewsletterBar.tsx`
+
+- **Wishlist** — fonctionnalité absente ; le composant `StorefrontProductCard` a un TODO.
+  Implémenter : table `wishlists` (userId + productId), mutation toggle, query `getByUser`, icône cœur sur les cartes produits.
+  Point de départ : `src/components/products/ProductCard.tsx` (bouton cœur en overlay, comme les badges discount)
+
+#### Priorité moyenne
+
+- **Homepage SuggestToday** — section "Suggestions du jour" marquée "à implémenter dans un second temps" dans `HomepageTemplate.tsx`.
+  Idée : produits les plus consultés dans les 24h (nouveau champ `view_count` sur `products` incrémenté via action) ou sélection manuelle admin.
+  Fichier : `src/components/storefront/templates/HomepageTemplate.tsx`
+
+#### Déjà bon, pas urgent
+
+- Aria-live sur le contenu filtré de la page produits (annonce "X produits trouvés") — cosmétique, faible impact réel
+- Focus trap dans le lightbox galerie (Dialog shadcn gère déjà l'essentiel)
