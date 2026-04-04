@@ -26,6 +26,7 @@ import { ProductReviewList } from "@/components/reviews";
 import { ProductQASection } from "@/components/questions";
 import { QuickOrderSheet } from "@/components/vendor-shop/organisms/QuickOrderSheet";
 import { VariantSelector } from "@/components/products/VariantSelector";
+import { WishlistButton } from "@/components/atoms/WishlistButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +34,7 @@ import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { useMetaPixel } from "@/components/vendor-shop/providers";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 
 // ─── Sub-components ───────────────────────────────────────────
@@ -162,6 +164,9 @@ export function ShopProductPageClient({
     api.variants.queries.listByProduct,
     product ? { productId: product._id } : "skip",
   );
+
+  const { user } = useCurrentUser();
+  const isOwnShop = user && store && store.owner_id === user._id;
 
   // Track ViewContent
   useEffect(() => {
@@ -343,6 +348,10 @@ export function ShopProductPageClient({
                     setSelectedVariantId(id);
                     setQuantity(1);
                   }}
+                  onClear={() => {
+                    setSelectedVariantId(null);
+                    setQuantity(1);
+                  }}
                   currency={currency}
                 />
               )}
@@ -377,6 +386,14 @@ export function ShopProductPageClient({
                       onChange={setQuantity}
                     />
                   )}
+                  {isOwnShop ? (
+                    <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                        Vous consultez votre propre boutique. Vous ne pouvez pas
+                        y passer commande.
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="flex flex-col gap-3">
                     <Button
                       size="lg"
@@ -385,30 +402,37 @@ export function ShopProductPageClient({
                       style={{
                         backgroundColor: "var(--shop-primary, #6366f1)",
                       }}
+                      disabled={!!isOwnShop}
                     >
                       <ShoppingCart className="size-5" />
-                      Commander
+                      {isOwnShop ? "Commande désactivée" : "Commander"}
                     </Button>
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="w-full h-12"
-                      title="Partager"
-                      onClick={() => {
-                        if (navigator.share) {
-                          navigator.share({
-                            title: product.title,
-                            url: window.location.href,
-                          });
-                        } else {
-                          navigator.clipboard.writeText(window.location.href);
-                          toast.success("Lien copié !");
-                        }
-                      }}
-                    >
-                      <Share2 className="size-5" />
-                      <span className="sm:hidden ml-2">Partager</span>
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        className="flex-1 h-12"
+                        title="Partager"
+                        onClick={() => {
+                          if (navigator.share) {
+                            navigator.share({
+                              title: product.title,
+                              url: window.location.href,
+                            });
+                          } else {
+                            navigator.clipboard.writeText(window.location.href);
+                            toast.success("Lien copié !");
+                          }
+                        }}
+                      >
+                        <Share2 className="size-5" />
+                        <span className="sm:hidden ml-2">Partager</span>
+                      </Button>
+                      <WishlistButton
+                        productId={product._id}
+                        className="size-12 rounded-lg border border-input bg-background hover:bg-accent"
+                      />
+                    </div>
                   </div>
                   {!product.is_digital && maxQty <= 10 && maxQty > 0 && (
                     <p className="flex items-center gap-1.5 text-sm text-orange-600 font-medium">

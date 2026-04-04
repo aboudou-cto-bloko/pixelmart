@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
+import { WishlistButton } from "@/components/atoms/WishlistButton";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
@@ -397,11 +398,15 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
             )}
           </div>
 
-          {/* Title + share */}
-          <div className="flex items-start gap-3">
+          {/* Title + share + wishlist */}
+          <div className="flex items-start gap-2">
             <h1 className="flex-1 text-2xl sm:text-3xl font-bold leading-tight">
               {product.title}
             </h1>
+            <WishlistButton
+              productId={product._id}
+              className="shrink-0 size-9 rounded-lg border border-input bg-background hover:bg-accent"
+            />
             <button
               type="button"
               onClick={handleShare}

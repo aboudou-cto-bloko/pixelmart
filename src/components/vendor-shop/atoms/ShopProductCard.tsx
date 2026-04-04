@@ -13,6 +13,7 @@ import { SHOP_ROUTES } from "@/constants/routes";
 import { useShopCart } from "../providers";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
+import { WishlistButton } from "@/components/atoms/WishlistButton";
 
 export interface ShopProductCardData {
   _id: string;
@@ -116,6 +117,12 @@ export function ShopProductCard({
               Pas d&apos;image
             </div>
           )}
+
+          {/* Wishlist */}
+          <WishlistButton
+            productId={product._id}
+            className="absolute top-2 right-2 z-10"
+          />
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">

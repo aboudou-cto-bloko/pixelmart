@@ -7,6 +7,7 @@ import { formatPrice } from "../src/lib/format";
 
 interface OrderItem {
   title: string;
+  variant_title?: string;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -52,6 +53,19 @@ export function OrderItemsTable({
             >
               {item.title}
             </Text>
+            {item.variant_title && (
+              <Text
+                style={{
+                  fontSize: "12px",
+                  fontFamily: emailTheme.fonts.body,
+                  color: emailTheme.colors.muted,
+                  margin: "2px 0 0 0",
+                  fontStyle: "italic",
+                }}
+              >
+                {item.variant_title}
+              </Text>
+            )}
             <Text
               style={{
                 fontSize: "12px",

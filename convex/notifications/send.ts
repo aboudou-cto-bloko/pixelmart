@@ -198,8 +198,10 @@ export const notifyOrderStatusGeneric = internalAction({
       pending: "En attente de paiement",
       paid: "Payée",
       processing: "En préparation",
+      ready_for_delivery: "Prête pour livraison",
       shipped: "Expédiée",
       delivered: "Livrée",
+      delivery_failed: "Échec de livraison",
       cancelled: "Annulée",
       refunded: "Remboursée",
     };
@@ -290,6 +292,7 @@ export const notifyNewOrderInApp = internalAction({
 export const notifyPaymentFailed = internalAction({
   args: {
     vendorUserId: v.id("users"),
+    vendorEmail: v.optional(v.string()),
     customerName: v.string(),
     orderNumber: v.string(),
     storeName: v.string(),
@@ -306,10 +309,25 @@ export const notifyPaymentFailed = internalAction({
       title: "Paiement échoué",
       body: `${args.customerName} — ${args.orderNumber} (${formatted}) — paiement non abouti`,
       link: "/vendor/orders",
-      channels: ["in_app", "push"],
+      channels: ["in_app", "push", "email"],
       sentVia: ["in_app"],
       metadata: undefined,
     });
+
+    // Email → vendor
+    if (args.vendorEmail) {
+      try {
+        const resend = getResend();
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: args.vendorEmail,
+          subject: `Paiement échoué — Commande ${args.orderNumber}`,
+          html: `<p>Bonjour,</p><p>Le paiement de la commande <strong>${args.orderNumber}</strong> de ${args.customerName} (${formatted}) n'a pas abouti. La commande a été annulée et le stock restauré.</p><p><a href="${process.env.SITE_URL ?? ""}/vendor/orders">Voir mes commandes</a></p>`,
+        });
+      } catch (error) {
+        console.error("[Notification] PaymentFailed email failed:", error);
+      }
+    }
 
     // Push → vendor
     await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
@@ -475,7 +493,9 @@ export const notifyReturnStatus = internalAction({
     await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
       userId: args.recipientUserId,
       title: titleMap[args.returnStatus] ?? "Mise à jour retour",
-      body: bodyMap[args.returnStatus] ?? `Retour commande ${args.orderNumber} mis à jour`,
+      body:
+        bodyMap[args.returnStatus] ??
+        `Retour commande ${args.orderNumber} mis à jour`,
       url: link,
     });
   },

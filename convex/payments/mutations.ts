@@ -3,7 +3,11 @@
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { assertValidTransition, OrderItemInput, restoreInventory } from "../orders/helpers";
+import {
+  assertValidTransition,
+  OrderItemInput,
+  restoreInventory,
+} from "../orders/helpers";
 
 /**
  * Stocke la référence de paiement Moneroo dans la commande.
@@ -300,6 +304,7 @@ export const failPayment = internalMutation({
           internal.notifications.send.notifyPaymentFailed,
           {
             vendorUserId: vendor._id,
+            vendorEmail: vendor.email,
             customerName: customer?.name ?? "Client",
             orderNumber: order.order_number,
             storeName: store.name,

@@ -31,7 +31,7 @@ interface OrderRow {
   customer_email: string;
   customer_phone?: string;
   _creationTime: number;
-  items: Array<{ title: string; quantity: number }>;
+  items: Array<{ title: string; variant_title?: string; quantity: number }>;
 }
 
 interface VendorOrdersTableProps {
@@ -115,7 +115,9 @@ export function VendorOrdersTable({
               <div className="flex flex-col gap-1">
                 <OrderStatusBadge status={order.status} />
                 {order.payment_status === "failed" && (
-                  <span className="text-[10px] text-destructive font-medium">Paiement échoué</span>
+                  <span className="text-[10px] text-destructive font-medium">
+                    Paiement échoué
+                  </span>
                 )}
               </div>
             </TableCell>

@@ -57,7 +57,7 @@ export function validateAddress(address: {
   }
 
   // Phone validation
-  if (address.phone && !/^\+?[\d\s\-()]{10,20}$/.test(address.phone)) {
+  if (address.phone && !/^\+?[\d\s\-()]{8,20}$/.test(address.phone)) {
     throw new ConvexError("Format de téléphone invalide");
   }
 

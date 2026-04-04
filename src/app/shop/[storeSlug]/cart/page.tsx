@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
+import { toast } from "sonner";
 import { SHOP_ROUTES } from "@/constants/routes";
 
 function ValidationWarnings({
@@ -232,7 +233,10 @@ export default function ShopCartPage() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => removeItem(item.cartItemId)}
+                  onClick={() => {
+                    removeItem(item.cartItemId);
+                    toast.info(`"${item.title}" retiré du panier`);
+                  }}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>

@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/format";
 import { X } from "lucide-react";
+import { useState } from "react";
 
 type VariantOption = { name: string; value: string };
 
@@ -31,6 +32,8 @@ export function VariantSelector({
   onClear,
   currency = "XOF",
 }: VariantSelectorProps) {
+  const [outOfStockMessage, setOutOfStockMessage] = useState(false);
+
   if (variants.length === 0) return null;
 
   const optionNames = Array.from(
@@ -62,6 +65,8 @@ export function VariantSelector({
   }
 
   function handleOptionClick(optionName: string, optionValue: string) {
+    setOutOfStockMessage(false);
+
     // Toggle: clicking the already-selected value deselects the variant
     if (selectedValues[optionName] === optionValue) {
       onClear?.();
@@ -95,7 +100,11 @@ export function VariantSelector({
     );
     if (fallbackMatch) {
       onSelect(fallbackMatch._id);
+      return;
     }
+
+    // 3. No in-stock variant found for this option — show out-of-stock message
+    setOutOfStockMessage(true);
   }
 
   function isValueAvailable(optionName: string, optionValue: string): boolean {
@@ -119,7 +128,10 @@ export function VariantSelector({
           <p className="text-sm font-medium">Variantes disponibles</p>
           <button
             type="button"
-            onClick={onClear}
+            onClick={() => {
+              setOutOfStockMessage(false);
+              onClear();
+            }}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="size-3" />
@@ -138,29 +150,41 @@ export function VariantSelector({
             )}
           </p>
           <div className="flex flex-wrap gap-2">
-            {group.values
-              .filter((val) => isValueAvailable(group.name, val))
-              .map((val) => {
-                const isSelected = selectedValues[group.name] === val;
-                return (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => handleOptionClick(group.name, val)}
-                    className={cn(
-                      "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
-                      isSelected
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border hover:border-primary/60",
-                    )}
-                  >
-                    {val}
-                  </button>
-                );
-              })}
+            {group.values.map((val) => {
+              const available = isValueAvailable(group.name, val);
+              const isSelected = selectedValues[group.name] === val;
+              return (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => handleOptionClick(group.name, val)}
+                  className={cn(
+                    "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors relative",
+                    isSelected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : available
+                        ? "border-border hover:border-primary/60"
+                        : "border-border/50 text-muted-foreground/60 line-through cursor-pointer hover:border-border",
+                  )}
+                >
+                  {val}
+                  {!available && (
+                    <span className="ml-1 no-underline text-[10px] leading-none align-super text-muted-foreground/50">
+                      ·
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}
+
+      {outOfStockMessage && !selectedVariant && (
+        <p className="text-sm text-destructive font-medium">
+          Cette combinaison est en rupture de stock
+        </p>
+      )}
 
       {selectedVariant && (
         <div className="flex items-center gap-3 text-sm text-muted-foreground">

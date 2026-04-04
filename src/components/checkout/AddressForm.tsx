@@ -32,9 +32,19 @@ interface AddressFormProps {
 }
 
 export function AddressForm({ address, onChange, errors }: AddressFormProps) {
+  const OPTIONAL_FIELDS: (keyof ShippingAddress)[] = [
+    "line2",
+    "state",
+    "postal_code",
+    "phone",
+  ];
+
   const update = useCallback(
     (field: keyof ShippingAddress, value: string) => {
-      onChange({ ...address, [field]: value || undefined });
+      onChange({
+        ...address,
+        [field]: OPTIONAL_FIELDS.includes(field) ? value || undefined : value,
+      });
     },
     [address, onChange],
   );
@@ -67,7 +77,11 @@ export function AddressForm({ address, onChange, errors }: AddressFormProps) {
           value={address.phone ?? ""}
           onChange={(e) => update("phone", e.target.value)}
           placeholder="+22961234567"
+          className={errors?.phone ? "border-destructive" : ""}
         />
+        {errors?.phone && (
+          <p className="text-xs text-destructive mt-1">{errors.phone}</p>
+        )}
       </div>
 
       {/* Adresse ligne 1 */}
@@ -180,12 +194,23 @@ export function validateAddress(
   }
   if (!address.line1.trim()) {
     errors.line1 = "L'adresse est requise";
+  } else if (address.line1.trim().length < 5) {
+    errors.line1 = "L'adresse doit contenir au moins 5 caractères";
+  } else if (address.line1.trim().length > 200) {
+    errors.line1 = "L'adresse ne doit pas dépasser 200 caractères";
   }
   if (!address.city.trim()) {
     errors.city = "La ville est requise";
   }
   if (!address.country) {
     errors.country = "Le pays est requis";
+  }
+
+  if (address.phone) {
+    const cleanedDigits = address.phone.replace(/[\s\-()]/g, "");
+    if (cleanedDigits.length < 8) {
+      errors.phone = "Le numéro doit contenir au moins 8 chiffres";
+    }
   }
 
   return Object.keys(errors).length > 0 ? errors : null;
