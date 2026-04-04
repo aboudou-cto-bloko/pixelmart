@@ -4,6 +4,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import { getVendorStore } from "../users/helpers";
+import { resolveImageUrl } from "../products/helpers";
 import {
   type AnalyticsPeriod,
   type Granularity,
@@ -285,10 +286,13 @@ export const getTopProducts = query({
     const results = await Promise.all(
       sorted.map(async ([productId, stats]) => {
         const product = await ctx.db.get(productId as Id<"products">);
+        const image = product?.images[0]
+          ? await resolveImageUrl(ctx, product.images[0])
+          : null;
         return {
           productId,
           title: product?.title ?? "Produit supprimé",
-          image: product?.images[0] ?? null,
+          image,
           slug: product?.slug ?? null,
           revenue: stats.revenue,
           quantity: stats.quantity,
