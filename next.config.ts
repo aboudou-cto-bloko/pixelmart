@@ -21,11 +21,11 @@ const nextConfig: NextConfig = {
     // 'unsafe-inline' requis pour Next.js App Router (hydration scripts + JSON-LD inline)
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.convex.cloud https://picsum.photos https://www.facebook.com https://*.tile.openstreetmap.org https://unpkg.com",
-      "font-src 'self'",
-      "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://nominatim.openstreetmap.org https://api.moneroo.io https://www.facebook.com https://connect.facebook.net",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://connect.facebook.net https://cdn.chatway.app",
+      "style-src 'self' 'unsafe-inline' https://*.chatway.app",
+      "img-src 'self' data: blob: https://*.convex.cloud https://picsum.photos https://www.facebook.com https://*.tile.openstreetmap.org https://unpkg.com https://*.chatway.app",
+      "font-src 'self' https://*.chatway.app",
+      "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://nominatim.openstreetmap.org https://api.moneroo.io https://www.facebook.com https://connect.facebook.net https://*.chatway.app wss://*.chatway.app",
       "frame-src 'none'",
       "frame-ancestors 'none'",
       "object-src 'none'",
