@@ -29,6 +29,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductReviewList } from "@/components/reviews";
 import { ProductQASection } from "@/components/questions";
+import { SellerUpsell } from "@/components/products/SellerUpsell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -689,6 +690,20 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
         productId={product._id}
         storeOwnerId={product.store?.owner_id}
       />
+
+      {/* Upsell — autres produits du vendeur */}
+      {product.store && (
+        <>
+          <Separator />
+          <SellerUpsell
+            mode="marketplace"
+            storeId={product.store._id}
+            excludeProductId={product._id}
+            storeName={product.store.name}
+            storeSlug={product.store.slug}
+          />
+        </>
+      )}
     </div>
   );
 }
