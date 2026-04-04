@@ -103,20 +103,10 @@ export default function VendorTermsPage() {
 
             <h3 className="text-lg font-medium">2.4 Niveaux d'abonnement</h3>
             <p>
-              Pixel-Mart propose trois niveaux d'abonnement avec des taux de
-              commission différents :
+              Pixel-Mart propose plusieurs niveaux d'abonnement avec des taux de
+              commission différents. Les détails des tarifs sont communiqués
+              lors de l'inscription ou sur demande auprès du support.
             </p>
-            <ul>
-              <li>
-                <strong>Free</strong> — commission de 7 % sur chaque vente.
-              </li>
-              <li>
-                <strong>Pro</strong> — commission de 3 % sur chaque vente.
-              </li>
-              <li>
-                <strong>Business</strong> — commission de 2 % sur chaque vente.
-              </li>
-            </ul>
           </section>
 
           <section>
@@ -187,7 +177,7 @@ export default function VendorTermsPage() {
             </p>
             <ul>
               <li>Un titre clair et descriptif.</li>
-              <li>Une description détaillée (HTML autorisé, sanitizé).</li>
+              <li>Une description détaillée.</li>
               <li>Au moins une image du produit.</li>
               <li>Un prix en Franc CFA (XOF).</li>
               <li>Une catégorie de classement.</li>
@@ -265,12 +255,12 @@ export default function VendorTermsPage() {
             <h3 className="text-lg font-medium">6.2 Commission Pixel-Mart</h3>
             <p>
               Pixel-Mart prélève une commission sur chaque vente, calculée sur
-              le montant total de la commande hors frais de livraison. Les taux
-              de commission sont les suivants :
+              le montant total de la commande hors frais de livraison. Le taux
+              de commission applicable dépend du niveau d'abonnement du vendeur.
             </p>
             <ul>
               <li>
-                <strong>Free</strong> — 5 % (500 basis points).
+                <strong>Free</strong> — 7 % (700 basis points).
               </li>
               <li>
                 <strong>Pro</strong> — 3 % (300 basis points).
@@ -303,8 +293,8 @@ export default function VendorTermsPage() {
               7.1 Modes de paiement acceptés
             </h3>
             <p>
-              Les paiements sont traités par notre partenaire{" "}
-              <strong>Moneroo</strong> et incluent :
+              Les paiements sont traités par notre prestataire de paiement et
+              incluent :
             </p>
             <ul>
               <li>Mobile Money : MTN MoMo, Orange Money, Wave, Flooz</li>
@@ -329,8 +319,8 @@ export default function VendorTermsPage() {
 
             <h3 className="text-lg font-medium">7.3 Sécurité</h3>
             <p>
-              Toutes les transactions sont sécurisées et vérifiées via les
-              webhooks de Moneroo avec signature HMAC-SHA256.
+              Toutes les transactions sont sécurisées et vérifiées
+              automatiquement.
             </p>
           </section>
 
@@ -345,8 +335,8 @@ export default function VendorTermsPage() {
 
             <h3 className="text-lg font-medium">8.2 Montant minimum</h3>
             <p>
-              Le montant minimum de retrait est de <strong>655 XOF</strong>.
-              Toute demande inférieure sera rejetée.
+              Le montant minimum de retrait est défini par la plateforme. Toute
+              demande inférieure sera rejetée.
             </p>
 
             <h3 className="text-lg font-medium">8.3 Méthodes de retrait</h3>
@@ -371,8 +361,8 @@ export default function VendorTermsPage() {
             <h3 className="text-lg font-medium">8.6 Dette de stockage</h3>
             <p>
               En cas de dette de stockage impayée, celle-ci est déduite en
-              priorité sur le montant du retrait avant tout versement au vendeur
-              (règle F-05).
+              priorité sur le montant du retrait avant tout versement au
+              vendeur.
             </p>
           </section>
 
@@ -497,21 +487,10 @@ export default function VendorTermsPage() {
 
             <h3 className="text-lg font-medium">11.3 Tarifs de stockage</h3>
             <p>
-              Les frais de stockage sont calculés selon les barèmes suivants :
+              Les frais de stockage sont calculés en fonction du nombre d'unités
+              et du poids des produits déposés. La grille tarifaire est
+              communiquée lors de la demande de mise en stock.
             </p>
-            <ul>
-              <li>
-                <strong>Par unité</strong> — 100 XOF/unité (jusqu'à 50 unités),
-                60 XOF/unité (au-delà de 50 unités).
-              </li>
-              <li>
-                <strong>Poids moyen (5–25 kg)</strong> — 5 000 XOF forfaitaire.
-              </li>
-              <li>
-                <strong>Lourd (&gt;25 kg)</strong> — 5 000 XOF de base + 250 XOF
-                par kg au-delà de 25 kg.
-              </li>
-            </ul>
 
             <h3 className="text-lg font-medium">11.4 Modes de paiement</h3>
             <p>
@@ -536,7 +515,7 @@ export default function VendorTermsPage() {
             <h3 className="text-lg font-medium">11.5 Blocage</h3>
             <p>
               Un vendeur avec une facture impayée depuis plus de 30 jours ne
-              peut pas retirer ses produits de l'entrepôt (règle F-06).
+              peut pas retirer ses produits de l'entrepôt.
             </p>
           </section>
 

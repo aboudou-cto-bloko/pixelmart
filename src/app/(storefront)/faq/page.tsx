@@ -84,7 +84,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "Quelles sont les commissions prélevées ?",
-        a: "Pixel-Mart prélève une commission de 7% sur chaque vente réalisée. Il n'y a pas de frais d'abonnement mensuel sur le plan gratuit.",
+        a: "Pixel-Mart prélève une commission sur chaque vente. Le taux dépend de votre niveau d'abonnement. Il n'y a pas de frais d'abonnement mensuel sur le plan gratuit.",
       },
       {
         q: "Comment recevoir mes paiements en tant que vendeur ?",
