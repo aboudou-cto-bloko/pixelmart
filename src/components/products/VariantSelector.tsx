@@ -62,24 +62,52 @@ export function VariantSelector({
   }
 
   function handleOptionClick(optionName: string, optionValue: string) {
+    // Toggle: clicking the already-selected value deselects the variant
+    if (selectedValues[optionName] === optionValue) {
+      onClear?.();
+      return;
+    }
+
     const newSelection = { ...selectedValues, [optionName]: optionValue };
-    const match = variants.find((v) =>
-      Object.entries(newSelection).every(([name, val]) =>
-        v.options.some((o) => o.name === name && o.value === val),
-      ),
+
+    // 1. Prefer exact match with all currently selected dimensions + new value
+    const exactMatch = variants.find(
+      (v) =>
+        v.is_available &&
+        v.quantity > 0 &&
+        Object.entries(newSelection).every(([name, val]) =>
+          v.options.some((o) => o.name === name && o.value === val),
+        ),
     );
-    if (match) onSelect(match._id);
+    if (exactMatch) {
+      onSelect(exactMatch._id);
+      return;
+    }
+
+    // 2. Fallback: find any stocked variant that has the newly clicked option
+    //    (allows switching e.g. from Rouge/S → Bleu when Bleu/S is out of stock
+    //    but Bleu/M has stock — auto-selects Bleu/M)
+    const fallbackMatch = variants.find(
+      (v) =>
+        v.is_available &&
+        v.quantity > 0 &&
+        v.options.some((o) => o.name === optionName && o.value === optionValue),
+    );
+    if (fallbackMatch) {
+      onSelect(fallbackMatch._id);
+    }
   }
 
   function isValueAvailable(optionName: string, optionValue: string): boolean {
-    const tentative = { ...selectedValues, [optionName]: optionValue };
+    // A button is enabled if ANY stocked variant carries that option value.
+    // We intentionally do NOT filter by other selected dimensions here because
+    // that would disable buttons even when an alternate combo has stock
+    // (e.g. Bleu/S out of stock but Bleu/M in stock → Bleu should still be clickable).
     return variants.some(
       (v) =>
         v.is_available &&
         v.quantity > 0 &&
-        Object.entries(tentative).every(([name, val]) =>
-          v.options.some((o) => o.name === name && o.value === val),
-        ),
+        v.options.some((o) => o.name === optionName && o.value === optionValue),
     );
   }
 
