@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
+import { toast } from "sonner";
 import { useMetaPixel } from "@/components/vendor-shop/providers";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 
@@ -401,6 +402,7 @@ export function ShopProductPageClient({
                           });
                         } else {
                           navigator.clipboard.writeText(window.location.href);
+                          toast.success("Lien copié !");
                         }
                       }}
                     >
