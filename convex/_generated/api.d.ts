@@ -102,6 +102,8 @@ import type * as users_queries from "../users/queries.js";
 import type * as variants_mutations from "../variants/mutations.js";
 import type * as variants_queries from "../variants/queries.js";
 import type * as waitlist from "../waitlist.js";
+import type * as wishlists_mutations from "../wishlists/mutations.js";
+import type * as wishlists_queries from "../wishlists/queries.js";
 
 import type {
   ApiFromModules,
@@ -204,6 +206,8 @@ declare const fullApi: ApiFromModules<{
   "variants/mutations": typeof variants_mutations;
   "variants/queries": typeof variants_queries;
   waitlist: typeof waitlist;
+  "wishlists/mutations": typeof wishlists_mutations;
+  "wishlists/queries": typeof wishlists_queries;
 }>;
 
 /**

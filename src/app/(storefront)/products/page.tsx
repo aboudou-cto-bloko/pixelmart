@@ -50,7 +50,11 @@ function CatalogContent() {
           </div>
         </div>
         {products !== undefined && (
-          <p className="text-sm text-muted-foreground">
+          <p
+            className="text-sm text-muted-foreground"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             {products.length} produit{products.length !== 1 ? "s" : ""}
           </p>
         )}

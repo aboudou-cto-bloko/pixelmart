@@ -13,6 +13,7 @@ import { ProductCategoryBadge } from "@/components/ui/product-category-badge";
 import { formatPrice } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
+import { WishlistButton } from "@/components/atoms/WishlistButton";
 import type { Id } from "../../../convex/_generated/dataModel";
 
 export interface ProductCardData {
@@ -118,6 +119,12 @@ export function ProductCard({
               Pas d&apos;image
             </div>
           )}
+
+          {/* Wishlist */}
+          <WishlistButton
+            productId={product._id}
+            className="absolute top-2 right-2 z-10"
+          />
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
