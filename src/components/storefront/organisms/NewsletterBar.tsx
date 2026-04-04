@@ -3,24 +3,40 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Check } from "lucide-react";
 import { toast } from "sonner";
+import { api } from "../../../../convex/_generated/api";
 
 export function NewsletterBar() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  const subscribe = useMutation(api.newsletter.mutations.subscribe);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.includes("@")) {
       toast.error("Email invalide");
       return;
     }
-    // TODO: Sauvegarder l'email (Convex mutation ou Mailchimp)
-    setSubmitted(true);
-    toast.success("Inscription confirmée !");
+    setIsLoading(true);
+    try {
+      const result = await subscribe({ email });
+      if (result.alreadySubscribed) {
+        toast.info("Vous êtes déjà inscrit à notre newsletter.");
+      } else {
+        setSubmitted(true);
+        toast.success("Inscription confirmée !");
+      }
+    } catch {
+      toast.error("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -50,8 +66,14 @@ export function NewsletterBar() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Votre email..."
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-full sm:w-64"
+              disabled={isLoading}
             />
-            <Button type="submit" variant="secondary" className="shrink-0">
+            <Button
+              type="submit"
+              variant="secondary"
+              className="shrink-0"
+              disabled={isLoading}
+            >
               S&apos;inscrire
             </Button>
           </form>

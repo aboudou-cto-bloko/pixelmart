@@ -49,6 +49,7 @@ import type * as meta_index from "../meta/index.js";
 import type * as meta_mutations from "../meta/mutations.js";
 import type * as meta_queries from "../meta/queries.js";
 import type * as migrations_ensureCentimes from "../migrations/ensureCentimes.js";
+import type * as newsletter_mutations from "../newsletter/mutations.js";
 import type * as notifications_helpers from "../notifications/helpers.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
@@ -150,6 +151,7 @@ declare const fullApi: ApiFromModules<{
   "meta/mutations": typeof meta_mutations;
   "meta/queries": typeof meta_queries;
   "migrations/ensureCentimes": typeof migrations_ensureCentimes;
+  "newsletter/mutations": typeof newsletter_mutations;
   "notifications/helpers": typeof notifications_helpers;
   "notifications/mutations": typeof notifications_mutations;
   "notifications/queries": typeof notifications_queries;
