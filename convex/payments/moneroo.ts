@@ -82,6 +82,13 @@ export const initializePayment = action({
       throw new Error("Cette commande est déjà payée");
     }
 
+    // Guard : empêche la création d'une deuxième session Moneroo si une est déjà en cours
+    if (order.payment_reference) {
+      throw new Error(
+        "Un paiement est déjà en cours pour cette commande. Rafraîchissez la page.",
+      );
+    }
+
     // 2. Préparer le payload Moneroo
     const monerooAmount = centimesToMonerooAmount(
       order.total_amount,

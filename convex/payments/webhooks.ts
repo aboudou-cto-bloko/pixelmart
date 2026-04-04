@@ -57,6 +57,15 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
     return new Response("Invalid payload", { status: 400 });
   }
 
+  // Déduplication : si Moneroo rejoue ce webhook, on retourne 200 sans retraiter
+  const { alreadyProcessed } = await ctx.runMutation(
+    internal.payments.mutations.markWebhookEventProcessed,
+    { event_id: data.id },
+  );
+  if (alreadyProcessed) {
+    return new Response("OK", { status: 200 });
+  }
+
   const orderId = data.metadata?.order_id as Id<"orders"> | undefined;
   const payoutId = data.metadata?.payout_id as Id<"payouts"> | undefined;
   const bookingId = data.metadata?.booking_id as Id<"ad_bookings"> | undefined;

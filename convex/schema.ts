@@ -1212,4 +1212,14 @@ export default defineSchema({
   })
     .index("by_user", ["user_id"])
     .index("by_user_product", ["user_id", "product_id"]),
+
+  // ============================================
+  // WEBHOOK EVENTS (DÉDUPLICATION MONEROO)
+  // ============================================
+  // Empêche le double-traitement si Moneroo rejoue un webhook (réseau instable, retry).
+  // Avant tout traitement, on vérifie que l'event_id n'a pas déjà été vu.
+  webhook_events: defineTable({
+    event_id: v.string(), // data.id fourni par Moneroo (unique par événement)
+    processed_at: v.number(),
+  }).index("by_event_id", ["event_id"]),
 });
