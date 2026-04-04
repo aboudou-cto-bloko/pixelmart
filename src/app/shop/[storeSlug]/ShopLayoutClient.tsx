@@ -12,6 +12,7 @@ import {
 import { ShopHeader } from "@/components/vendor-shop/organisms/ShopHeader";
 import { ShopFooter } from "@/components/vendor-shop/organisms/ShopFooter";
 import { Toaster } from "@/components/ui/sonner";
+import { ScrollToTop } from "@/components/atoms/ScrollToTop";
 
 interface ShopLayoutClientProps {
   children: React.ReactNode;
@@ -70,13 +71,19 @@ export function ShopLayoutClient({
             } as React.CSSProperties
           }
         >
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+          >
+            Passer au contenu principal
+          </a>
           <ShopHeader
             storeName={config.storeName}
             storeSlug={storeSlug}
             logoUrl={config.logoUrl}
             isVerified={config.isVerified}
           />
-          <main className="flex-1">
+          <main id="main-content" className="flex-1">
             <div className="container mx-auto px-4 py-6">{children}</div>
           </main>
           <ShopFooter
@@ -85,6 +92,7 @@ export function ShopLayoutClient({
             contact={config.contact}
           />
           <Toaster position="bottom-right" theme={isDark ? "dark" : "light"} />
+          <ScrollToTop />
         </div>
       </ShopCartProvider>
     </MetaPixelProvider>

@@ -2,7 +2,7 @@
 
 // filepath: src/app/shop/[storeSlug]/products/page.tsx
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { Package, Search } from "lucide-react";
@@ -10,10 +10,20 @@ import { api } from "../../../../../convex/_generated/api";
 import { ShopProductCard } from "@/components/vendor-shop/atoms/ShopProductCard";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+
+type SortOption = "newest" | "price_asc" | "price_desc";
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "newest", label: "Plus récents" },
+  { value: "price_asc", label: "Prix ↑" },
+  { value: "price_desc", label: "Prix ↓" },
+];
 
 export default function ShopProductsPage() {
   const { storeSlug } = useParams<{ storeSlug: string }>();
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortOption>("newest");
 
   const store = useQuery(api.stores.queries.getBySlug, { slug: storeSlug });
   const products = useQuery(
@@ -21,12 +31,19 @@ export default function ShopProductsPage() {
     store ? { storeId: store._id } : "skip",
   );
 
-  const filtered =
-    products?.filter((p) =>
-      search.trim()
-        ? p.title.toLowerCase().includes(search.toLowerCase().trim())
-        : true,
-    ) ?? [];
+  const filtered = useMemo(() => {
+    let list = products ?? [];
+    if (search.trim()) {
+      list = list.filter((p) =>
+        p.title.toLowerCase().includes(search.toLowerCase().trim()),
+      );
+    }
+    if (sort === "price_asc")
+      return [...list].sort((a, b) => a.price - b.price);
+    if (sort === "price_desc")
+      return [...list].sort((a, b) => b.price - a.price);
+    return list; // "newest" — ordre API (le plus récent en premier)
+  }, [products, search, sort]);
 
   const isLoading = products === undefined;
 
@@ -44,15 +61,34 @@ export default function ShopProductsPage() {
         )}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          placeholder="Rechercher un produit…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + Sort */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative max-w-sm w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher un produit…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {SORT_OPTIONS.map((opt) => (
+            <Badge
+              key={opt.value}
+              variant={sort === opt.value ? "default" : "outline"}
+              className="cursor-pointer"
+              style={
+                sort === opt.value
+                  ? { backgroundColor: "var(--shop-primary, #6366f1)" }
+                  : undefined
+              }
+              onClick={() => setSort(opt.value)}
+            >
+              {opt.label}
+            </Badge>
+          ))}
+        </div>
       </div>
 
       {/* Grid */}
