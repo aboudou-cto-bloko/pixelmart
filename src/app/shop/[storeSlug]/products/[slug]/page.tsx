@@ -5,7 +5,8 @@ import { api } from "../../../../../../convex/_generated/api";
 import { ShopProductPageClient } from "./ShopProductPageClient";
 import type { Metadata } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
 
 interface Props {
   params: Promise<{ storeSlug: string; slug: string }>;
@@ -61,13 +62,19 @@ export default async function ShopProductPage({ params }: Props) {
 
   const product = preloadedQueryResult(preloadedProduct);
 
+  const preloadedUpsell = product?.store
+    ? await preloadQuery(api.products.queries.listOthersByStore, {
+        storeId: product.store._id,
+        excludeProductId: product._id,
+      })
+    : null;
+
   const jsonLd = product
     ? {
         "@context": "https://schema.org",
         "@type": "Product",
         name: product.title,
-        description:
-          product.short_description ?? product.title,
+        description: product.short_description ?? product.title,
         image: product.images ?? [],
         url: `${siteUrl}/shop/${storeSlug}/products/${slug}`,
         offers: {
@@ -79,7 +86,10 @@ export default async function ShopProductPage({ params }: Props) {
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
         },
-        ...(product.avg_rating !== null && product.avg_rating !== undefined && product.review_count !== null && product.review_count !== undefined
+        ...(product.avg_rating !== null &&
+        product.avg_rating !== undefined &&
+        product.review_count !== null &&
+        product.review_count !== undefined
           ? {
               aggregateRating: {
                 "@type": "AggregateRating",
@@ -104,6 +114,7 @@ export default async function ShopProductPage({ params }: Props) {
       <ShopProductPageClient
         preloadedProduct={preloadedProduct}
         preloadedStore={preloadedStore}
+        preloadedUpsell={preloadedUpsell}
         storeSlug={storeSlug}
         slug={slug}
       />

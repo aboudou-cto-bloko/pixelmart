@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, usePreloadedQuery } from "convex/react";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import type { Preloaded } from "convex/react";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useCart } from "@/hooks/useCart";
 import Link from "next/link";
 import Image from "next/image";
@@ -192,10 +193,16 @@ function StoreInfoCard({
 
 interface Props {
   preloadedProduct: Preloaded<typeof api.products.queries.getBySlug>;
+  preloadedUpsell: Preloaded<
+    typeof api.products.queries.listOthersByStore
+  > | null;
   slug: string;
 }
 
-export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
+export function MarketplaceProductPageClient({
+  preloadedProduct,
+  preloadedUpsell,
+}: Props) {
   const router = useRouter();
   const product = usePreloadedQuery(preloadedProduct);
   const { addItem } = useCart();
@@ -692,13 +699,13 @@ export function MarketplaceProductPageClient({ preloadedProduct }: Props) {
       />
 
       {/* Upsell — autres produits du vendeur */}
-      {product.store && (
+      {product.store && preloadedUpsell && (
         <>
           <Separator />
           <SellerUpsell
             mode="marketplace"
-            storeId={product.store._id}
-            excludeProductId={product._id}
+            preloadedProducts={preloadedUpsell}
+            storeId={product.store._id as Id<"stores">}
             storeName={product.store.name}
             storeSlug={product.store.slug}
           />
