@@ -24,6 +24,7 @@ import { api } from "../../../../../../convex/_generated/api";
 import { ProductGallery } from "@/components/products/ProductGallery";
 import { ProductReviewList } from "@/components/reviews";
 import { ProductQASection } from "@/components/questions";
+import { SellerUpsell } from "@/components/products/SellerUpsell";
 import { QuickOrderSheet } from "@/components/vendor-shop/organisms/QuickOrderSheet";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import { WishlistButton } from "@/components/atoms/WishlistButton";
@@ -589,6 +590,21 @@ export function ShopProductPageClient({
           productId={product._id as Id<"products">}
           storeOwnerId={product.store?.owner_id as Id<"users"> | undefined}
         />
+
+        {/* Upsell — autres produits du vendeur */}
+        {store && (
+          <>
+            <Separator />
+            <SellerUpsell
+              mode="shop"
+              storeId={store._id as Id<"stores">}
+              excludeProductId={product._id as Id<"products">}
+              storeName={store.name}
+              storeSlug={storeSlug}
+              currency={currency}
+            />
+          </>
+        )}
       </div>
 
       {/* Quick Order Sheet */}

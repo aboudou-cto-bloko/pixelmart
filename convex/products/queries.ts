@@ -453,3 +453,47 @@ export const searchSuggestions = query({
     return suggestions;
   },
 });
+
+/**
+ * Autres produits actifs du même vendeur — upsell page produit.
+ * PUBLIC — pas d'auth requise.
+ * Exclut le produit courant. Max 6 résultats.
+ */
+export const listOthersByStore = query({
+  args: {
+    storeId: v.id("stores"),
+    excludeProductId: v.id("products"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit ?? 6, 12);
+
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_status", (q) =>
+        q.eq("store_id", args.storeId).eq("status", "active"),
+      )
+      .collect();
+
+    const others = products
+      .filter((p) => p._id !== args.excludeProductId)
+      .slice(0, limit);
+
+    return Promise.all(
+      others.map(async (product) => {
+        const thumbnailUrl = await resolveImageUrl(ctx, product.images[0]);
+        return {
+          _id: product._id,
+          title: product.title,
+          slug: product.slug,
+          price: product.price,
+          compare_price: product.compare_price,
+          images: thumbnailUrl ? [thumbnailUrl] : [],
+          is_digital: product.is_digital,
+          quantity: product.quantity,
+          weight: product.weight,
+        };
+      }),
+    );
+  },
+});
