@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Check } from "lucide-react";
+import { Mail, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../../../../convex/_generated/api";
 
@@ -20,7 +20,7 @@ export function NewsletterBar() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.includes("@")) {
-      toast.error("Email invalide");
+      toast.error("Adresse email invalide.");
       return;
     }
     setIsLoading(true);
@@ -30,7 +30,6 @@ export function NewsletterBar() {
         toast.info("Vous êtes déjà inscrit à notre newsletter.");
       } else {
         setSubmitted(true);
-        toast.success("Inscription confirmée !");
       }
     } catch {
       toast.error("Une erreur est survenue. Veuillez réessayer.");
@@ -40,44 +39,61 @@ export function NewsletterBar() {
   }
 
   return (
-    <section className="bg-primary text-primary-foreground py-8">
-      <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Mail className="size-6 shrink-0" />
-          <div>
-            <p className="font-bold text-lg">
-              Inscrivez-vous & obtenez{" "}
-              <span className="text-yellow-300">10% de réduction</span> sur
-              votre première commande
-            </p>
-          </div>
+    <section className="border-t bg-muted/40">
+      <div className="container mx-auto px-4 py-10 sm:py-12">
+        <div className="mx-auto max-w-xl text-center space-y-4">
+          {submitted ? (
+            <div className="flex flex-col items-center gap-3 text-center">
+              <CheckCircle2 className="size-10 text-primary" />
+              <p className="font-semibold text-lg">
+                Merci pour votre inscription !
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Vous recevrez nos actualités et offres exclusives directement
+                dans votre boîte mail.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-center">
+                <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/10">
+                  <Mail className="size-5 text-primary" />
+                </span>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Restez informé</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Inscrivez-vous pour recevoir nos nouveautés et offres
+                  exclusives.
+                </p>
+              </div>
+              <form
+                onSubmit={handleSubmit}
+                className="flex flex-col sm:flex-row gap-2 mt-2"
+              >
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="votre@email.com"
+                  className="flex-1"
+                  disabled={isLoading}
+                  aria-label="Adresse email"
+                />
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="sm:shrink-0"
+                >
+                  {isLoading ? "Envoi…" : "S'inscrire"}
+                </Button>
+              </form>
+              <p className="text-xs text-muted-foreground">
+                Pas de spam. Désabonnement possible à tout moment.
+              </p>
+            </>
+          )}
         </div>
-
-        {submitted ? (
-          <div className="flex items-center gap-2 text-sm">
-            <Check className="size-4" />
-            Merci !
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex gap-2 w-full sm:w-auto">
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Votre email..."
-              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 w-full sm:w-64"
-              disabled={isLoading}
-            />
-            <Button
-              type="submit"
-              variant="secondary"
-              className="shrink-0"
-              disabled={isLoading}
-            >
-              S&apos;inscrire
-            </Button>
-          </form>
-        )}
       </div>
     </section>
   );
