@@ -1192,4 +1192,13 @@ export default defineSchema({
     .index("by_type", ["type", "created_at"])
     .index("by_actor", ["actor_id", "created_at"])
     .index("by_created_at", ["created_at"]),
+
+  // ============================================
+  // NEWSLETTER SUBSCRIBERS
+  // ============================================
+  newsletter_subscribers: defineTable({
+    email: v.string(),
+    subscribed_at: v.number(),
+    source: v.optional(v.string()), // "storefront"
+  }).index("by_email", ["email"]),
 });
