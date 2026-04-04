@@ -134,6 +134,9 @@ function TrustBadge({
 interface Props {
   preloadedProduct: Preloaded<typeof api.products.queries.getBySlug>;
   preloadedStore: Preloaded<typeof api.stores.queries.getBySlug>;
+  preloadedUpsell: Preloaded<
+    typeof api.products.queries.listOthersByStore
+  > | null;
   storeSlug: string;
   slug: string;
 }
@@ -141,6 +144,7 @@ interface Props {
 export function ShopProductPageClient({
   preloadedProduct,
   preloadedStore,
+  preloadedUpsell,
   storeSlug,
 }: Props) {
   const { trackEvent, generateEventId } = useMetaPixel();
@@ -592,13 +596,13 @@ export function ShopProductPageClient({
         />
 
         {/* Upsell — autres produits du vendeur */}
-        {store && (
+        {store && preloadedUpsell && (
           <>
             <Separator />
             <SellerUpsell
               mode="shop"
+              preloadedProducts={preloadedUpsell}
               storeId={store._id as Id<"stores">}
-              excludeProductId={product._id as Id<"products">}
               storeName={store.name}
               storeSlug={storeSlug}
               currency={currency}

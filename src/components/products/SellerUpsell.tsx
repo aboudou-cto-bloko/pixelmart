@@ -2,8 +2,9 @@
 
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { usePreloadedQuery } from "convex/react";
+import type { Preloaded } from "convex/react";
+import type { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { ProductCard } from "./ProductCard";
 import { ShopProductCard } from "@/components/vendor-shop/atoms/ShopProductCard";
@@ -12,49 +13,28 @@ import Link from "next/link";
 import { ROUTES, SHOP_ROUTES } from "@/constants/routes";
 
 interface BaseProps {
+  preloadedProducts: Preloaded<typeof api.products.queries.listOthersByStore>;
   storeId: Id<"stores">;
-  excludeProductId: Id<"products">;
   storeName: string;
+  storeSlug: string;
 }
 
 interface MarketplaceProps extends BaseProps {
   mode: "marketplace";
-  storeSlug: string;
 }
 
 interface ShopProps extends BaseProps {
   mode: "shop";
-  storeSlug: string;
   currency?: string;
 }
 
 type Props = MarketplaceProps | ShopProps;
 
 export function SellerUpsell(props: Props) {
-  const { storeId, excludeProductId, storeName, storeSlug, mode } = props;
+  const { preloadedProducts, storeId, storeName, storeSlug, mode } = props;
   const currency = mode === "shop" ? (props.currency ?? "XOF") : "XOF";
 
-  const products = useQuery(api.products.queries.listOthersByStore, {
-    storeId,
-    excludeProductId,
-  });
-
-  // Loading skeleton
-  if (products === undefined) {
-    return (
-      <div className="space-y-4">
-        <div className="h-6 w-48 bg-muted animate-pulse rounded" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="aspect-square rounded-xl bg-muted animate-pulse"
-            />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const products = usePreloadedQuery(preloadedProducts);
 
   if (!products || products.length === 0) return null;
 

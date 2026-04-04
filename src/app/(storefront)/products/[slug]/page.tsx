@@ -7,7 +7,8 @@ import type { Metadata } from "next";
 
 export const revalidate = 3600; // Revalidation ISR toutes les heures
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -56,20 +57,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function MarketplaceProductPage({ params }: Props) {
   const { slug } = await params;
 
-  const preloadedProduct = await preloadQuery(
-    api.products.queries.getBySlug,
-    { slug },
-  );
+  const preloadedProduct = await preloadQuery(api.products.queries.getBySlug, {
+    slug,
+  });
 
   const product = preloadedQueryResult(preloadedProduct);
+
+  const preloadedUpsell = product?.store
+    ? await preloadQuery(api.products.queries.listOthersByStore, {
+        storeId: product.store._id,
+        excludeProductId: product._id,
+      })
+    : null;
 
   const jsonLd = product
     ? {
         "@context": "https://schema.org",
         "@type": "Product",
         name: product.title,
-        description:
-          product.short_description ?? product.title,
+        description: product.short_description ?? product.title,
         image: product.images ?? [],
         url: `${siteUrl}/products/${slug}`,
         offers: {
@@ -81,7 +87,10 @@ export default async function MarketplaceProductPage({ params }: Props) {
               ? "https://schema.org/InStock"
               : "https://schema.org/OutOfStock",
         },
-        ...(product.avg_rating !== null && product.avg_rating !== undefined && product.review_count !== null && product.review_count !== undefined
+        ...(product.avg_rating !== null &&
+        product.avg_rating !== undefined &&
+        product.review_count !== null &&
+        product.review_count !== undefined
           ? {
               aggregateRating: {
                 "@type": "AggregateRating",
@@ -105,6 +114,7 @@ export default async function MarketplaceProductPage({ params }: Props) {
       )}
       <MarketplaceProductPageClient
         preloadedProduct={preloadedProduct}
+        preloadedUpsell={preloadedUpsell}
         slug={slug}
       />
     </>
