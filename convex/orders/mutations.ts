@@ -432,11 +432,17 @@ export const createOrder = mutation({
           title: `Commande ${orderNumber} confirmée`,
           body: `Votre commande est confirmée. ${store.name} prépare votre colis — paiement à la livraison.`,
           link: `/orders`,
-          channels: ["in_app"],
+          channels: ["in_app", "push"],
           sentVia: ["in_app"],
           metadata: undefined,
         },
       );
+      await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+        userId: user._id,
+        title: `Commande ${orderNumber} confirmée`,
+        body: `${store.name} prépare votre colis (paiement à la livraison).`,
+        url: "/orders",
+      });
 
       if (user.email) {
         const addrStr = `${args.shippingAddress.full_name}, ${args.shippingAddress.line1}, ${args.shippingAddress.city}, ${args.shippingAddress.country}`;
@@ -731,37 +737,30 @@ export const updateStatus = mutation({
         actorId: user._id,
       });
 
-      // Vendeur : in-app + push
+      const customerFailed = await ctx.db.get(order.customer_id);
+
+      // Vendeur : email + in-app + push
       await ctx.scheduler.runAfter(
         0,
-        internal.notifications.send.createInAppNotification,
+        internal.notifications.send.notifyVendorDeliveryFailed,
         {
-          userId: user._id,
-          type: "order_status",
-          title: `Échec de livraison — Commande ${order.order_number}`,
-          body: `La livraison de la commande ${order.order_number} a échoué. Veuillez contacter le client pour replanifier.`,
-          link: `/vendor/orders/${order._id}`,
-          channels: ["in_app", "push"],
-          sentVia: ["in_app"],
-          metadata: undefined,
+          vendorUserId: user._id,
+          vendorEmail: user.email,
+          vendorName: user.name ?? "Vendeur",
+          orderNumber: order.order_number,
+          orderId: order._id,
+          customerName: customerFailed?.name ?? "Client",
         },
       );
-      await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
-        userId: user._id,
-        title: `Échec de livraison — Commande ${order.order_number}`,
-        body: "Contactez le client pour replanifier la livraison.",
-        url: `/vendor/orders/${order._id}`,
-      });
 
       // Client : email + in-app + push via notifyOrderStatusGeneric
-      const customer = await ctx.db.get(order.customer_id);
-      if (customer) {
+      if (customerFailed) {
         await ctx.scheduler.runAfter(
           0,
           internal.notifications.send.notifyOrderStatusGeneric,
           {
-            customerUserId: customer._id,
-            customerEmail: customer.email,
+            customerUserId: customerFailed._id,
+            customerEmail: customerFailed.email,
             orderNumber: order.order_number,
             storeName: store.name,
             previousStatus: "shipped",
@@ -871,30 +870,25 @@ export const cancelOrder = mutation({
       );
     }
 
-    // Notifier le vendeur de l'annulation
+    // Notifier le vendeur de l'annulation (email + in-app + push)
     if (store) {
       const vendor = await ctx.db.get(store.owner_id);
       if (vendor) {
-        const customerName = customer?.name ?? "Client";
         await ctx.scheduler.runAfter(
           0,
-          internal.notifications.send.createInAppNotification,
+          internal.notifications.send.notifyVendorOrderCancelled,
           {
-            userId: vendor._id,
-            type: "order_status",
-            title: `Commande ${order.order_number} annulée`,
-            body: `${customerName} a annulé la commande ${order.order_number}`,
-            link: "/vendor/orders",
-            channels: ["in_app", "push"],
-            sentVia: ["in_app"],
+            vendorUserId: vendor._id,
+            vendorEmail: vendor.email,
+            vendorName: vendor.name ?? "Vendeur",
+            orderNumber: order.order_number,
+            orderId: order._id,
+            customerName: customer?.name ?? "Client",
+            totalAmount: order.total_amount,
+            currency: order.currency,
+            reason: args.reason,
           },
         );
-        await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
-          userId: vendor._id,
-          title: `Commande ${order.order_number} annulée`,
-          body: `${customerName} a annulé la commande ${order.order_number}`,
-          url: "/vendor/orders",
-        });
       }
     }
 
@@ -1010,10 +1004,10 @@ export const confirmDelivery = mutation({
       actorId: user._id,
     });
 
-    // ── NOUVEAU : Email "delivered" au client ──
-    if (user.email) {
-      const store = await ctx.db.get(order.store_id);
-      if (store) {
+    // Email + in-app + push au client
+    const store = await ctx.db.get(order.store_id);
+    if (store) {
+      if (user.email) {
         await ctx.scheduler.runAfter(
           0,
           internal.emails.send.sendOrderDelivered,
@@ -1025,16 +1019,32 @@ export const confirmDelivery = mutation({
             storeName: store.name,
           },
         );
+      }
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.notifyOrderStatusInApp,
+        {
+          customerUserId: user._id,
+          orderNumber: order.order_number,
+          storeName: store.name,
+          newStatus: "delivered",
+        },
+      );
 
-        // In-app
+      // Notifier le vendeur (email + in-app + push)
+      const vendorCD = await ctx.db.get(store.owner_id);
+      if (vendorCD) {
         await ctx.scheduler.runAfter(
           0,
-          internal.notifications.send.notifyOrderStatusInApp,
+          internal.notifications.send.notifyVendorDeliveryConfirmed,
           {
-            customerUserId: user._id,
+            vendorUserId: vendorCD._id,
+            vendorEmail: vendorCD.email,
+            vendorName: vendorCD.name ?? "Vendeur",
             orderNumber: order.order_number,
-            storeName: store.name,
-            newStatus: "delivered",
+            orderId: order._id,
+            customerName: user.name ?? "Client",
+            confirmedBy: "customer",
           },
         );
       }
@@ -1164,32 +1174,53 @@ export const autoConfirmDelivery = internalMutation({
         actorType: "system",
       });
 
-      // ── NOUVEAU : Email + in-app ──
+      // Email + in-app + push au client + vendeur
       const customer = await ctx.db.get(order.customer_id);
       const store = await ctx.db.get(order.store_id);
-      if (customer?.email && store) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.emails.send.sendOrderDelivered,
-          {
-            customerEmail: customer.email,
-            customerName: customer.name ?? "Client",
-            orderNumber: order.order_number,
-            orderId: order._id,
-            storeName: store.name,
-          },
-        );
+      if (store) {
+        if (customer?.email) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.emails.send.sendOrderDelivered,
+            {
+              customerEmail: customer.email,
+              customerName: customer.name ?? "Client",
+              orderNumber: order.order_number,
+              orderId: order._id,
+              storeName: store.name,
+            },
+          );
+        }
+        if (customer) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.notifications.send.notifyOrderStatusInApp,
+            {
+              customerUserId: customer._id,
+              orderNumber: order.order_number,
+              storeName: store.name,
+              newStatus: "delivered",
+            },
+          );
+        }
 
-        await ctx.scheduler.runAfter(
-          0,
-          internal.notifications.send.notifyOrderStatusInApp,
-          {
-            customerUserId: customer._id,
-            orderNumber: order.order_number,
-            storeName: store.name,
-            newStatus: "delivered",
-          },
-        );
+        // Vendeur (email + in-app + push)
+        const vendorAuto = await ctx.db.get(store.owner_id);
+        if (vendorAuto) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.notifications.send.notifyVendorDeliveryConfirmed,
+            {
+              vendorUserId: vendorAuto._id,
+              vendorEmail: vendorAuto.email,
+              vendorName: vendorAuto.name ?? "Vendeur",
+              orderNumber: order.order_number,
+              orderId: order._id,
+              customerName: customer?.name ?? "Client",
+              confirmedBy: "auto",
+            },
+          );
+        }
       }
 
       confirmedCount++;

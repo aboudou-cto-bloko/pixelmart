@@ -19,6 +19,10 @@ import StorageDebtDeducted from "../../emails/StorageDebtDeducted";
 import StorageInvoicePaid from "../../emails/StorageInvoicePaid";
 import ReturnStatusUpdate from "../../emails/ReturnStatusUpdate";
 import NewReview from "../../emails/NewReview";
+import VendorOrderCancelled from "../../emails/VendorOrderCancelled";
+import VendorOrderDelivered from "../../emails/VendorOrderDelivered";
+import VendorDeliveryFailed from "../../emails/VendorDeliveryFailed";
+import OrderRefunded from "../../emails/OrderRefunded";
 
 const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
@@ -1034,6 +1038,249 @@ export const notifyReviewReplied = internalAction({
       title: "Le vendeur a répondu à votre avis",
       body: notifBody,
       url: `/products/${args.productSlug}`,
+    });
+  },
+});
+
+// ─── Vendor: Order Cancelled (email + in-app + push) ────────────────────────
+
+export const notifyVendorOrderCancelled = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    orderNumber: v.string(),
+    orderId: v.string(),
+    customerName: v.string(),
+    totalAmount: v.number(),
+    currency: v.string(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const formatted = formatAmountText(args.totalAmount, args.currency);
+    const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
+
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "order_status",
+      title: `Commande ${args.orderNumber} annulée`,
+      body: `${args.customerName} — ${args.orderNumber} (${formatted}) annulée`,
+      link: "/vendor/orders",
+      channels: ["email", "in_app", "push"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        VendorOrderCancelled({
+          vendorName: args.vendorName,
+          orderNumber: args.orderNumber,
+          customerName: args.customerName,
+          total: formatted,
+          reason: args.reason,
+          orderUrl: `${siteUrl}/vendor/orders`,
+        }),
+      );
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Commande ${args.orderNumber} annulée — Pixel-Mart`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] VendorOrderCancelled email failed:", error);
+    }
+
+    // 3. Push
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: `Commande ${args.orderNumber} annulée`,
+      body: `${args.customerName} — ${formatted}`,
+      url: "/vendor/orders",
+    });
+  },
+});
+
+// ─── Vendor: Delivery Confirmed (email + in-app + push) ─────────────────────
+
+export const notifyVendorDeliveryConfirmed = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    orderNumber: v.string(),
+    orderId: v.string(),
+    customerName: v.string(),
+    confirmedBy: v.union(v.literal("customer"), v.literal("auto")),
+  },
+  handler: async (ctx, args) => {
+    const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
+    const byLabel =
+      args.confirmedBy === "customer"
+        ? `confirmée par ${args.customerName}`
+        : "confirmée automatiquement";
+
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "order_status",
+      title: `Commande ${args.orderNumber} livrée`,
+      body: `Livraison ${byLabel}`,
+      link: `/vendor/orders/${args.orderId}`,
+      channels: ["email", "in_app", "push"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        VendorOrderDelivered({
+          vendorName: args.vendorName,
+          orderNumber: args.orderNumber,
+          customerName: args.customerName,
+          confirmedBy: args.confirmedBy,
+          orderUrl: `${siteUrl}/vendor/orders/${args.orderId}`,
+        }),
+      );
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Commande ${args.orderNumber} livrée — Pixel-Mart`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] VendorOrderDelivered email failed:", error);
+    }
+
+    // 3. Push
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: `Commande ${args.orderNumber} livrée`,
+      body: `Livraison ${byLabel}`,
+      url: `/vendor/orders/${args.orderId}`,
+    });
+  },
+});
+
+// ─── Vendor: Delivery Failed (email + in-app + push) ────────────────────────
+
+export const notifyVendorDeliveryFailed = internalAction({
+  args: {
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    orderNumber: v.string(),
+    orderId: v.string(),
+    customerName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
+
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "order_status",
+      title: `Échec de livraison — ${args.orderNumber}`,
+      body: `La livraison pour ${args.customerName} a échoué. Replanifiez ou annulez.`,
+      link: `/vendor/orders/${args.orderId}`,
+      channels: ["email", "in_app", "push"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        VendorDeliveryFailed({
+          vendorName: args.vendorName,
+          orderNumber: args.orderNumber,
+          customerName: args.customerName,
+          orderUrl: `${siteUrl}/vendor/orders/${args.orderId}`,
+        }),
+      );
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Échec de livraison — Commande ${args.orderNumber}`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] VendorDeliveryFailed email failed:", error);
+    }
+
+    // 3. Push
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: `Échec de livraison — ${args.orderNumber}`,
+      body: `Contactez ${args.customerName} pour replanifier.`,
+      url: `/vendor/orders/${args.orderId}`,
+    });
+  },
+});
+
+// ─── Client: Order Refunded (email + in-app + push) ─────────────────────────
+
+export const notifyOrderRefunded = internalAction({
+  args: {
+    customerUserId: v.id("users"),
+    customerEmail: v.string(),
+    customerName: v.string(),
+    orderNumber: v.string(),
+    storeName: v.string(),
+    totalAmount: v.number(),
+    currency: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const formatted = formatAmountText(args.totalAmount, args.currency);
+    const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
+
+    // 1. In-app
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.customerUserId,
+      type: "order_status",
+      title: `Remboursement — ${args.orderNumber}`,
+      body: `${formatted} remboursé pour la commande ${args.orderNumber}`,
+      link: "/orders",
+      channels: ["email", "in_app", "push"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
+    // 2. Email
+    try {
+      const resend = getResend();
+      const html = await render(
+        OrderRefunded({
+          customerName: args.customerName,
+          orderNumber: args.orderNumber,
+          storeName: args.storeName,
+          total: formatted,
+          ordersUrl: `${siteUrl}/orders`,
+        }),
+      );
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.customerEmail,
+        subject: `Remboursement commande ${args.orderNumber} — Pixel-Mart`,
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] OrderRefunded email failed:", error);
+    }
+
+    // 3. Push
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.customerUserId,
+      title: `Remboursement — ${args.orderNumber}`,
+      body: `${formatted} remboursé`,
+      url: "/orders",
     });
   },
 });
