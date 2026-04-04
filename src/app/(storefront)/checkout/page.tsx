@@ -214,7 +214,8 @@ export default function CheckoutPage() {
     if (!cfg) return true; // configs not loaded yet → optimistic
     if (!cfg.use_pixelmart_service) return false;
     const hasCoords =
-      cfg.custom_pickup_lat !== undefined && cfg.custom_pickup_lon !== undefined;
+      cfg.custom_pickup_lat !== undefined &&
+      cfg.custom_pickup_lon !== undefined;
     return cfg.has_storage_plan || hasCoords;
   });
   const showDeliverySection = !storeDeliveryConfigs || anyPmStore;
@@ -282,9 +283,12 @@ export default function CheckoutPage() {
   // ── Poids total estimé (grammes → kg) ──
   const estimatedWeightKg = useMemo(() => {
     const totalGrams = stores.reduce((sum, store) => {
-      return sum + store.items.reduce((s, item) => {
-        return s + (item.weight ?? 0) * item.quantity;
-      }, 0);
+      return (
+        sum +
+        store.items.reduce((s, item) => {
+          return s + (item.weight ?? 0) * item.quantity;
+        }, 0)
+      );
     }, 0);
     return totalGrams / 1000;
   }, [stores]);
@@ -385,7 +389,8 @@ export default function CheckoutPage() {
           deliveryFee: storePmService ? deliveryConfig.deliveryFee : 0,
           deliveryType: deliveryConfig.deliveryType,
           paymentMode: deliveryConfig.paymentMode,
-          estimatedWeightKg: estimatedWeightKg > 0 ? estimatedWeightKg : undefined,
+          estimatedWeightKg:
+            estimatedWeightKg > 0 ? estimatedWeightKg : undefined,
         });
 
         orderResults.push(result as OrderResult);
@@ -470,13 +475,33 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" asChild>
           <Link href={ROUTES.CART}>
             <ArrowLeft className="size-5" />
           </Link>
         </Button>
         <h1>Passer commande</h1>
+      </div>
+
+      {/* Step progress */}
+      <div
+        className="flex items-center mb-8"
+        aria-label="Étapes de la commande"
+      >
+        {(["Contact", "Livraison", "Paiement"] as const).map((label, i) => (
+          <div key={label} className="flex items-center flex-1 last:flex-none">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
+                {i + 1}
+              </span>
+              <span className="text-sm font-medium hidden sm:inline">
+                {label}
+              </span>
+            </div>
+            {i < 2 && <div className="flex-1 mx-3 h-px bg-border" />}
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">

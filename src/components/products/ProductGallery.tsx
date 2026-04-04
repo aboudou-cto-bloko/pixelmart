@@ -23,6 +23,7 @@ export function ProductGallery({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   if (images.length === 0) {
     return (
@@ -43,6 +44,23 @@ export function ProductGallery({
     setLightboxIndex((i) => (i - 1 + images.length) % images.length);
   const next = () => setLightboxIndex((i) => (i + 1) % images.length);
 
+  function handleTouchStart(e: React.TouchEvent) {
+    setTouchStartX(e.touches[0].clientX);
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (touchStartX === null) return;
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        setSelectedIndex((i) => (i + 1) % images.length);
+      } else {
+        setSelectedIndex((i) => (i - 1 + images.length) % images.length);
+      }
+    }
+    setTouchStartX(null);
+  }
+
   return (
     <>
       <div className="space-y-3">
@@ -50,6 +68,8 @@ export function ProductGallery({
         <div
           className="relative aspect-square overflow-hidden rounded-lg bg-muted cursor-zoom-in group"
           onClick={() => openLightbox(selectedIndex)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
           <Image
             src={images[selectedIndex]}

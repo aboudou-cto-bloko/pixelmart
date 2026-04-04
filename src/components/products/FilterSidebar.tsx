@@ -106,12 +106,15 @@ export function FilterSidebar({ fixedCategoryId }: FilterSidebarProps) {
     }
   }
 
-  const hasActiveFilters =
-    (!fixedCategoryId && currentCategory !== "") ||
-    currentMinPrice !== "" ||
-    currentMaxPrice !== "" ||
-    currentInStock ||
-    currentSort !== "relevance";
+  const activeFilterCount = [
+    !fixedCategoryId && currentCategory !== "",
+    currentMinPrice !== "",
+    currentMaxPrice !== "",
+    currentInStock,
+    currentSort !== "relevance",
+  ].filter(Boolean).length;
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   const rootCategories = categories?.filter((c) => !c.parent_id) ?? [];
 
@@ -242,9 +245,9 @@ export function FilterSidebar({ fixedCategoryId }: FilterSidebarProps) {
           >
             <SlidersHorizontal className="size-4" />
             Filtres
-            {hasActiveFilters && (
+            {activeFilterCount > 0 && (
               <Badge variant="secondary" className="text-xs ml-1">
-                !
+                {activeFilterCount}
               </Badge>
             )}
           </Button>
