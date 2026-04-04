@@ -2,6 +2,7 @@
 
 "use client";
 
+import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
 import {
   MapContainer,
@@ -82,8 +83,8 @@ export interface MapPickerProps {
 }
 
 const BENIN_BOUNDS: LatLngBoundsExpression = [
-  [5.7, 0.78],   // SW corner
-  [12.4, 3.85],  // NE corner
+  [5.7, 0.78], // SW corner
+  [12.4, 3.85], // NE corner
 ];
 
 export function MapPicker({ value, onLocationSelect }: MapPickerProps) {
@@ -151,9 +152,6 @@ export function MapPicker({ value, onLocationSelect }: MapPickerProps) {
 
   return (
     <div className="relative rounded-lg overflow-hidden border">
-      {/* Leaflet CSS */}
-      <style>{`@import "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";`}</style>
-
       {/* "Ma position" button overlay */}
       <div style={{ position: "absolute", top: 10, right: 10, zIndex: 1000 }}>
         <Button
