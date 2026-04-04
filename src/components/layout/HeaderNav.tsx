@@ -227,6 +227,19 @@ export function HeaderNav() {
           {/* Theme toggle */}
           <ThemeToggle />
 
+          {/* Wishlist */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden sm:inline-flex"
+            asChild
+          >
+            <Link href={ROUTES.WISHLIST}>
+              <Heart className="size-5" />
+              <span className="sr-only">Liste de souhaits</span>
+            </Link>
+          </Button>
+
           {/* Cart */}
           <Button variant="ghost" size="icon" className="relative" asChild>
             <Link href={ROUTES.CART}>
@@ -277,6 +290,12 @@ export function HeaderNav() {
                   <Link href={ROUTES.CUSTOMER_ORDERS}>
                     <Package className="size-4 mr-2" />
                     Mes commandes
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={ROUTES.WISHLIST}>
+                    <Heart className="size-4 mr-2" />
+                    Ma liste de souhaits
                   </Link>
                 </DropdownMenuItem>
                 {user?.role === "vendor" && (

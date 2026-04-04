@@ -25,6 +25,7 @@ export const ROUTES = {
   // ---- Customer ----
   CUSTOMER_ORDERS: "/orders",
   CUSTOMER_ORDER: (id: string) => `/orders/${id}`,
+  WISHLIST: "/wishlist",
 
   // ---- Vendor (préfixe /vendor/) ----
   VENDOR_DASHBOARD: "/vendor/dashboard",
