@@ -44,24 +44,23 @@ export function DeliveryDistanceCalculator({
 
     const fee = computeFee(distanceKm, deliveryType, weightKg);
 
-    onDistanceCalculated?.(distanceKm, fee);
-
     return { distanceKm, fee };
-  }, [
-    selectedAddress,
-    deliveryType,
-    weightKg,
-    collectionPoint,
-    onDistanceCalculated,
-    computeFee,
-  ]);
+  }, [selectedAddress, deliveryType, weightKg, collectionPoint, computeFee]);
+
+  // Call the callback in useEffect to avoid state updates during render
+  useEffect(() => {
+    if (calculation && onDistanceCalculated) {
+      onDistanceCalculated(calculation.distanceKm, calculation.fee);
+    }
+  }, [calculation, onDistanceCalculated]);
 
   // isNight évalué côté client uniquement pour éviter le mismatch SSR
-  const [isNight, setIsNight] = useState(false);
-  useEffect(() => {
+  const [isNight] = useState(() => {
+    // Initialize directly to avoid useState in effect
+    if (typeof window === "undefined") return false;
     const h = new Date().getHours();
-    setIsNight(h >= 21 || h < 6);
-  }, []);
+    return h >= 21 || h < 6;
+  });
 
   if (!selectedAddress) {
     return (
