@@ -12,6 +12,9 @@ import {
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import Script from "next/script";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -30,6 +33,7 @@ interface MetaPixelProviderProps {
   children: ReactNode;
   pixelId: string | null;
   testEventCode?: string | null;
+  storeId?: Id<"stores"> | null;
 }
 
 // ─── Context ─────────────────────────────────────────────────
@@ -38,14 +42,25 @@ const MetaPixelContext = createContext<MetaPixelContextValue | null>(null);
 
 // ─── Provider ────────────────────────────────────────────────
 
+const LOGGED_EVENTS = new Set([
+  "PageView",
+  "ViewContent",
+  "InitiateCheckout",
+  "Purchase",
+]);
+
 export function MetaPixelProvider({
   children,
   pixelId,
   testEventCode,
+  storeId,
 }: MetaPixelProviderProps) {
   const [isReady, setIsReady] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const logBrowserEvent = useMutation(
+    api.analytics.mutations.logBrowserPixelEvent,
+  );
 
   const generateEventId = useCallback((): string => {
     return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -68,8 +83,27 @@ export function MetaPixelProvider({
       } catch (error) {
         console.error("[Meta Pixel] Error tracking event:", error);
       }
+
+      // Log vers Convex pour les analytics vendeur
+      if (storeId && LOGGED_EVENTS.has(eventName)) {
+        const typedEventName = eventName as
+          | "PageView"
+          | "ViewContent"
+          | "InitiateCheckout"
+          | "Purchase";
+        logBrowserEvent({
+          storeId,
+          eventName: typedEventName,
+          eventId,
+          value: typeof params?.value === "number" ? params.value : undefined,
+          currency:
+            typeof params?.currency === "string" ? params.currency : undefined,
+        }).catch(() => {
+          // Silently ignore analytics errors
+        });
+      }
     },
-    [isReady, pixelId],
+    [isReady, pixelId, storeId, logBrowserEvent],
   );
 
   // PageView automatique sur chaque changement de route

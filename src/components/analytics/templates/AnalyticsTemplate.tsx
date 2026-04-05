@@ -6,6 +6,8 @@ import dynamic from "next/dynamic";
 import { SalesOverviewCards } from "../organisms/SalesOverviewCards";
 import { TopProductsTable } from "../organisms/TopProductsTable";
 import { CustomerInsightsPanel } from "../organisms/CustomerInsightsPanel";
+import { ViewsChart } from "../organisms/ViewsChart";
+import { MetaFunnelChart } from "../organisms/MetaFunnelChart";
 import { PeriodSelector } from "../molecules/PeriodSelector";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -77,6 +79,27 @@ interface CustomerInsightsData {
   }>;
 }
 
+interface ViewsDataPoint {
+  date: string;
+  label: string;
+  views: number;
+}
+
+interface ViewsOverviewData {
+  views: { value: number; previous: number; change: number };
+}
+
+interface MetaFunnelStep {
+  name: "PageView" | "ViewContent" | "InitiateCheckout" | "Purchase";
+  count: number;
+  conversionRate: number;
+}
+
+interface MetaFunnelData {
+  hasPixel: boolean;
+  funnel: MetaFunnelStep[];
+}
+
 interface AnalyticsTemplateProps {
   period: Period;
   onPeriodChange: (period: Period) => void;
@@ -88,6 +111,9 @@ interface AnalyticsTemplateProps {
   topProducts: TopProduct[] | null | undefined;
   revenueByCategory: CategoryRevenue[] | null | undefined;
   customerInsights: CustomerInsightsData | null | undefined;
+  viewsChart: ViewsDataPoint[] | null | undefined;
+  viewsOverview: ViewsOverviewData | null | undefined;
+  metaFunnel: MetaFunnelData | null | undefined;
   isLoading: boolean;
 }
 
@@ -102,6 +128,9 @@ export function AnalyticsTemplate({
   topProducts,
   revenueByCategory,
   customerInsights,
+  viewsChart,
+  viewsOverview,
+  metaFunnel,
   isLoading,
 }: AnalyticsTemplateProps) {
   return (
@@ -162,6 +191,20 @@ export function AnalyticsTemplate({
         currency={currency}
         isLoading={isLoading}
       />
+
+      {/* Marketplace Visitors — only relevant for marketplace/all sources */}
+      {(source === "all" || source === "marketplace") && (
+        <ViewsChart
+          chartData={viewsChart}
+          overview={viewsOverview}
+          isLoading={isLoading}
+        />
+      )}
+
+      {/* Meta Pixel Funnel — shop ads only */}
+      {(source === "all" || source === "vendor_shop") && (
+        <MetaFunnelChart data={metaFunnel} isLoading={isLoading} />
+      )}
     </div>
   );
 }
