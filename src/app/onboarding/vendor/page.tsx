@@ -604,6 +604,19 @@ export default function VendorOnboardingPage() {
           Vous pourrez modifier ces informations à tout moment dans les
           paramètres de votre boutique.
         </p>
+
+        <p className="text-center text-xs text-muted-foreground mt-2">
+          En ouvrant votre boutique, vous acceptez les{" "}
+          <a
+            href="/vendor-terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            conditions générales de vente
+          </a>
+          .
+        </p>
       </div>
     </div>
   );
