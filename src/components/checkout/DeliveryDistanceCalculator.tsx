@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { GeocodingResult, Coordinates } from "@/lib/geocoding";
 import {
   calculateDeliveryDistance,
@@ -47,10 +47,27 @@ export function DeliveryDistanceCalculator({
     return { distanceKm, fee };
   }, [selectedAddress, deliveryType, weightKg, collectionPoint, computeFee]);
 
+  // Track previous calculation to prevent unnecessary callback calls
+  const prevCalculationRef = useRef<{ distanceKm: number; fee: number } | null>(
+    null,
+  );
+
   // Call the callback in useEffect to avoid state updates during render
   useEffect(() => {
     if (calculation && onDistanceCalculated) {
-      onDistanceCalculated(calculation.distanceKm, calculation.fee);
+      const prev = prevCalculationRef.current;
+      // Only call if values actually changed
+      if (
+        !prev ||
+        prev.distanceKm !== calculation.distanceKm ||
+        prev.fee !== calculation.fee
+      ) {
+        prevCalculationRef.current = { ...calculation };
+        // Defer the callback to next tick to completely avoid render cycle conflicts
+        setTimeout(() => {
+          onDistanceCalculated(calculation.distanceKm, calculation.fee);
+        }, 0);
+      }
     }
   }, [calculation, onDistanceCalculated]);
 
