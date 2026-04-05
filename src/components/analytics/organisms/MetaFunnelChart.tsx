@@ -2,12 +2,23 @@
 
 "use client";
 
-import { Eye, MousePointerClick, ShoppingCart, CreditCard } from "lucide-react";
+import {
+  Eye,
+  MousePointerClick,
+  ShoppingBag,
+  ShoppingCart,
+  CreditCard,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface FunnelStep {
-  name: "PageView" | "ViewContent" | "InitiateCheckout" | "Purchase";
+  name:
+    | "PageView"
+    | "ViewContent"
+    | "AddToCart"
+    | "InitiateCheckout"
+    | "Purchase";
   count: number;
   conversionRate: number;
 }
@@ -36,6 +47,11 @@ const STEP_CONFIG: Record<
     label: "Produits consultés",
     icon: <MousePointerClick className="size-4" />,
     color: "bg-violet-500",
+  },
+  AddToCart: {
+    label: "Ajouts au panier",
+    icon: <ShoppingBag className="size-4" />,
+    color: "bg-orange-500",
   },
   InitiateCheckout: {
     label: "Checkouts initiés",

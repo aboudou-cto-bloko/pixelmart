@@ -670,6 +670,7 @@ export const getMetaFunnel = query({
     const counts: Record<string, number> = {
       PageView: 0,
       ViewContent: 0,
+      AddToCart: 0,
       InitiateCheckout: 0,
       Purchase: 0,
     };
@@ -681,6 +682,7 @@ export const getMetaFunnel = query({
     const steps = [
       "PageView",
       "ViewContent",
+      "AddToCart",
       "InitiateCheckout",
       "Purchase",
     ] as const;

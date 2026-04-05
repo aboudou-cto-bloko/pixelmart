@@ -90,7 +90,12 @@ interface ViewsOverviewData {
 }
 
 interface MetaFunnelStep {
-  name: "PageView" | "ViewContent" | "InitiateCheckout" | "Purchase";
+  name:
+    | "PageView"
+    | "ViewContent"
+    | "AddToCart"
+    | "InitiateCheckout"
+    | "Purchase";
   count: number;
   conversionRate: number;
 }

@@ -1251,6 +1251,7 @@ export default defineSchema({
     event_name: v.union(
       v.literal("PageView"),
       v.literal("ViewContent"),
+      v.literal("AddToCart"),
       v.literal("InitiateCheckout"),
       v.literal("Purchase"),
     ),
