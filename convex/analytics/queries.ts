@@ -535,3 +535,154 @@ export const getCustomerInsights = query({
     };
   },
 });
+
+// ──────────────────────────────────────────────
+// 6. MARKETPLACE VIEWS — Courbe de visiteurs uniques par jour
+// ──────────────────────────────────────────────
+
+export const getViewsOverview = query({
+  args: {
+    period: v.union(
+      v.literal("1d"),
+      v.literal("7d"),
+      v.literal("30d"),
+      v.literal("90d"),
+      v.literal("12m"),
+    ),
+  },
+  handler: async (ctx, { period }) => {
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
+
+    const { current, previous } = getDateRanges(period as AnalyticsPeriod);
+
+    const allViews = await ctx.db
+      .query("store_views")
+      .withIndex("by_store_viewed_at", (q) => q.eq("store_id", store._id))
+      .collect();
+
+    const currentViews = allViews.filter(
+      (v) => v.viewed_at >= current.start && v.viewed_at <= current.end,
+    ).length;
+    const previousViews = allViews.filter(
+      (v) => v.viewed_at >= previous.start && v.viewed_at <= previous.end,
+    ).length;
+
+    return {
+      views: {
+        value: currentViews,
+        previous: previousViews,
+        change: percentChange(currentViews, previousViews),
+      },
+    };
+  },
+});
+
+export const getViewsChart = query({
+  args: {
+    period: v.union(
+      v.literal("1d"),
+      v.literal("7d"),
+      v.literal("30d"),
+      v.literal("90d"),
+      v.literal("12m"),
+    ),
+  },
+  handler: async (ctx, { period }) => {
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
+
+    const { current } = getDateRanges(period as AnalyticsPeriod);
+    const granularity = inferGranularity(period as AnalyticsPeriod);
+
+    const allViews = await ctx.db
+      .query("store_views")
+      .withIndex("by_store_viewed_at", (q) => q.eq("store_id", store._id))
+      .collect();
+
+    const filtered = allViews.filter(
+      (v) => v.viewed_at >= current.start && v.viewed_at <= current.end,
+    );
+
+    const grouped = new Map<string, number>();
+    for (const view of filtered) {
+      const bucket = groupByDate(view.viewed_at, granularity);
+      grouped.set(bucket, (grouped.get(bucket) ?? 0) + 1);
+    }
+
+    const buckets = generateDateBuckets(
+      current.start,
+      current.end,
+      granularity,
+    );
+    return buckets.map((bucket) => ({
+      date: bucket,
+      label: formatBucketLabel(bucket, granularity),
+      views: grouped.get(bucket) ?? 0,
+    }));
+  },
+});
+
+// ──────────────────────────────────────────────
+// 7. META PIXEL FUNNEL — Entonnoir PageView → Purchase
+// ──────────────────────────────────────────────
+
+export const getMetaFunnel = query({
+  args: {
+    period: v.union(
+      v.literal("1d"),
+      v.literal("7d"),
+      v.literal("30d"),
+      v.literal("90d"),
+      v.literal("12m"),
+    ),
+  },
+  handler: async (ctx, { period }) => {
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
+
+    // Seulement pertinent si le store a un Pixel configuré
+    const hasPixel = !!store.meta_pixel_id;
+
+    const { current } = getDateRanges(period as AnalyticsPeriod);
+
+    const allEvents = await ctx.db
+      .query("meta_pixel_events")
+      .withIndex("by_store_occurred_at", (q) => q.eq("store_id", store._id))
+      .collect();
+
+    const filtered = allEvents.filter(
+      (e) => e.occurred_at >= current.start && e.occurred_at <= current.end,
+    );
+
+    const counts: Record<string, number> = {
+      PageView: 0,
+      ViewContent: 0,
+      InitiateCheckout: 0,
+      Purchase: 0,
+    };
+
+    for (const event of filtered) {
+      counts[event.event_name] = (counts[event.event_name] ?? 0) + 1;
+    }
+
+    const steps = [
+      "PageView",
+      "ViewContent",
+      "InitiateCheckout",
+      "Purchase",
+    ] as const;
+
+    const funnel = steps.map((name, i) => {
+      const count = counts[name] ?? 0;
+      const prev = i === 0 ? count : (counts[steps[i - 1]] ?? 0);
+      const conversionRate = prev > 0 ? Math.round((count / prev) * 100) : 0;
+      return { name, count, conversionRate };
+    });
+
+    return { hasPixel, funnel };
+  },
+});

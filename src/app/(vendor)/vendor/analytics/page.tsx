@@ -38,13 +38,21 @@ export default function VendorAnalyticsPage() {
     period,
     source: sourceArg,
   });
+  const viewsOverview = useQuery(api.analytics.queries.getViewsOverview, {
+    period,
+  });
+  const viewsChart = useQuery(api.analytics.queries.getViewsChart, { period });
+  const metaFunnel = useQuery(api.analytics.queries.getMetaFunnel, { period });
 
   const isLoading =
     salesOverview === undefined ||
     salesChart === undefined ||
     topProducts === undefined ||
     revenueByCategory === undefined ||
-    customerInsights === undefined;
+    customerInsights === undefined ||
+    viewsOverview === undefined ||
+    viewsChart === undefined ||
+    metaFunnel === undefined;
 
   const currency = "XOF";
 
@@ -60,6 +68,9 @@ export default function VendorAnalyticsPage() {
       topProducts={topProducts}
       revenueByCategory={revenueByCategory}
       customerInsights={customerInsights}
+      viewsOverview={viewsOverview}
+      viewsChart={viewsChart}
+      metaFunnel={metaFunnel}
       isLoading={isLoading}
     />
   );
