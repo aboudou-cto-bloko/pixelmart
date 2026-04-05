@@ -136,9 +136,38 @@ export default function VendorTermsPage() {
                 compte pourra être suspendu ou banni définitivement.
               </li>
               <li>
-                Ne pas vendre de produits contrefaits, illicites, dangereux,
-                prohibés ou soumis à une réglementation particulière sans
-                autorisation.
+                <strong>Produits interdits</strong> — Conformément aux lois en
+                vigueur en République du Bénin, il est strictement interdit de
+                proposer sur la Plateforme :
+                <ul className="mt-2 space-y-1 text-sm">
+                  <li>
+                    <strong>Produits du tabac</strong> — cigarettes, cigares,
+                    tabac à rouler et tout produit dérivé.
+                  </li>
+                  <li>
+                    <strong>Stupéfiants et drogues</strong> — toute substance
+                    classée comme stupéfiant ou psychotrope, ainsi que les
+                    accessoires liés à leur consommation.
+                  </li>
+                  <li>
+                    <strong>Armes et matériel de guerre</strong> — armes à feu,
+                    munitions, armes blanches, explosifs, ou tout objet incitant
+                    à la violence ou à la haine.
+                  </li>
+                  <li>
+                    <strong>Médicaments et produits de santé</strong> — tout
+                    produit dont la vente est réservée par la loi aux
+                    pharmaciens ou nécessitant une prescription médicale.
+                  </li>
+                  <li>
+                    <strong>Produits de contrefaçon</strong> — articles portant
+                    atteinte aux droits de propriété intellectuelle de tiers.
+                  </li>
+                  <li>
+                    <strong>Articles dangereux ou polluants</strong> — notamment
+                    les sachets en plastique non biodégradables.
+                  </li>
+                </ul>
               </li>
               <li>
                 Maintenir les niveaux de stock à jour et ne pas accepter de
@@ -577,7 +606,9 @@ export default function VendorTermsPage() {
             <ul>
               <li>Violation des présentes CGV ou des CGU.</li>
               <li>
-                Publication de produits illicites, contrefaits ou interdits.
+                Publication de produits illicites, contrefaits ou interdits,
+                notamment ceux listés à la section 3 (tabac, stupéfiants, armes,
+                médicaments non autorisés, articles dangereux).
               </li>
               <li>
                 Publication de produits à caractère sexuel, pornographique ou
@@ -588,6 +619,12 @@ export default function VendorTermsPage() {
               <li>Facture de stockage impayée depuis plus de 30 jours.</li>
               <li>Signalements répétés de la part des clients.</li>
             </ul>
+            <p className="text-sm text-muted-foreground mt-2">
+              La Plateforme se réserve également le droit de signaler tout
+              comportement illicite auprès des autorités compétentes, notamment
+              la Police Républicaine ou l'OCRC (Office Central de Répression de
+              la Cybercriminalité).
+            </p>
 
             <h3 className="text-lg font-medium">14.2 Conséquences</h3>
             <p>En cas de suspension ou de résiliation :</p>
