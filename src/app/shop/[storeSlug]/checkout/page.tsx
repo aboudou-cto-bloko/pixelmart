@@ -98,16 +98,16 @@ export default function ShopCheckoutPage() {
   // Scenario C: !usePmService OR (usePmService + !hasStoragePlan + !hasCustomPickup) → no delivery fee
   const isScenarioA = usePmService && hasStoragePlan;
   const isScenarioB = usePmService && !hasStoragePlan && hasCustomPickup;
-  const showDeliverySection = store === undefined || isScenarioA || isScenarioB;
+  const isScenarioC = !usePmService;
 
   // Collection point for DeliverySection:
   // Scenario A → PM warehouse (from admin config, with hardcoded fallback)
   // Scenario B → vendor's custom pickup coords
-  // Scenario C → not shown
+  // Scenario C → PM warehouse (map only, no fee calculation)
   const collectionPoint: Coordinates | undefined =
     isScenarioB && store
       ? { lat: store.custom_pickup_lat!, lon: store.custom_pickup_lon! }
-      : isScenarioA && warehouseCoords
+      : warehouseCoords
         ? warehouseCoords
         : undefined;
 
@@ -227,16 +227,12 @@ export default function ShopCheckoutPage() {
         shippingAddress: address,
         notes: notes.trim() || undefined,
         couponCode: coupon?.code,
-        deliveryFee: showDeliverySection ? deliveryConfig.deliveryFee : 0,
-        deliveryDistanceKm: showDeliverySection
+        deliveryFee: !isScenarioC ? deliveryConfig.deliveryFee : 0,
+        deliveryDistanceKm: !isScenarioC
           ? deliveryConfig.deliveryDistanceKm
           : undefined,
-        deliveryDistanceVendorToHubKm: showDeliverySection
-          ? vendorToHubKm
-          : undefined,
-        deliveryDistanceHubToClientKm: showDeliverySection
-          ? hubToClientKm
-          : undefined,
+        deliveryDistanceVendorToHubKm: !isScenarioC ? vendorToHubKm : undefined,
+        deliveryDistanceHubToClientKm: !isScenarioC ? hubToClientKm : undefined,
         deliveryLat: deliveryConfig.deliveryLat,
         deliveryLon: deliveryConfig.deliveryLon,
         deliveryType: deliveryConfig.deliveryType,
@@ -365,7 +361,7 @@ export default function ShopCheckoutPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Livraison</span>
                 <span>
-                  {!showDeliverySection
+                  {isScenarioC
                     ? "Par la boutique"
                     : (deliveryConfig.deliveryFee ?? 0) > 0
                       ? formatPrice(deliveryConfig.deliveryFee ?? 0, "XOF")
@@ -384,24 +380,12 @@ export default function ShopCheckoutPage() {
         </Card>
 
         {/* Delivery */}
-        {showDeliverySection ? (
-          <DeliverySection
-            value={deliveryConfig}
-            onChange={setDeliveryConfig}
-            collectionPoint={collectionPoint}
-          />
-        ) : (
-          store && (
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">
-                  Les frais de livraison sont définis par la boutique et vous
-                  seront communiqués après confirmation de votre commande.
-                </p>
-              </CardContent>
-            </Card>
-          )
-        )}
+        <DeliverySection
+          value={deliveryConfig}
+          onChange={setDeliveryConfig}
+          collectionPoint={collectionPoint}
+          skipFeeCalculation={isScenarioC}
+        />
 
         {/* Address */}
         <Card>
@@ -491,10 +475,20 @@ export default function ShopCheckoutPage() {
           )}
         </Button>
 
-        <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-          <ShieldCheck className="size-3.5 text-green-500" />
-          Paiement 100% sécurisé via Moneroo
-        </p>
+        {/* Security reassurance message */}
+        <div className="flex items-start gap-3 rounded-lg border-2 border-green-300 bg-green-100 dark:bg-green-950/30 dark:border-green-700 p-4 shadow-sm">
+          <ShieldCheck className="size-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+              Paiement 100% sécurisé
+            </p>
+            <p className="text-xs text-green-700 dark:text-green-300">
+              Cette boutique est propulsée par Pixel-Mart. Vos fonds sont
+              conservés jusqu'à la confirmation de livraison. En cas de souci,
+              vous êtes remboursé.
+            </p>
+          </div>
+        </div>
       </form>
     </div>
   );

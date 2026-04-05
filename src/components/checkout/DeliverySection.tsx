@@ -52,6 +52,8 @@ interface DeliverySectionProps {
   addressError?: string;
   /** Point de collecte (défaut : entrepôt Pixel-Mart) */
   collectionPoint?: Coordinates;
+  /** Si true, masque le calculateur de frais (vendeur indépendant) */
+  skipFeeCalculation?: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -62,6 +64,7 @@ export function DeliverySection({
   onChange,
   addressError,
   collectionPoint,
+  skipFeeCalculation = false,
 }: DeliverySectionProps) {
   // ── Forcer paymentMode à "online" si COD désactivé ──
   useEffect(() => {
@@ -158,8 +161,9 @@ export function DeliverySection({
             required
           />
           <p className="text-xs text-muted-foreground">
-            Recherchez votre adresse ou placez le marqueur directement sur la
-            carte.
+            Tapez votre adresse ou utilisez la carte pour placer votre point de
+            livraison. Le bouton « Ma position » peut être imprécis — vérifiez
+            toujours l'adresse saisie manuellement.
           </p>
           <MapPicker
             value={
@@ -173,31 +177,39 @@ export function DeliverySection({
 
         <Separator />
 
-        {/* 2. Type de livraison */}
-        <DeliveryTypeSelector
-          value={value.deliveryType}
-          onChange={handleTypeChange}
-        />
+        {/* 2. Type de livraison + Mode de paiement (uniquement si service PM) */}
+        {skipFeeCalculation ? (
+          <p className="text-sm text-muted-foreground">
+            Les livraisons sont gérées par le vendeur.
+          </p>
+        ) : (
+          <>
+            <DeliveryTypeSelector
+              value={value.deliveryType}
+              onChange={handleTypeChange}
+            />
 
-        <Separator />
+            <Separator />
 
-        {/* 3. Mode de paiement (conditionnel selon feature flag) */}
-        <PaymentModeSelector
-          value={value.paymentMode}
-          onChange={handlePaymentModeChange}
-          codDisabled={!FEATURES.COD_ENABLED}
-        />
+            {/* 3. Mode de paiement (conditionnel selon feature flag) */}
+            <PaymentModeSelector
+              value={value.paymentMode}
+              onChange={handlePaymentModeChange}
+              codDisabled={!FEATURES.COD_ENABLED}
+            />
 
-        <Separator />
+            <Separator />
 
-        {/* 4. Calcul des frais (basé sur la distance GPS) */}
-        <DeliveryDistanceCalculator
-          selectedAddress={selectedAddress}
-          deliveryType={value.deliveryType}
-          weightKg={estimatedWeightKg}
-          collectionPoint={collectionPoint}
-          onDistanceCalculated={handleDistanceCalculated}
-        />
+            {/* 4. Calcul des frais (basé sur la distance GPS) */}
+            <DeliveryDistanceCalculator
+              selectedAddress={selectedAddress}
+              deliveryType={value.deliveryType}
+              weightKg={estimatedWeightKg}
+              collectionPoint={collectionPoint}
+              onDistanceCalculated={handleDistanceCalculated}
+            />
+          </>
+        )}
       </CardContent>
     </Card>
   );

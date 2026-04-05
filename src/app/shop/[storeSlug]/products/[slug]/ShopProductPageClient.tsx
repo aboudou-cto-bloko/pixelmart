@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, usePreloadedQuery } from "convex/react";
 import type { Preloaded } from "convex/react";
 import Link from "next/link";
@@ -155,6 +155,10 @@ export function ShopProductPageClient({
     null,
   );
 
+  // ── Sticky action bar state ──
+  const [showStickyActions, setShowStickyActions] = useState(false);
+  const actionButtonsRef = useRef<HTMLDivElement>(null);
+
   // Hydrate from server-preloaded data (no loading flash)
   const product = usePreloadedQuery(preloadedProduct);
   const store = usePreloadedQuery(preloadedStore);
@@ -188,6 +192,21 @@ export function ShopProductPageClient({
       eventId,
     );
   }, [product?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Scroll detection effect ──
+  useEffect(() => {
+    const handleScroll = () => {
+      if (actionButtonsRef.current) {
+        const rect = actionButtonsRef.current.getBoundingClientRect();
+        // Show sticky bar when original buttons are scrolled past (bottom of buttons above viewport)
+        const isScrolledPast = rect.bottom < -50;
+        setShowStickyActions(isScrolledPast);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   if (!product) {
     return (
@@ -399,7 +418,7 @@ export function ShopProductPageClient({
                       </p>
                     </div>
                   ) : null}
-                  <div className="flex flex-col gap-3">
+                  <div ref={actionButtonsRef} className="flex flex-col gap-3">
                     <Button
                       size="lg"
                       className="w-full h-12 text-base font-semibold gap-2"
@@ -610,6 +629,23 @@ export function ShopProductPageClient({
           </>
         )}
       </div>
+
+      {/* Sticky bottom action bar (mobile) */}
+      {showStickyActions && !isOutOfStock && !isOwnShop && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border p-4 shadow-2xl md:hidden">
+          <Button
+            size="lg"
+            className="w-full h-12 text-base font-semibold gap-2 max-w-sm mx-auto"
+            onClick={() => setQuickOrderOpen(true)}
+            style={{
+              backgroundColor: "var(--shop-primary, #6366f1)",
+            }}
+          >
+            <ShoppingCart className="size-5" />
+            Commander
+          </Button>
+        </div>
+      )}
 
       {/* Quick Order Sheet */}
       {store && (!isOutOfStock || (hasVariants && !selectedVariantId)) && (
