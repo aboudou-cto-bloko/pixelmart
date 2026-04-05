@@ -161,8 +161,9 @@ export function DeliverySection({
             required
           />
           <p className="text-xs text-muted-foreground">
-            Recherchez votre adresse ou placez le marqueur directement sur la
-            carte.
+            Tapez votre adresse ou utilisez la carte pour placer votre point de
+            livraison. Le bouton « Ma position » peut être imprécis — vérifiez
+            toujours l'adresse saisie manuellement.
           </p>
           <MapPicker
             value={
