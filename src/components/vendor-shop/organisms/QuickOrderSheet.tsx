@@ -23,7 +23,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Separator as _Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -37,9 +37,10 @@ import {
   type DeliveryConfig,
 } from "@/components/checkout/DeliverySection";
 import { formatPrice } from "@/lib/utils";
-import { SHOP_ROUTES, ROUTES } from "@/constants/routes";
+import { SHOP_ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
 import { calculateDistance, DEFAULT_COLLECTION_POINT } from "@/lib/geocoding";
+import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useMetaPixel } from "@/components/vendor-shop/providers";
 import { toast } from "sonner";
@@ -127,16 +128,30 @@ export function QuickOrderSheet({
   const [guestEmail, setGuestEmail] = useState("");
   const [guestEmailError, setGuestEmailError] = useState<string | null>(null);
 
-  // Two-segment distances for pickup-collection scenario
-  const isPickupScenario =
-    store.use_pixelmart_service === true &&
-    !store.has_storage_plan &&
+  // ── Delivery service scenarios (même logique que checkout/page.tsx) ──
+  // A: use_pixelmart_service + has_storage_plan  → produits en entrepôt PM
+  // B: use_pixelmart_service + custom_pickup     → PM collecte chez le vendeur
+  // C: !use_pixelmart_service                   → vendeur gère sa propre livraison
+  const usePmService = store.use_pixelmart_service === true;
+  const hasStoragePlan = store.has_storage_plan === true;
+  const hasCustomPickup =
     store.custom_pickup_lat !== undefined &&
     store.custom_pickup_lon !== undefined;
 
+  const isScenarioA = usePmService && hasStoragePlan;
+  const isScenarioB = usePmService && !hasStoragePlan && hasCustomPickup;
+  const showDeliverySection = isScenarioA || isScenarioB;
+
+  const collectionPoint =
+    isScenarioB &&
+    store.custom_pickup_lat !== undefined &&
+    store.custom_pickup_lon !== undefined
+      ? { lat: store.custom_pickup_lat, lon: store.custom_pickup_lon }
+      : undefined;
+
   const twoSegmentDistances = (() => {
     if (
-      !isPickupScenario ||
+      !isScenarioB ||
       store.custom_pickup_lat === undefined ||
       store.custom_pickup_lon === undefined ||
       deliveryConfig.deliveryLat === undefined ||
@@ -206,10 +221,16 @@ export function QuickOrderSheet({
           ],
           shippingAddress: address,
           notes: notes.trim() || undefined,
-          deliveryFee: deliveryConfig.deliveryFee,
-          deliveryDistanceKm: deliveryConfig.deliveryDistanceKm,
-          deliveryDistanceVendorToHubKm: twoSegmentDistances?.vendorToHub,
-          deliveryDistanceHubToClientKm: twoSegmentDistances?.hubToClient,
+          deliveryFee: showDeliverySection ? deliveryConfig.deliveryFee : 0,
+          deliveryDistanceKm: showDeliverySection
+            ? deliveryConfig.deliveryDistanceKm
+            : undefined,
+          deliveryDistanceVendorToHubKm: showDeliverySection
+            ? twoSegmentDistances?.vendorToHub
+            : undefined,
+          deliveryDistanceHubToClientKm: showDeliverySection
+            ? twoSegmentDistances?.hubToClient
+            : undefined,
           deliveryLat: deliveryConfig.deliveryLat,
           deliveryLon: deliveryConfig.deliveryLon,
           deliveryType: deliveryConfig.deliveryType,
@@ -279,6 +300,7 @@ export function QuickOrderSheet({
       twoSegmentDistances,
       variantId,
       variantTitle,
+      showDeliverySection,
     ],
   );
 
@@ -348,11 +370,23 @@ export function QuickOrderSheet({
             </div>
 
             {/* Delivery */}
-            <DeliverySection
-              value={deliveryConfig}
-              onChange={setDeliveryConfig}
-              estimatedWeightKg={0}
-            />
+            {showDeliverySection ? (
+              <DeliverySection
+                value={deliveryConfig}
+                onChange={setDeliveryConfig}
+                estimatedWeightKg={0}
+                collectionPoint={collectionPoint}
+              />
+            ) : (
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Les frais de livraison sont définis par la boutique et vous
+                    seront communiqués après confirmation de votre commande.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Address */}
             <div className="space-y-3">
