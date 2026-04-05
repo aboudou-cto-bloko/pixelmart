@@ -14,6 +14,7 @@ interface FunnelStep {
 
 interface MetaFunnelData {
   hasPixel: boolean;
+  pixelId: string | null;
   funnel: FunnelStep[];
 }
 
@@ -91,11 +92,18 @@ export function MetaFunnelChart({ data, isLoading }: MetaFunnelChartProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">
-          Funnel Meta Pixel
-        </CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base font-semibold">
+            Funnel Meta Pixel
+          </CardTitle>
+          {data.pixelId && (
+            <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">
+              Pixel {data.pixelId}
+            </span>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">
-          Événements envoyés à Facebook sur la période
+          Événements envoyés à Facebook — données du pixel actif uniquement
         </p>
       </CardHeader>
       <CardContent className="space-y-3">

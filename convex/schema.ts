@@ -1247,6 +1247,7 @@ export default defineSchema({
   // ayant un Pixel configuré. Permet au vendeur de visualiser son funnel.
   meta_pixel_events: defineTable({
     store_id: v.id("stores"),
+    pixel_id: v.string(), // ID du Pixel Meta au moment de l'événement — clé de scopage
     event_name: v.union(
       v.literal("PageView"),
       v.literal("ViewContent"),
@@ -1262,5 +1263,6 @@ export default defineSchema({
   })
     .index("by_store_day", ["store_id", "day_bucket"])
     .index("by_store_event_day", ["store_id", "event_name", "day_bucket"])
-    .index("by_store_occurred_at", ["store_id", "occurred_at"]),
+    .index("by_store_occurred_at", ["store_id", "occurred_at"])
+    .index("by_pixel_occurred_at", ["pixel_id", "occurred_at"]),
 });
