@@ -304,11 +304,9 @@ export const expirePendingOrders = internalMutation({
       // Si la commande a une référence Moneroo, vérifier d'abord le statut réel
       // avant d'annuler (le webhook a peut-être été perdu).
       if (order.payment_reference) {
-        await ctx.scheduler.runAfter(
-          0,
-          api.payments.moneroo.verifyPayment,
-          { orderId: order._id },
-        );
+        await ctx.scheduler.runAfter(0, api.payments.moneroo.verifyPayment, {
+          orderId: order._id,
+        });
         verifyingCount++;
         continue;
       }
@@ -323,9 +321,11 @@ export const expirePendingOrders = internalMutation({
 
       await restoreInventory(ctx, order.items);
 
-      // Notifier le client (in-app)
+      // Notifier le client (email + in-app + push)
       const customer = await ctx.db.get(order.customer_id);
+      const storeForExpiry = await ctx.db.get(order.store_id);
       if (customer) {
+        // In-app + push
         await ctx.scheduler.runAfter(
           0,
           internal.notifications.send.createInAppNotification,
@@ -335,11 +335,62 @@ export const expirePendingOrders = internalMutation({
             title: `Commande ${order.order_number} expirée`,
             body: `Votre commande a expiré car le paiement n'a pas été finalisé dans les délais impartis.`,
             link: `/orders`,
-            channels: ["in_app"],
+            channels: ["in_app", "push"],
             sentVia: ["in_app"],
             metadata: undefined,
           },
         );
+        await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+          userId: customer._id,
+          title: `Commande ${order.order_number} expirée`,
+          body: "Votre commande a expiré — le paiement n'a pas été finalisé.",
+          url: "/orders",
+        });
+        // Email (réutilise le template OrderCancelled)
+        if (customer.email && storeForExpiry) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.emails.send.sendOrderCancelled,
+            {
+              customerEmail: customer.email,
+              customerName: customer.name ?? "Client",
+              orderNumber: order.order_number,
+              storeName: storeForExpiry.name,
+              totalAmount: order.total_amount,
+              currency: order.currency,
+              reason:
+                "Commande expirée — paiement non finalisé dans les délais",
+              wasRefunded: false,
+            },
+          );
+        }
+      }
+
+      // Notifier le vendeur (in-app + push — pas d'email pour les expirations auto)
+      if (storeForExpiry) {
+        const vendorExpiry = await ctx.db.get(storeForExpiry.owner_id);
+        if (vendorExpiry) {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.notifications.send.createInAppNotification,
+            {
+              userId: vendorExpiry._id,
+              type: "order_status",
+              title: `Commande ${order.order_number} expirée`,
+              body: `La commande ${order.order_number} a expiré — paiement non finalisé.`,
+              link: "/vendor/orders",
+              channels: ["in_app", "push"],
+              sentVia: ["in_app"],
+              metadata: undefined,
+            },
+          );
+          await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+            userId: vendorExpiry._id,
+            title: `Commande ${order.order_number} expirée`,
+            body: "Paiement non finalisé — stock restauré.",
+            url: "/vendor/orders",
+          });
+        }
       }
 
       cancelledCount++;

@@ -129,7 +129,7 @@ export const confirmPayment = internalMutation({
     // ── Emails + In-app ──
     const customer = await ctx.db.get(order.customer_id);
 
-    // In-app confirmation au client
+    // In-app + push au client
     if (customer) {
       await ctx.scheduler.runAfter(
         0,
@@ -140,11 +140,17 @@ export const confirmPayment = internalMutation({
           title: `Commande ${order.order_number} confirmée`,
           body: `Votre paiement a été confirmé. ${store.name} prépare votre commande.`,
           link: `/orders`,
-          channels: ["in_app"],
+          channels: ["in_app", "push"],
           sentVia: ["in_app"],
           metadata: undefined,
         },
       );
+      await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+        userId: customer._id,
+        title: `Commande ${order.order_number} confirmée`,
+        body: `${store.name} prépare votre commande.`,
+        url: "/orders",
+      });
     }
 
     // Email confirmation au client
@@ -366,6 +372,24 @@ export const markRefunded = internalMutation({
           updated_at: Date.now(),
         });
       }
+    }
+
+    // Notifier le client du remboursement (email + in-app + push)
+    const customer = await ctx.db.get(order.customer_id);
+    if (customer) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.notifications.send.notifyOrderRefunded,
+        {
+          customerUserId: customer._id,
+          customerEmail: customer.email,
+          customerName: customer.name ?? "Client",
+          orderNumber: order.order_number,
+          storeName: store?.name ?? "Boutique",
+          totalAmount: order.total_amount,
+          currency: order.currency,
+        },
+      );
     }
 
     return { success: true };
