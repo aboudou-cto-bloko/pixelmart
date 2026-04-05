@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, usePreloadedQuery } from "convex/react";
 import { VariantSelector } from "@/components/products/VariantSelector";
@@ -222,6 +222,25 @@ export function MarketplaceProductPageClient({
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     null,
   );
+
+  // ── Sticky action bar state ──
+  const [showStickyActions, setShowStickyActions] = useState(false);
+  const actionButtonsRef = useRef<HTMLDivElement>(null);
+
+  // ── Scroll detection effect ──
+  useEffect(() => {
+    const handleScroll = () => {
+      if (actionButtonsRef.current) {
+        const rect = actionButtonsRef.current.getBoundingClientRect();
+        // Show sticky bar when original buttons are scrolled past (bottom of buttons above viewport)
+        const isScrolledPast = rect.bottom < -50;
+        setShowStickyActions(isScrolledPast);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleShare = async () => {
     if (!product) return;
@@ -517,7 +536,7 @@ export function MarketplaceProductPageClient({
                     disponible{maxQuantity > 1 ? "s" : ""}
                   </p>
                 )}
-                <div className="flex flex-col gap-2">
+                <div ref={actionButtonsRef} className="flex flex-col gap-2">
                   <Button
                     size="lg"
                     className="w-full"
@@ -710,6 +729,38 @@ export function MarketplaceProductPageClient({
             storeSlug={product.store.slug}
           />
         </>
+      )}
+
+      {/* Sticky bottom action bar (mobile) */}
+      {showStickyActions && !mustSelectVariant && !isOutOfStock && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border p-4 shadow-2xl md:hidden">
+          <div className="flex gap-2 max-w-sm mx-auto">
+            <Button
+              size="lg"
+              variant="outline"
+              className="flex-1"
+              onClick={handleAddToCart}
+              disabled={isAdding}
+            >
+              {isAdding ? (
+                "Ajout..."
+              ) : (
+                <>
+                  <ShoppingCart className="size-4 mr-2" />
+                  Panier
+                </>
+              )}
+            </Button>
+            <Button
+              size="lg"
+              className="flex-1"
+              onClick={handleBuyNow}
+              disabled={isAdding}
+            >
+              {isAdding ? "Ajout..." : "Commander"}
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

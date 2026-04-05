@@ -697,6 +697,21 @@ export default function CheckoutPage() {
                 </p>
               )}
 
+              {/* Security reassurance message */}
+              <div className="flex items-start gap-3 rounded-lg border-2 border-green-300 bg-green-100 dark:bg-green-950/30 dark:border-green-700 p-4 shadow-sm">
+                <ShieldCheck className="size-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+                    Paiement 100% sécurisé
+                  </p>
+                  <p className="text-xs text-green-700 dark:text-green-300">
+                    Cette boutique est propulsée par Pixel-Mart. Vos fonds sont
+                    conservés jusqu'à la confirmation de livraison. En cas de
+                    souci, vous êtes remboursé.
+                  </p>
+                </div>
+              </div>
+
               <p className="text-[11px] text-muted-foreground text-center">
                 En confirmant, vous acceptez nos{" "}
                 <Link href="/terms" className="underline hover:text-foreground">

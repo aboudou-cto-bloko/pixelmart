@@ -491,10 +491,20 @@ export default function ShopCheckoutPage() {
           )}
         </Button>
 
-        <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-          <ShieldCheck className="size-3.5 text-green-500" />
-          Paiement 100% sécurisé via Moneroo
-        </p>
+        {/* Security reassurance message */}
+        <div className="flex items-start gap-3 rounded-lg border-2 border-green-300 bg-green-100 dark:bg-green-950/30 dark:border-green-700 p-4 shadow-sm">
+          <ShieldCheck className="size-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+              Paiement 100% sécurisé
+            </p>
+            <p className="text-xs text-green-700 dark:text-green-300">
+              Cette boutique est propulsée par Pixel-Mart. Vos fonds sont
+              conservés jusqu'à la confirmation de livraison. En cas de souci,
+              vous êtes remboursé.
+            </p>
+          </div>
+        </div>
       </form>
     </div>
   );
