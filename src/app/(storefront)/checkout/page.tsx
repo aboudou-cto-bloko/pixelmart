@@ -39,6 +39,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { formatPrice } from "@/lib/utils";
+import { calculateDistance, DEFAULT_COLLECTION_POINT } from "@/lib/geocoding";
 import { toast } from "sonner";
 import { ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
@@ -374,6 +375,37 @@ export default function CheckoutPage() {
                 storeCfg.custom_pickup_lon !== undefined))
           : true;
 
+        // Scénario B : use_pixelmart_service + custom pickup (PM collecte chez le vendeur)
+        const isScenarioB =
+          storeCfg !== undefined &&
+          storeCfg.use_pixelmart_service === true &&
+          storeCfg.has_storage_plan !== true &&
+          storeCfg.custom_pickup_lat !== undefined &&
+          storeCfg.custom_pickup_lon !== undefined;
+
+        const deliveryDistanceVendorToHubKm =
+          isScenarioB &&
+          storeCfg?.custom_pickup_lat !== undefined &&
+          storeCfg?.custom_pickup_lon !== undefined
+            ? calculateDistance(
+                {
+                  lat: storeCfg.custom_pickup_lat,
+                  lon: storeCfg.custom_pickup_lon,
+                },
+                DEFAULT_COLLECTION_POINT,
+              )
+            : undefined;
+
+        const deliveryDistanceHubToClientKm =
+          isScenarioB &&
+          deliveryConfig.deliveryLat !== undefined &&
+          deliveryConfig.deliveryLon !== undefined
+            ? calculateDistance(DEFAULT_COLLECTION_POINT, {
+                lat: deliveryConfig.deliveryLat,
+                lon: deliveryConfig.deliveryLon,
+              })
+            : undefined;
+
         const result = await createOrder({
           storeId: store.storeId,
           items: store.items.map((item) => ({
@@ -399,9 +431,12 @@ export default function CheckoutPage() {
           // ── Champs delivery OpenStreetMap ──
           deliveryLat: deliveryConfig.deliveryLat,
           deliveryLon: deliveryConfig.deliveryLon,
-          deliveryDistanceKm: storePmService
-            ? deliveryConfig.deliveryDistanceKm
-            : undefined,
+          deliveryDistanceKm:
+            storePmService && !isScenarioB
+              ? deliveryConfig.deliveryDistanceKm
+              : undefined,
+          deliveryDistanceVendorToHubKm,
+          deliveryDistanceHubToClientKm,
           deliveryFee: storePmService ? deliveryConfig.deliveryFee : 0,
           deliveryType: deliveryConfig.deliveryType,
           paymentMode: deliveryConfig.paymentMode,

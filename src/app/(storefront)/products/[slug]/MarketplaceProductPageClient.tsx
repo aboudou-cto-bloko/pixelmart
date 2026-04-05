@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, usePreloadedQuery } from "convex/react";
+import { useQuery, usePreloadedQuery, useMutation } from "convex/react";
 import { VariantSelector } from "@/components/products/VariantSelector";
 import type { Preloaded } from "convex/react";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -206,6 +206,30 @@ export function MarketplaceProductPageClient({
   const router = useRouter();
   const product = usePreloadedQuery(preloadedProduct);
   const { addItem } = useCart();
+  const recordStoreView = useMutation(api.analytics.mutations.recordStoreView);
+
+  // Enregistre une visite unique par session navigateur (déduplication côté serveur)
+  useEffect(() => {
+    if (!product?.store?._id) return;
+    try {
+      const KEY = "pm_session_id";
+      let sessionId = sessionStorage.getItem(KEY);
+      if (!sessionId) {
+        // crypto.randomUUID() — disponible dans tous les navigateurs modernes
+        sessionId = crypto.randomUUID();
+        sessionStorage.setItem(KEY, sessionId);
+      }
+      recordStoreView({
+        storeId: product.store._id,
+        sessionId,
+      }).catch(() => {
+        // Silently ignore analytics errors
+      });
+    } catch {
+      // sessionStorage peut être désactivé (mode privé strict)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.store?._id]);
 
   const specs = useQuery(
     api.product_specs.queries.listByProduct,

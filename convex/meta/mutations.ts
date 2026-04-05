@@ -7,6 +7,7 @@ import {
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import type { Id } from "../_generated/dataModel";
 import { getVendorStore } from "../users/helpers";
 import { formatUserData, formatCustomData, generateEventId } from "./helpers";
 
@@ -100,6 +101,20 @@ export const trackPurchase = internalMutation({
       eventSourceUrl: `${appUrl}/shop/${store.slug}/checkout/confirmation`,
       userData,
       customData,
+    });
+
+    // Journalise l'événement Purchase côté serveur pour les analytics vendeur
+    const now = Date.now();
+    await ctx.db.insert("meta_pixel_events", {
+      store_id: store._id as Id<"stores">,
+      pixel_id: store.meta_pixel_id, // scopage : données liées au pixel actif
+      event_name: "Purchase",
+      event_id: eventId,
+      value: order.total_amount,
+      currency: store.currency ?? "XOF",
+      occurred_at: now,
+      day_bucket: new Date(now).toISOString().slice(0, 10),
+      source: "server",
     });
   },
 });

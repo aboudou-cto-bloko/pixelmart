@@ -1223,4 +1223,46 @@ export default defineSchema({
     event_id: v.string(), // data.id fourni par Moneroo (unique par événement)
     processed_at: v.number(),
   }).index("by_event_id", ["event_id"]),
+
+  // ============================================
+  // STORE VIEWS (MARKETPLACE VISITOR ANALYTICS)
+  // ============================================
+  // Enregistre une visite unique par session navigateur sur la page produit
+  // d'une boutique sur la marketplace. Utilisé pour les courbes de visiteurs.
+  store_views: defineTable({
+    store_id: v.id("stores"),
+    session_id: v.string(), // UUID généré côté client (sessionStorage) — aucune PII
+    viewed_at: v.number(), // timestamp ms
+    // Fenêtre de déduplication : une session ne compte qu'une fois par jour par boutique
+    day_bucket: v.string(), // format "YYYY-MM-DD" — pour l'index de déduplication
+  })
+    .index("by_store_day", ["store_id", "day_bucket"])
+    .index("by_store_viewed_at", ["store_id", "viewed_at"])
+    .index("by_session_store_day", ["session_id", "store_id", "day_bucket"]),
+
+  // ============================================
+  // META PIXEL EVENTS (SHOP ANALYTICS)
+  // ============================================
+  // Journalise les événements envoyés à Meta (Facebook) pour chaque boutique
+  // ayant un Pixel configuré. Permet au vendeur de visualiser son funnel.
+  meta_pixel_events: defineTable({
+    store_id: v.id("stores"),
+    pixel_id: v.string(), // ID du Pixel Meta au moment de l'événement — clé de scopage
+    event_name: v.union(
+      v.literal("PageView"),
+      v.literal("ViewContent"),
+      v.literal("InitiateCheckout"),
+      v.literal("Purchase"),
+    ),
+    event_id: v.optional(v.string()), // dedup ID passé à Meta CAPI
+    value: v.optional(v.number()), // montant en centimes (Purchase uniquement)
+    currency: v.optional(v.string()), // "XOF"
+    occurred_at: v.number(), // timestamp ms
+    day_bucket: v.string(), // format "YYYY-MM-DD" — pour les groupements
+    source: v.union(v.literal("browser"), v.literal("server")), // fbq = browser, CAPI = server
+  })
+    .index("by_store_day", ["store_id", "day_bucket"])
+    .index("by_store_event_day", ["store_id", "event_name", "day_bucket"])
+    .index("by_store_occurred_at", ["store_id", "occurred_at"])
+    .index("by_pixel_occurred_at", ["pixel_id", "occurred_at"]),
 });

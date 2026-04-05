@@ -18,6 +18,7 @@ import type * as ads_mutations from "../ads/mutations.js";
 import type * as ads_queries from "../ads/queries.js";
 import type * as ads_seed from "../ads/seed.js";
 import type * as analytics_helpers from "../analytics/helpers.js";
+import type * as analytics_mutations from "../analytics/mutations.js";
 import type * as analytics_queries from "../analytics/queries.js";
 import type * as auth from "../auth.js";
 import type * as cart_mutations from "../cart/mutations.js";
@@ -122,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   "ads/queries": typeof ads_queries;
   "ads/seed": typeof ads_seed;
   "analytics/helpers": typeof analytics_helpers;
+  "analytics/mutations": typeof analytics_mutations;
   "analytics/queries": typeof analytics_queries;
   auth: typeof auth;
   "cart/mutations": typeof cart_mutations;
