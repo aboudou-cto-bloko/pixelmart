@@ -220,7 +220,12 @@ export default function CheckoutPage() {
       cfg.custom_pickup_lon !== undefined;
     return cfg.has_storage_plan || hasCoords;
   });
-  const showDeliverySection = !storeDeliveryConfigs || anyPmStore;
+  const allIndependent = storeDeliveryConfigs
+    ? storeIds.every((id) => {
+        const cfg = storeDeliveryConfigs[id];
+        return cfg && !cfg.use_pixelmart_service;
+      })
+    : false;
 
   // ── State ──
   const [address, setAddress] = useState<ShippingAddress>(() => ({
@@ -316,11 +321,9 @@ export default function CheckoutPage() {
   }, [stores, storeCoupons, deliveryFee]);
 
   // ── Validation ──
-  // If no PM store requires delivery, address validation is skipped
   const isDeliveryAddressValid =
-    !showDeliverySection ||
-    (deliveryConfig.deliveryLat !== undefined &&
-      deliveryConfig.deliveryLon !== undefined);
+    deliveryConfig.deliveryLat !== undefined &&
+    deliveryConfig.deliveryLon !== undefined;
 
   // ── Submit ──
   async function handleSubmit() {
@@ -345,8 +348,8 @@ export default function CheckoutPage() {
     }
     setAddressErrors(null);
 
-    // Valider l'adresse de livraison (coordonnées GPS requises — seulement si PM service)
-    if (showDeliverySection && !isDeliveryAddressValid) {
+    // Valider l'adresse de livraison (coordonnées GPS requises)
+    if (!isDeliveryAddressValid) {
       setDeliveryAddressError(
         "Veuillez sélectionner une adresse de livraison valide",
       );
@@ -546,23 +549,14 @@ export default function CheckoutPage() {
           </Card>
 
           {/* 2. Options de livraison (avec AddressAutocomplete OSM) */}
-          {showDeliverySection ? (
-            <DeliverySection
-              estimatedWeightKg={estimatedWeightKg}
-              value={deliveryConfig}
-              onChange={handleDeliveryConfigChange}
-              addressError={deliveryAddressError ?? undefined}
-              collectionPoint={warehouseCoords ?? undefined}
-            />
-          ) : (
-            <Card>
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">
-                  Les frais de livraison sont gérés par chaque boutique.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <DeliverySection
+            estimatedWeightKg={estimatedWeightKg}
+            value={deliveryConfig}
+            onChange={handleDeliveryConfigChange}
+            addressError={deliveryAddressError ?? undefined}
+            collectionPoint={warehouseCoords ?? undefined}
+            skipFeeCalculation={allIndependent}
+          />
 
           {/* 3. Notes */}
           <Card>
