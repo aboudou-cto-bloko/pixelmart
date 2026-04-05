@@ -6,6 +6,7 @@ import { v } from "convex/values";
 const EVENT_NAME_ARG = v.union(
   v.literal("PageView"),
   v.literal("ViewContent"),
+  v.literal("AddToCart"),
   v.literal("InitiateCheckout"),
   v.literal("Purchase"),
 );

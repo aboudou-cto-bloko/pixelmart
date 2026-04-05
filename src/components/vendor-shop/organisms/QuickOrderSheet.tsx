@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAction, useMutation } from "convex/react";
 import Image from "next/image";
@@ -104,6 +104,23 @@ export function QuickOrderSheet({
 
   const currency = store.currency ?? "XOF";
   const totalAmount = product.price * quantity;
+
+  // Track InitiateCheckout dès que le sheet s'ouvre (flow commande directe)
+  useEffect(() => {
+    if (!open) return;
+    trackEvent(
+      "InitiateCheckout",
+      {
+        content_ids: [product._id],
+        content_type: "product",
+        value: totalAmount,
+        currency,
+        num_items: quantity,
+      },
+      generateEventId(),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const [address, setAddress] = useState<ShippingAddress>({
     full_name: user?.name ?? "",

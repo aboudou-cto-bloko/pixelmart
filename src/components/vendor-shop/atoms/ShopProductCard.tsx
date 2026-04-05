@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
-import { useShopCart } from "../providers";
+import { useShopCart, useMetaPixel } from "../providers";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
 import { WishlistButton } from "@/components/atoms/WishlistButton";
@@ -46,6 +46,7 @@ export function ShopProductCard({
 }: ShopProductCardProps) {
   const router = useRouter();
   const { addItem } = useShopCart();
+  const { trackEvent, generateEventId } = useMetaPixel();
   const [isAdding, setIsAdding] = useState(false);
 
   const { title, slug, price, compare_price, images, is_digital, quantity } =
@@ -81,6 +82,16 @@ export function ShopProductCard({
         maxQuantity: quantity ?? 99,
         isDigital: is_digital,
       });
+      trackEvent(
+        "AddToCart",
+        {
+          content_ids: [product._id],
+          content_type: "product",
+          value: product.price,
+          currency,
+        },
+        generateEventId(),
+      );
       router.push(SHOP_ROUTES.CART(storeSlug));
     } catch (error) {
       console.error("Error adding to cart:", error);

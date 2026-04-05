@@ -45,6 +45,7 @@ const MetaPixelContext = createContext<MetaPixelContextValue | null>(null);
 const LOGGED_EVENTS = new Set([
   "PageView",
   "ViewContent",
+  "AddToCart",
   "InitiateCheckout",
   "Purchase",
 ]);
@@ -89,6 +90,7 @@ export function MetaPixelProvider({
         const typedEventName = eventName as
           | "PageView"
           | "ViewContent"
+          | "AddToCart"
           | "InitiateCheckout"
           | "Purchase";
         logBrowserEvent({
