@@ -67,7 +67,7 @@ const FAQ_CATEGORIES = [
     questions: [
       {
         q: "Comment retourner un produit ?",
-        a: "Vous avez 7 jours après réception pour demander un retour. Allez dans 'Mes commandes', sélectionnez la commande concernée et cliquez sur 'Demander un retour'. Le vendeur examinera votre demande.",
+        a: "Vous avez 48h après réception pour demander un retour. Allez dans 'Mes commandes', sélectionnez la commande concernée et cliquez sur 'Demander un retour'. Le vendeur examinera votre demande.",
       },
       {
         q: "Dans quel délai suis-je remboursé ?",
@@ -84,7 +84,7 @@ const FAQ_CATEGORIES = [
       },
       {
         q: "Quelles sont les commissions prélevées ?",
-        a: "Pixel-Mart prélève une commission de 5% sur chaque vente réalisée. Il n'y a pas de frais d'abonnement mensuel sur le plan gratuit.",
+        a: "Pixel-Mart prélève une commission sur chaque vente. Le taux dépend de votre niveau d'abonnement. Il n'y a pas de frais d'abonnement mensuel sur le plan gratuit.",
       },
       {
         q: "Comment recevoir mes paiements en tant que vendeur ?",
