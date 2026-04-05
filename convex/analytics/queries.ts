@@ -644,18 +644,27 @@ export const getMetaFunnel = query({
     if (!result) return null;
     const { store } = result;
 
-    // Seulement pertinent si le store a un Pixel configuré
-    const hasPixel = !!store.meta_pixel_id;
+    const pixelId = store.meta_pixel_id ?? null;
+    const hasPixel = !!pixelId;
+
+    if (!hasPixel) {
+      return { hasPixel: false, pixelId: null, funnel: [] };
+    }
 
     const { current } = getDateRanges(period as AnalyticsPeriod);
 
+    // Filtre par pixel actif via l'index dédié — si le vendeur change de pixel,
+    // seules les données enregistrées avec ce pixel_id sont renvoyées.
     const allEvents = await ctx.db
       .query("meta_pixel_events")
-      .withIndex("by_store_occurred_at", (q) => q.eq("store_id", store._id))
+      .withIndex("by_pixel_occurred_at", (q) => q.eq("pixel_id", pixelId))
       .collect();
 
     const filtered = allEvents.filter(
-      (e) => e.occurred_at >= current.start && e.occurred_at <= current.end,
+      (e) =>
+        e.store_id === store._id &&
+        e.occurred_at >= current.start &&
+        e.occurred_at <= current.end,
     );
 
     const counts: Record<string, number> = {
@@ -683,6 +692,6 @@ export const getMetaFunnel = query({
       return { name, count, conversionRate };
     });
 
-    return { hasPixel, funnel };
+    return { hasPixel: true, pixelId, funnel };
   },
 });

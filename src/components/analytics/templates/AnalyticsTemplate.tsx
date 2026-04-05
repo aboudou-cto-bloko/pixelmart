@@ -97,6 +97,7 @@ interface MetaFunnelStep {
 
 interface MetaFunnelData {
   hasPixel: boolean;
+  pixelId: string | null;
   funnel: MetaFunnelStep[];
 }
 
@@ -192,8 +193,8 @@ export function AnalyticsTemplate({
         isLoading={isLoading}
       />
 
-      {/* Marketplace Visitors — only relevant for marketplace/all sources */}
-      {(source === "all" || source === "marketplace") && (
+      {/* Marketplace Visitors — onglet Marketplace uniquement */}
+      {source === "marketplace" && (
         <ViewsChart
           chartData={viewsChart}
           overview={viewsOverview}
@@ -201,8 +202,8 @@ export function AnalyticsTemplate({
         />
       )}
 
-      {/* Meta Pixel Funnel — shop ads only */}
-      {(source === "all" || source === "vendor_shop") && (
+      {/* Meta Pixel Funnel — onglet Boutique ads uniquement */}
+      {source === "vendor_shop" && (
         <MetaFunnelChart data={metaFunnel} isLoading={isLoading} />
       )}
     </div>

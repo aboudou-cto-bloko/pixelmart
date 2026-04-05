@@ -77,6 +77,7 @@ export const logBrowserPixelEvent = mutation({
     const now = Date.now();
     await ctx.db.insert("meta_pixel_events", {
       store_id: args.storeId,
+      pixel_id: store.meta_pixel_id, // scopage : données liées au pixel actif
       event_name: args.eventName,
       event_id: args.eventId,
       value: args.value,
@@ -95,6 +96,7 @@ export const logBrowserPixelEvent = mutation({
 export const logServerPixelEvent = internalMutation({
   args: {
     storeId: v.id("stores"),
+    pixelId: v.string(),
     eventName: EVENT_NAME_ARG,
     eventId: v.optional(v.string()),
     value: v.optional(v.number()),
@@ -104,6 +106,7 @@ export const logServerPixelEvent = internalMutation({
     const now = Date.now();
     await ctx.db.insert("meta_pixel_events", {
       store_id: args.storeId,
+      pixel_id: args.pixelId,
       event_name: args.eventName,
       event_id: args.eventId,
       value: args.value,

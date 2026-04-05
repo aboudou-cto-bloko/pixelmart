@@ -107,6 +107,7 @@ export const trackPurchase = internalMutation({
     const now = Date.now();
     await ctx.db.insert("meta_pixel_events", {
       store_id: store._id as Id<"stores">,
+      pixel_id: store.meta_pixel_id, // scopage : données liées au pixel actif
       event_name: "Purchase",
       event_id: eventId,
       value: order.total_amount,
