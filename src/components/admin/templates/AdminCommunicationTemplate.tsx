@@ -28,6 +28,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -51,6 +60,120 @@ interface Props {
 
 type PushTarget = "vendors" | "customers" | "both";
 type BgType = "color" | "gradient" | "image";
+
+// ─── Routes prédéfinies ───────────────────────────────────────
+
+type RouteOption = { label: string; href: string };
+type RouteGroup = { group: string; routes: RouteOption[] };
+
+const VENDOR_ROUTES: RouteGroup[] = [
+  {
+    group: "Vendeurs",
+    routes: [
+      { label: "Vue d'ensemble", href: "/vendor/dashboard" },
+      { label: "Produits", href: "/vendor/products" },
+      { label: "Commandes", href: "/vendor/orders" },
+      { label: "Analytiques", href: "/vendor/analytics" },
+      { label: "Finance", href: "/vendor/finance" },
+      { label: "Ma boutique", href: "/vendor/store" },
+      { label: "Stockage", href: "/vendor/storage" },
+      { label: "Notifications", href: "/vendor/notifications" },
+    ],
+  },
+];
+
+const CUSTOMER_ROUTES: RouteGroup[] = [
+  {
+    group: "Clients",
+    routes: [
+      { label: "Mes commandes", href: "/orders" },
+      { label: "Liste de souhaits", href: "/wishlist" },
+    ],
+  },
+];
+
+const GENERAL_ROUTES: RouteGroup[] = [
+  {
+    group: "Général",
+    routes: [
+      { label: "Accueil", href: "/" },
+      { label: "Tous les produits", href: "/products" },
+      { label: "Boutiques", href: "/stores" },
+    ],
+  },
+];
+
+const ALL_ROUTES: RouteGroup[] = [
+  ...VENDOR_ROUTES,
+  ...CUSTOMER_ROUTES,
+  ...GENERAL_ROUTES,
+];
+
+// ─── LinkInput ────────────────────────────────────────────────
+// Champ libre + sélecteur de raccourcis pour URL relative ou absolue
+
+interface LinkInputProps {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+  routeGroups: RouteGroup[];
+}
+
+function LinkInput({
+  id,
+  value,
+  onChange,
+  disabled,
+  routeGroups,
+}: LinkInputProps) {
+  const isExternal =
+    value.startsWith("http://") || value.startsWith("https://");
+
+  return (
+    <div className="flex gap-2">
+      <div className="relative flex-1">
+        <Input
+          id={id}
+          placeholder="Ex : /vendor/dashboard ou https://…"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className={isExternal ? "pr-7" : ""}
+        />
+        {isExternal && (
+          <ExternalLink className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+        )}
+      </div>
+      <Select
+        value=""
+        onValueChange={(href) => onChange(href)}
+        disabled={disabled}
+      >
+        <SelectTrigger className="w-36 shrink-0 text-xs">
+          <SelectValue placeholder="Raccourcis" />
+        </SelectTrigger>
+        <SelectContent>
+          {routeGroups.map((g) => (
+            <SelectGroup key={g.group}>
+              <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {g.group}
+              </SelectLabel>
+              {g.routes.map((r) => (
+                <SelectItem key={r.href} value={r.href} className="text-xs">
+                  <span className="font-medium">{r.label}</span>
+                  <span className="ml-1.5 text-muted-foreground font-mono text-[10px]">
+                    {r.href}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -202,12 +325,16 @@ function PushBroadcastSection() {
           <Label htmlFor="push-url" className="text-xs font-medium">
             Lien (optionnel)
           </Label>
-          <Input
+          <LinkInput
             id="push-url"
-            placeholder="Ex : /vendor/dashboard"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={setUrl}
+            routeGroups={ALL_ROUTES}
           />
+          <p className="text-[10px] text-muted-foreground">
+            Lien relatif (ex : <code>/orders</code>) ou URL complète (ex :{" "}
+            <code>https://…</code>)
+          </p>
         </div>
 
         {result && (
@@ -376,19 +503,13 @@ function VendorBannerSection({ banner }: { banner: BannerData | undefined }) {
             <Label htmlFor="banner-link-url" className="text-xs font-medium">
               Lien (optionnel)
             </Label>
-            <div className="relative">
-              <Input
-                id="banner-link-url"
-                placeholder="Ex : /vendor/products"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                disabled={isLoading}
-                className="pr-8"
-              />
-              {linkUrl && (
-                <ExternalLink className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-              )}
-            </div>
+            <LinkInput
+              id="banner-link-url"
+              value={linkUrl}
+              onChange={setLinkUrl}
+              disabled={isLoading}
+              routeGroups={[...VENDOR_ROUTES, ...GENERAL_ROUTES]}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="banner-link-text" className="text-xs font-medium">
