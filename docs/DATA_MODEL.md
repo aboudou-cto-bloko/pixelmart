@@ -109,9 +109,10 @@ Boutique d'un vendeur. Contient la configuration financière, l'apparence, le st
 | `avg_rating` | number? | Note moyenne |
 | `is_verified` | boolean | Vérification admin |
 | `country` | string | ISO alpha-2 |
-| `meta_pixel_id` | string? | Meta Pixel ID |
-| `meta_access_token` | string? | Token Meta CAPI |
-| `meta_test_event_code` | string? | Code test CAPI |
+| `meta_pixel_id` | string? | Meta Pixel ID (15-16 chiffres) |
+| `meta_access_token` | string? | Token Meta CAPI (chiffré, jamais exposé client) |
+| `meta_test_event_code` | string? | Code test CAPI (dev uniquement) |
+| `meta_pixel_enabled_events` | string[]? | Events activés ex: `["PageView","Purchase"]` — null = tous activés |
 | `vendor_shop_enabled` | boolean? | Active /shop/[slug] |
 | `use_pixelmart_service` | boolean? | Participe au service de livraison Pixel-Mart |
 | `has_storage_plan` | boolean? | Utilise l'entrepôt Pixel-Mart (mode `full`) |
@@ -695,6 +696,40 @@ Captures de leads pré-lancement.
 | `created_at` | number | — |
 
 **Indexes** : `by_email`
+
+---
+
+### `store_views`
+Sessions de visite dédupliquées pour le graphique de courbe de visiteurs de la marketplace.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `store_id` | Id\<"stores"\> | — |
+| `session_id` | string | UUID v4 stocké en `sessionStorage` |
+| `viewed_at` | number | Timestamp ms |
+| `day_bucket` | string | `"YYYY-MM-DD"` — clé de dédup journalière |
+
+**Indexes** : `by_store_day([store_id, day_bucket])`, `by_store_viewed_at([store_id, viewed_at])`, `by_session_store_day([session_id, store_id, day_bucket])`
+
+---
+
+### `meta_pixel_events`
+Événements Meta Pixel loggés côté serveur/navigateur pour les analytics vendeur.
+Scopés au `pixel_id` actif — changer de pixel repart de zéro sans effacer l'historique.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `store_id` | Id\<"stores"\> | — |
+| `pixel_id` | string | Meta Pixel ID actif au moment de l'event |
+| `event_name` | string | `"PageView" \| "ViewContent" \| "AddToCart" \| "InitiateCheckout" \| "Purchase"` |
+| `event_id` | string? | UUID de déduplication CAPI |
+| `value` | number? | Montant en centimes (XOF = valeur directe) |
+| `currency` | string? | ISO 4217 |
+| `occurred_at` | number | Timestamp ms |
+| `day_bucket` | string | `"YYYY-MM-DD"` |
+| `source` | string | `"browser" \| "server"` |
+
+**Indexes** : `by_store_day`, `by_store_event_day`, `by_store_occurred_at`, `by_pixel_occurred_at([pixel_id, occurred_at])`
 
 ---
 

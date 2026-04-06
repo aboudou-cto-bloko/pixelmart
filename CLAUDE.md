@@ -54,6 +54,7 @@ Avant de toucher au code, consulte la documentation dans `/docs/` :
 | PDF        | @react-pdf/renderer                  |
 | Animation  | motion/react (Framer Motion v12)     |
 | Push       | Web Push API + VAPID (sw.js)         |
+| Meta Pixel | @adkit.so/meta-pixel-next            |
 | Testing    | Playwright + Vitest                  |
 | Package    | pnpm                                 |
 

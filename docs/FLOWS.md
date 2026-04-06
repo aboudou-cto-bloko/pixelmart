@@ -736,8 +736,44 @@ Better Auth (interne)
     │   ├── Granularité : "day" (7d/30d) ou "week" (90d)
     │   └── Retourne [{date, revenue, orders}]
     │
-    └── analytics.queries.getTopProducts({period})
-        └── Retourne [{product_id, title, revenue, units_sold}] top 10
+    ├── analytics.queries.getTopProducts({period})
+    │   └── Retourne [{product_id, title, revenue, units_sold}] top 10
+    │
+    ├── [source === "marketplace"] analytics.queries.getViewsChart({period})
+    │   ├── Lit table store_views, groupe par day_bucket
+    │   └── Retourne [{date, label, views}] — visiteurs uniques/jour
+    │
+    └── [source === "vendor_shop"] analytics.queries.getMetaFunnel({period})
+        ├── Lit table meta_pixel_events filtrée par pixel_id actif
+        └── Retourne {hasPixel, pixelId, funnel[{name, count, conversionRate}]}
+```
+
+### 10b. Flux tracking Meta Pixel (navigateur)
+
+```
+[Visiteur] /shop/[slug]/products/[slug]
+    │
+    ├── MetaPixelProvider initialise <MetaPixel pixelId={store.meta_pixel_id}>
+    │   └── @adkit.so/meta-pixel-next — charge fbevents.js, auto-PageView
+    │
+    ├── Chaque changement de route → PageView fbq automatique (librairie)
+    │   └── Si storeId + "PageView" dans enabledEvents →
+    │       analytics.mutations.logBrowserPixelEvent({storeId, eventName:"PageView"})
+    │
+    ├── Ouverture fiche produit → ViewContent
+    │   └── meta.track("ViewContent", {content_ids, value, currency})
+    │       + logBrowserPixelEvent si enabledEvents.includes("ViewContent")
+    │
+    ├── Clic "Ajouter au panier" → AddToCart
+    │   └── meta.track("AddToCart", ...) + logBrowserPixelEvent
+    │
+    ├── Ouverture QuickOrderSheet → InitiateCheckout
+    │   └── meta.track("InitiateCheckout", ...) + logBrowserPixelEvent
+    │
+    └── Paiement confirmé (webhook Moneroo) → Purchase CAPI
+        └── meta/mutations.trackPurchase (serveur) →
+            ctx.scheduler.runAfter(0, sendPurchaseEvent) +
+            ctx.db.insert("meta_pixel_events", {source:"server", pixel_id, ...})
 ```
 
 ---

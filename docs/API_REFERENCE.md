@@ -46,7 +46,7 @@ Toutes les fonctions Convex exposées au frontend via `api.*` et les fonctions i
 | `api.stores.mutations.create` | 🏪 | `{name, slug, country, ...}` | Crée une boutique |
 | `api.stores.mutations.updateSettings` | 🏪 | `{name?, description?, contact_*?, ...}` | Paramètres boutique |
 | `api.stores.mutations.updateTheme` | 🏪 | `{theme_id, primary_color?, theme_mode?}` | Thème boutique |
-| `api.stores.mutations.updateMeta` | 🏪 | `{meta_pixel_id?, vendor_shop_enabled?}` | Meta Pixel + vitrine |
+| `api.meta.mutations.updateMetaConfig` | 🏪 | `{pixelId?, accessToken?, testEventCode?, enabledEvents?, vendorShopEnabled?}` | Meta Pixel + vitrine + events activés |
 | `api.stores.mutations.setActiveStore` | 🏪 | `{storeId}` | Change la boutique active |
 
 ---
@@ -342,6 +342,11 @@ Toutes les fonctions Convex exposées au frontend via `api.*` et les fonctions i
 | `api.analytics.queries.getRevenueChart` | 🏪 | `{period, granularity}` | `[{date, revenue, orders}]` | Graphique revenus |
 | `api.analytics.queries.getTopProducts` | 🏪 | `{period}` | Top 10 produits | Performances catalogue |
 | `api.analytics.queries.getOrdersByStatus` | 🏪 | `{period}` | Distribution statuts | Répartition commandes |
+| `api.analytics.queries.getViewsOverview` | 🏪 | `{period}` | `{views: {value, previous, change}}` | KPI visiteurs marketplace |
+| `api.analytics.queries.getViewsChart` | 🏪 | `{period}` | `[{date, label, views}]` | Courbe visiteurs marketplace (tab marketplace uniquement) |
+| `api.analytics.queries.getMetaFunnel` | 🏪 | `{period}` | `{hasPixel, pixelId, funnel[]}` | Funnel Meta Pixel scopé au `pixel_id` actif (tab shop vendeur) |
+| `api.analytics.mutations.logBrowserPixelEvent` | 🌐 | `{storeId, eventName, eventId?, value?, currency?}` | Log un event navigateur vers `meta_pixel_events` |
+| `api.analytics.mutations.recordStoreView` | 🌐 | `{storeId, sessionId}` | Enregistre une vue boutique dédupliquée dans `store_views` |
 
 ---
 
