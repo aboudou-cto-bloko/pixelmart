@@ -37,7 +37,7 @@ export function ShopLayoutClient({
   return (
     <MetaPixelProvider
       pixelId={config.pixelId}
-      testEventCode={config.testEventCode}
+      enabledEvents={config.enabledEvents}
       storeId={config.storeId}
     >
       <ShopCartProvider storeSlug={storeSlug}>

@@ -7,20 +7,40 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useState,
+  useRef,
   type ReactNode,
 } from "react";
+import {
+  MetaPixel,
+  useMetaPixel as useAdkitPixel,
+} from "@adkit.so/meta-pixel-next";
+import type { StandardEvent } from "@adkit.so/meta-pixel-next";
 import { usePathname, useSearchParams } from "next/navigation";
-import Script from "next/script";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
-// ─── Types ───────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────
+
+const ALL_EVENTS: string[] = [
+  "PageView",
+  "ViewContent",
+  "AddToCart",
+  "InitiateCheckout",
+  "Purchase",
+];
+
+const LOGGABLE_EVENTS = new Set<string>([
+  "PageView",
+  "ViewContent",
+  "AddToCart",
+  "InitiateCheckout",
+  "Purchase",
+]);
+
+// ─── Types ────────────────────────────────────────────────────
 
 interface MetaPixelContextValue {
-  pixelId: string | null;
-  isReady: boolean;
   trackEvent: (
     eventName: string,
     params?: Record<string, unknown>,
@@ -32,138 +52,136 @@ interface MetaPixelContextValue {
 interface MetaPixelProviderProps {
   children: ReactNode;
   pixelId: string | null;
-  testEventCode?: string | null;
+  enabledEvents?: string[] | null;
   storeId?: Id<"stores"> | null;
+  /** @deprecated testEventCode n'est pas supporté par @adkit.so/meta-pixel-next */
+  testEventCode?: string | null;
 }
 
-// ─── Context ─────────────────────────────────────────────────
+// ─── Context ──────────────────────────────────────────────────
 
 const MetaPixelContext = createContext<MetaPixelContextValue | null>(null);
 
-// ─── Provider ────────────────────────────────────────────────
+const generateEventId = (): string =>
+  `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
-const LOGGED_EVENTS = new Set([
-  "PageView",
-  "ViewContent",
-  "AddToCart",
-  "InitiateCheckout",
-  "Purchase",
-]);
+function noop() {}
 
-export function MetaPixelProvider({
+// ─── Inner provider (must live inside <MetaPixel>) ────────────
+
+function InnerPixelProvider({
   children,
-  pixelId,
-  testEventCode,
   storeId,
-}: MetaPixelProviderProps) {
-  const [isReady, setIsReady] = useState(false);
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  enabledEvents,
+}: {
+  children: ReactNode;
+  storeId?: Id<"stores"> | null;
+  enabledEvents: string[];
+}) {
+  const meta = useAdkitPixel();
   const logBrowserEvent = useMutation(
     api.analytics.mutations.logBrowserPixelEvent,
   );
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const mountedRef = useRef(false);
 
-  const generateEventId = useCallback((): string => {
-    return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-  }, []);
+  // Log PageView to Convex on every route change (library fires fbq automatically)
+  useEffect(() => {
+    if (!storeId || !enabledEvents.includes("PageView")) return;
+    // Skip initial mount log — library already fires the initial PageView via autoTrackPageView
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    logBrowserEvent({
+      storeId,
+      eventName: "PageView",
+      eventId: undefined,
+      value: undefined,
+      currency: undefined,
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, searchParams]);
 
   const trackEvent = useCallback(
     (eventName: string, params?: Record<string, unknown>, eventId?: string) => {
-      if (!isReady || !pixelId) return;
-      try {
-        const fbq = (
-          window as unknown as { fbq?: (...args: unknown[]) => void }
-        ).fbq;
-        if (fbq) {
-          if (eventId) {
-            fbq("track", eventName, params, { eventID: eventId });
-          } else {
-            fbq("track", eventName, params);
-          }
-        }
-      } catch (error) {
-        console.error("[Meta Pixel] Error tracking event:", error);
+      if (!enabledEvents.includes(eventName)) return;
+
+      if (meta.isLoaded()) {
+        meta.track(
+          eventName as StandardEvent,
+          params,
+          eventId ? { eventID: eventId } : undefined,
+        );
       }
 
-      // Log vers Convex pour les analytics vendeur
-      if (storeId && LOGGED_EVENTS.has(eventName)) {
-        const typedEventName = eventName as
-          | "PageView"
+      // Log non-PageView events to Convex (PageView logged separately via route-change effect)
+      if (
+        storeId &&
+        LOGGABLE_EVENTS.has(eventName) &&
+        eventName !== "PageView"
+      ) {
+        const typedName = eventName as
           | "ViewContent"
           | "AddToCart"
           | "InitiateCheckout"
           | "Purchase";
         logBrowserEvent({
           storeId,
-          eventName: typedEventName,
+          eventName: typedName,
           eventId,
           value: typeof params?.value === "number" ? params.value : undefined,
           currency:
             typeof params?.currency === "string" ? params.currency : undefined,
-        }).catch(() => {
-          // Silently ignore analytics errors
-        });
+        }).catch(() => {});
       }
     },
-    [isReady, pixelId, storeId, logBrowserEvent],
+    [meta, enabledEvents, storeId, logBrowserEvent],
   );
 
-  // PageView automatique sur chaque changement de route
-  useEffect(() => {
-    if (isReady && pixelId) {
-      trackEvent("PageView");
-    }
-  }, [pathname, searchParams, isReady, pixelId, trackEvent]);
-
-  if (!pixelId) {
-    return (
-      <MetaPixelContext.Provider
-        value={{ pixelId: null, isReady: false, trackEvent, generateEventId }}
-      >
-        {children}
-      </MetaPixelContext.Provider>
-    );
-  }
-
   return (
-    <MetaPixelContext.Provider
-      value={{ pixelId, isReady, trackEvent, generateEventId }}
-    >
-      <Script
-        id="meta-pixel"
-        strategy="afterInteractive"
-        onLoad={() => setIsReady(true)}
-        dangerouslySetInnerHTML={{
-          __html: `
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${pixelId}');
-            ${testEventCode ? `fbq('set', 'test_event_code', '${testEventCode}');` : ""}
-          `,
-        }}
-      />
-      <noscript>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          height="1"
-          width="1"
-          style={{ display: "none" }}
-          src={`https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`}
-          alt=""
-        />
-      </noscript>
+    <MetaPixelContext.Provider value={{ trackEvent, generateEventId }}>
       {children}
     </MetaPixelContext.Provider>
   );
 }
 
-// ─── Hook ────────────────────────────────────────────────────
+// ─── Public provider ──────────────────────────────────────────
+
+export function MetaPixelProvider({
+  children,
+  pixelId,
+  enabledEvents,
+  storeId,
+}: MetaPixelProviderProps) {
+  const resolved = enabledEvents ?? ALL_EVENTS;
+
+  if (!pixelId) {
+    return (
+      <MetaPixelContext.Provider value={{ trackEvent: noop, generateEventId }}>
+        {children}
+      </MetaPixelContext.Provider>
+    );
+  }
+
+  const pageViewEnabled = resolved.includes("PageView");
+
+  return (
+    <MetaPixel
+      pixelId={pixelId}
+      trackPageViews={pageViewEnabled}
+      debug={process.env.NODE_ENV === "development"}
+      enableLocalhost={process.env.NODE_ENV === "development"}
+    >
+      <InnerPixelProvider storeId={storeId} enabledEvents={resolved}>
+        {children}
+      </InnerPixelProvider>
+    </MetaPixel>
+  );
+}
+
+// ─── Hook ─────────────────────────────────────────────────────
 
 export function useMetaPixel(): MetaPixelContextValue {
   const context = useContext(MetaPixelContext);

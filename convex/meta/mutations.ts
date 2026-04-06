@@ -23,6 +23,7 @@ export const updateMetaConfig = mutation({
     pixelId: v.optional(v.string()),
     accessToken: v.optional(v.string()),
     testEventCode: v.optional(v.string()),
+    enabledEvents: v.optional(v.array(v.string())),
     vendorShopEnabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -32,10 +33,26 @@ export const updateMetaConfig = mutation({
       throw new Error("Le Pixel ID doit contenir 15 ou 16 chiffres");
     }
 
+    const VALID_EVENTS = new Set([
+      "PageView",
+      "ViewContent",
+      "AddToCart",
+      "InitiateCheckout",
+      "Purchase",
+    ]);
+    if (args.enabledEvents) {
+      for (const e of args.enabledEvents) {
+        if (!VALID_EVENTS.has(e)) {
+          throw new Error(`Événement inconnu : ${e}`);
+        }
+      }
+    }
+
     await ctx.db.patch(store._id, {
       meta_pixel_id: args.pixelId ?? undefined,
       meta_access_token: args.accessToken ?? undefined,
       meta_test_event_code: args.testEventCode ?? undefined,
+      meta_pixel_enabled_events: args.enabledEvents,
       vendor_shop_enabled: args.vendorShopEnabled,
       updated_at: Date.now(),
     });
