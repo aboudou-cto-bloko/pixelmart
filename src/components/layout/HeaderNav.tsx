@@ -54,6 +54,7 @@ import { MobileCategoryAccordion } from "@/components/ui/mobile-category-accordi
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { DynamicLogo } from "@/components/ui/dynamic-logo";
 import { SearchBar } from "@/components/layout/SearchBar";
+import { StorefrontNotificationBell } from "@/components/layout/StorefrontNotificationBell";
 
 // Type attendu pour l'arbre des catégories
 type CategoryNode = {
@@ -239,6 +240,9 @@ export function HeaderNav() {
               <span className="sr-only">Liste de souhaits</span>
             </Link>
           </Button>
+
+          {/* Notification bell — clients connectés uniquement */}
+          {isAuthenticated && <StorefrontNotificationBell />}
 
           {/* Cart */}
           <Button variant="ghost" size="icon" className="relative" asChild>
