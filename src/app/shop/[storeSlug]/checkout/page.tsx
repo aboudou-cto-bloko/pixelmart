@@ -14,6 +14,7 @@ import {
   CreditCard,
   Banknote,
   AlertCircle,
+  Info,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { useShopCart } from "@/components/vendor-shop/providers";
@@ -142,6 +143,15 @@ export default function ShopCheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [guestEmail, setGuestEmail] = useState("");
   const [guestEmailError, setGuestEmailError] = useState<string | null>(null);
+
+  const validGuestEmail =
+    !isAuthenticated &&
+    guestEmail.includes("@") &&
+    guestEmail.split("@")[1]!.length > 0;
+  const guestEmailCheck = useQuery(
+    api.users.queries.checkGuestEmail,
+    validGuestEmail ? { email: guestEmail.trim().toLowerCase() } : "skip",
+  );
 
   // Track InitiateCheckout au mount
   useEffect(() => {
@@ -431,6 +441,21 @@ export default function ShopCheckoutPage() {
                   <p className="text-xs text-muted-foreground">
                     Votre confirmation de commande sera envoyée à cette adresse.
                   </p>
+                )}
+                {guestEmailCheck?.isRegistered && (
+                  <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Cette adresse est liée à un compte Pixel-Mart. La commande
+                      sera automatiquement associée à votre compte.{" "}
+                      <Link
+                        href={`/login?returnTo=/shop/${storeSlug}/checkout`}
+                        className="font-medium underline underline-offset-2"
+                      >
+                        Se connecter
+                      </Link>
+                    </span>
+                  </div>
                 )}
               </div>
             )}
