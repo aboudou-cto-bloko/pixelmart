@@ -18,6 +18,8 @@ import {
   ShoppingCart,
   CreditCard,
   Package,
+  BarChart2,
+  TrendingUp,
 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -33,43 +35,116 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SHOP_ROUTES } from "@/constants/routes";
 
-const META_EVENTS = [
-  {
+// ─── Constants ────────────────────────────────────────────────
+
+const ALL_META_EVENTS = [
+  "PageView",
+  "ViewContent",
+  "AddToCart",
+  "InitiateCheckout",
+  "Purchase",
+] as const;
+
+type MetaEventName = (typeof ALL_META_EVENTS)[number];
+
+const META_EVENTS_CONFIG: Record<
+  MetaEventName,
+  { icon: React.ElementType; description: string; type: string }
+> = {
+  PageView: {
     icon: ShoppingBag,
-    name: "PageView",
     description: "Chaque visite d'une page de la boutique",
     type: "Client",
   },
-  {
+  ViewContent: {
     icon: Eye,
-    name: "ViewContent",
     description: "Consultation d'une page produit",
     type: "Client",
   },
-  {
+  AddToCart: {
     icon: ShoppingCart,
-    name: "AddToCart",
     description: "Ajout d'un article au panier",
     type: "Client",
   },
-  {
+  InitiateCheckout: {
     icon: MousePointerClick,
-    name: "InitiateCheckout",
     description: "Ouverture de la page de paiement",
     type: "Client",
   },
-  {
+  Purchase: {
     icon: Package,
-    name: "Purchase",
     description: "Confirmation de paiement (Webhook Moneroo)",
     type: "Serveur (CAPI)",
   },
-];
+};
+
+type Period = "1d" | "7d" | "30d" | "90d" | "12m";
+
+// ─── Funnel step bar ──────────────────────────────────────────
+
+function FunnelStepBar({
+  name,
+  count,
+  conversionRate,
+  maxCount,
+  enabled,
+}: {
+  name: MetaEventName;
+  count: number;
+  conversionRate: number;
+  maxCount: number;
+  enabled: boolean;
+}) {
+  const cfg = META_EVENTS_CONFIG[name];
+  const Icon = cfg.icon;
+  const widthPct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+
+  return (
+    <div className={`space-y-1.5 ${!enabled ? "opacity-40" : ""}`}>
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2">
+          <Icon className="size-3.5 text-muted-foreground" />
+          <span className="font-medium">{name}</span>
+          {!enabled && (
+            <Badge variant="outline" className="text-[10px] py-0">
+              désactivé
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-3 text-right">
+          <span className="font-semibold tabular-nums">
+            {count.toLocaleString("fr-FR")}
+          </span>
+          {name !== "PageView" && (
+            <span className="text-muted-foreground text-xs w-12">
+              {conversionRate}%
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full rounded-full bg-blue-500 transition-all duration-500"
+          style={{ width: `${widthPct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────
 
 export default function VendorMetaSettingsPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const store = useQuery(api.stores.queries.getMyStore, {});
   const updateMetaConfig = useMutation(api.meta.mutations.updateMetaConfig);
   const toggleMarketplaceVisibility = useMutation(
@@ -81,12 +156,21 @@ export default function VendorMetaSettingsPage() {
   const [testEventCode, setTestEventCode] = useState("");
   const [vendorShopEnabled, setVendorShopEnabled] = useState(false);
   const [hideFromMarketplace, setHideFromMarketplace] = useState(false);
+  const [enabledEvents, setEnabledEvents] = useState<Set<string>>(
+    new Set(ALL_META_EVENTS),
+  );
   const [showToken, setShowToken] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isTogglingShop, setIsTogglingShop] = useState(false);
   const [isTogglingMarketplace, setIsTogglingMarketplace] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<Period>("7d");
+
+  // Analytics
+  const funnelData = useQuery(api.analytics.queries.getMetaFunnel, {
+    period: analyticsPeriod,
+  });
 
   // Hydrater les champs depuis le store
   useEffect(() => {
@@ -96,7 +180,27 @@ export default function VendorMetaSettingsPage() {
     setTestEventCode(store.meta_test_event_code ?? "");
     setVendorShopEnabled(store.vendor_shop_enabled ?? false);
     setHideFromMarketplace(store.hide_from_marketplace ?? false);
+    setEnabledEvents(
+      new Set(
+        store.meta_pixel_enabled_events &&
+          store.meta_pixel_enabled_events.length > 0
+          ? store.meta_pixel_enabled_events
+          : ALL_META_EVENTS,
+      ),
+    );
   }, [store]);
+
+  function toggleEvent(name: string) {
+    setEnabledEvents((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }
 
   async function handleToggleMarketplace(hide: boolean) {
     if (isTogglingMarketplace) return;
@@ -105,7 +209,7 @@ export default function VendorMetaSettingsPage() {
     try {
       await toggleMarketplaceVisibility({ hide });
     } catch (err) {
-      setHideFromMarketplace(!hide); // rollback
+      setHideFromMarketplace(!hide);
       setError(
         err instanceof Error ? err.message : "Erreur lors de la sauvegarde",
       );
@@ -121,7 +225,7 @@ export default function VendorMetaSettingsPage() {
     try {
       await updateMetaConfig({ vendorShopEnabled: enabled });
     } catch (err) {
-      setVendorShopEnabled(!enabled); // rollback
+      setVendorShopEnabled(!enabled);
       setError(
         err instanceof Error ? err.message : "Erreur lors de la sauvegarde",
       );
@@ -134,12 +238,12 @@ export default function VendorMetaSettingsPage() {
     if (isSaving) return;
     setError(null);
     setIsSaving(true);
-
     try {
       await updateMetaConfig({
         pixelId: pixelId.trim() || undefined,
         accessToken: accessToken.trim() || undefined,
         testEventCode: testEventCode.trim() || undefined,
+        enabledEvents: Array.from(enabledEvents),
         vendorShopEnabled,
       });
       setSaved(true);
@@ -165,6 +269,12 @@ export default function VendorMetaSettingsPage() {
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
   const shopUrl = store ? `${siteUrl}/shop/${store.slug}` : "";
 
+  const hasPixel = !!store?.meta_pixel_id;
+  const maxFunnelCount =
+    funnelData?.funnel && funnelData.funnel.length > 0
+      ? Math.max(...funnelData.funnel.map((s) => s.count), 1)
+      : 1;
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
@@ -175,7 +285,7 @@ export default function VendorMetaSettingsPage() {
         </p>
       </div>
 
-      {/* Activation de la boutique */}
+      {/* ── Activation de la boutique ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -247,7 +357,7 @@ export default function VendorMetaSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Config Meta Pixel */}
+      {/* ── Config Meta Pixel ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -337,49 +447,142 @@ export default function VendorMetaSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Événements trackés */}
+      {/* ── Événements trackés (toggles) ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Événements trackés</CardTitle>
+          <CardTitle className="text-base">Événements à tracker</CardTitle>
           <CardDescription>
-            Ces événements sont automatiquement envoyés à Meta lorsque votre
-            boutique est active.
+            Choisissez les événements que votre Pixel Meta doit envoyer à
+            Facebook. Les modifications sont effectives après sauvegarde.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="divide-y">
-            {META_EVENTS.map((event) => {
-              const Icon = event.icon;
+            {ALL_META_EVENTS.map((name) => {
+              const cfg = META_EVENTS_CONFIG[name];
+              const Icon = cfg.icon;
+              const isEnabled = enabledEvents.has(name);
               return (
                 <div
-                  key={event.name}
+                  key={name}
                   className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
                 >
-                  <div className="size-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <Icon className="size-4 text-muted-foreground" />
+                  <div
+                    className={`size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      isEnabled ? "bg-blue-500/10" : "bg-muted"
+                    }`}
+                  >
+                    <Icon
+                      className={`size-4 transition-colors ${
+                        isEnabled ? "text-blue-500" : "text-muted-foreground"
+                      }`}
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{event.name}</p>
+                    <p className="text-sm font-medium">{name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {event.description}
+                      {cfg.description}
                     </p>
                   </div>
-                  <Badge
-                    variant={
-                      event.type === "Serveur (CAPI)" ? "default" : "secondary"
-                    }
-                    className="text-[10px] shrink-0"
-                  >
-                    {event.type}
-                  </Badge>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <Badge
+                      variant={
+                        cfg.type === "Serveur (CAPI)" ? "default" : "secondary"
+                      }
+                      className="text-[10px] hidden sm:flex"
+                    >
+                      {cfg.type}
+                    </Badge>
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={() => toggleEvent(name)}
+                    />
+                  </div>
                 </div>
               );
             })}
           </div>
+          <p className="text-xs text-muted-foreground mt-4 pt-4 border-t">
+            <CreditCard className="size-3 inline mr-1" />
+            L'événement <strong>Purchase</strong> est également envoyé côté
+            serveur via l'API Conversions de Meta, indépendamment des bloqueurs
+            de publicités.
+          </p>
         </CardContent>
       </Card>
 
-      {/* Error */}
+      {/* ── Analytics Pixel ── */}
+      {hasPixel && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart2 className="size-4" />
+                  Données collectées
+                </CardTitle>
+                <CardDescription>
+                  Événements enregistrés par votre Pixel{" "}
+                  <code className="text-[11px] bg-muted px-1 py-0.5 rounded">
+                    {store?.meta_pixel_id}
+                  </code>
+                </CardDescription>
+              </div>
+              <Select
+                value={analyticsPeriod}
+                onValueChange={(v) => setAnalyticsPeriod(v as Period)}
+              >
+                <SelectTrigger className="h-8 w-28 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1d">Aujourd'hui</SelectItem>
+                  <SelectItem value="7d">7 jours</SelectItem>
+                  <SelectItem value="30d">30 jours</SelectItem>
+                  <SelectItem value="90d">90 jours</SelectItem>
+                  <SelectItem value="12m">12 mois</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {funnelData === undefined ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : !funnelData?.hasPixel || funnelData.funnel.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <TrendingUp className="size-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Aucune donnée pour cette période.</p>
+                <p className="text-xs mt-1">
+                  Les événements apparaissent dès que votre boutique reçoit des
+                  visites.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {funnelData.funnel.map((step) => (
+                  <FunnelStepBar
+                    key={step.name}
+                    name={step.name as MetaEventName}
+                    count={step.count}
+                    conversionRate={step.conversionRate}
+                    maxCount={maxFunnelCount}
+                    enabled={enabledEvents.has(step.name)}
+                  />
+                ))}
+                <p className="text-xs text-muted-foreground pt-2 border-t">
+                  Le taux de conversion est calculé par rapport à l'étape
+                  précédente. Les données de <strong>Purchase</strong> incluent
+                  les événements côté serveur (CAPI).
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Error ── */}
       {error && (
         <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
           <AlertCircle className="size-4 shrink-0 mt-0.5" />
@@ -387,7 +590,7 @@ export default function VendorMetaSettingsPage() {
         </div>
       )}
 
-      {/* Save */}
+      {/* ── Save ── */}
       <div className="flex items-center gap-3">
         <Button onClick={handleSave} disabled={isSaving} className="min-w-32">
           {isSaving ? (

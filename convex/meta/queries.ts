@@ -41,6 +41,7 @@ export const getPublicConfig = query({
       storeDescription: store.description ?? null,
       pixelId: store.meta_pixel_id ?? null,
       testEventCode: store.meta_test_event_code ?? null,
+      enabledEvents: store.meta_pixel_enabled_events ?? null,
       vendorShopEnabled: store.vendor_shop_enabled ?? false,
       primaryColor: store.primary_color ?? "#6366f1",
       themeId,
