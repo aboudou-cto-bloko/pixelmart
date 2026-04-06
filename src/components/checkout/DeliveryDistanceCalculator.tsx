@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import type { GeocodingResult, Coordinates } from "@/lib/geocoding";
 import {
   calculateDeliveryDistance,
@@ -44,24 +44,40 @@ export function DeliveryDistanceCalculator({
 
     const fee = computeFee(distanceKm, deliveryType, weightKg);
 
-    onDistanceCalculated?.(distanceKm, fee);
-
     return { distanceKm, fee };
-  }, [
-    selectedAddress,
-    deliveryType,
-    weightKg,
-    collectionPoint,
-    onDistanceCalculated,
-    computeFee,
-  ]);
+  }, [selectedAddress, deliveryType, weightKg, collectionPoint, computeFee]);
+
+  // Track previous calculation to prevent unnecessary callback calls
+  const prevCalculationRef = useRef<{ distanceKm: number; fee: number } | null>(
+    null,
+  );
+
+  // Call the callback in useEffect to avoid state updates during render
+  useEffect(() => {
+    if (calculation && onDistanceCalculated) {
+      const prev = prevCalculationRef.current;
+      // Only call if values actually changed
+      if (
+        !prev ||
+        prev.distanceKm !== calculation.distanceKm ||
+        prev.fee !== calculation.fee
+      ) {
+        prevCalculationRef.current = { ...calculation };
+        // Defer the callback to next tick to completely avoid render cycle conflicts
+        setTimeout(() => {
+          onDistanceCalculated(calculation.distanceKm, calculation.fee);
+        }, 0);
+      }
+    }
+  }, [calculation, onDistanceCalculated]);
 
   // isNight évalué côté client uniquement pour éviter le mismatch SSR
-  const [isNight, setIsNight] = useState(false);
-  useEffect(() => {
+  const [isNight] = useState(() => {
+    // Initialize directly to avoid useState in effect
+    if (typeof window === "undefined") return false;
     const h = new Date().getHours();
-    setIsNight(h >= 21 || h < 6);
-  }, []);
+    return h >= 21 || h < 6;
+  });
 
   if (!selectedAddress) {
     return (
