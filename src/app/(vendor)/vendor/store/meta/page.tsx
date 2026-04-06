@@ -20,6 +20,8 @@ import {
   Package,
   BarChart2,
   TrendingUp,
+  ServerCrash,
+  Wifi,
 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -169,6 +171,9 @@ export default function VendorMetaSettingsPage() {
 
   // Analytics
   const funnelData = useQuery(api.analytics.queries.getMetaFunnel, {
+    period: analyticsPeriod,
+  });
+  const capiStats = useQuery(api.analytics.queries.getCapiAckStats, {
     period: analyticsPeriod,
   });
 
@@ -510,6 +515,78 @@ export default function VendorMetaSettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* ── Sync CAPI ── */}
+      {hasPixel && capiStats && capiStats.hasPixel && capiStats.total > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wifi className="size-4" />
+              Sync Facebook — Achats confirmés
+            </CardTitle>
+            <CardDescription>
+              Chaque achat est envoyé à Meta via l&apos;API Conversions (côté
+              serveur). Ce tableau indique si Facebook a bien reçu chaque
+              événement.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="rounded-lg bg-green-500/10 p-3 text-center">
+                <p className="text-2xl font-bold text-green-600">
+                  {capiStats.acked}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Confirmés
+                </p>
+              </div>
+              <div
+                className={`rounded-lg p-3 text-center ${capiStats.failed > 0 ? "bg-destructive/10" : "bg-muted/50"}`}
+              >
+                <p
+                  className={`text-2xl font-bold ${capiStats.failed > 0 ? "text-destructive" : "text-muted-foreground"}`}
+                >
+                  {capiStats.failed}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Rejetés</p>
+              </div>
+              <div className="rounded-lg bg-muted/50 p-3 text-center">
+                <p className="text-2xl font-bold text-muted-foreground">
+                  {capiStats.pending}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  En attente
+                </p>
+              </div>
+            </div>
+
+            {capiStats.failed > 0 && (capiStats.errors ?? []).length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                <p className="text-xs font-medium text-destructive flex items-center gap-1">
+                  <ServerCrash className="size-3" />
+                  Dernières erreurs Meta
+                </p>
+                {(capiStats.errors ?? []).map((e, i) => (
+                  <div
+                    key={i}
+                    className="text-xs bg-destructive/5 rounded px-2 py-1.5 text-destructive/80 font-mono"
+                  >
+                    {new Date(e.occurredAt).toLocaleDateString("fr-FR")} —{" "}
+                    {e.error}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {capiStats.acked === capiStats.total && (
+              <div className="flex items-center gap-2 text-sm text-green-600 mt-2">
+                <CheckCircle2 className="size-4" />
+                Tous les achats ont été reçus par Facebook.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Analytics Pixel ── */}
       {hasPixel && (

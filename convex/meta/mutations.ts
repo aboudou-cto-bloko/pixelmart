@@ -109,20 +109,10 @@ export const trackPurchase = internalMutation({
 
     const appUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
 
-    await ctx.scheduler.runAfter(0, internal.meta.mutations.sendPurchaseEvent, {
-      pixelId: store.meta_pixel_id,
-      accessToken: store.meta_access_token,
-      testEventCode: store.meta_test_event_code,
-      eventId,
-      eventTime,
-      eventSourceUrl: `${appUrl}/shop/${store.slug}/checkout/confirmation`,
-      userData,
-      customData,
-    });
-
-    // Journalise l'événement Purchase côté serveur pour les analytics vendeur
+    // Journalise l'événement Purchase côté serveur — avant l'envoi CAPI
+    // (capi_ack reste undefined jusqu'à confirmation de Meta)
     const now = Date.now();
-    await ctx.db.insert("meta_pixel_events", {
+    const eventRowId = await ctx.db.insert("meta_pixel_events", {
       store_id: store._id as Id<"stores">,
       pixel_id: store.meta_pixel_id, // scopage : données liées au pixel actif
       event_name: "Purchase",
@@ -133,12 +123,43 @@ export const trackPurchase = internalMutation({
       day_bucket: new Date(now).toISOString().slice(0, 10),
       source: "server",
     });
+
+    await ctx.scheduler.runAfter(0, internal.meta.mutations.sendPurchaseEvent, {
+      pixelId: store.meta_pixel_id,
+      accessToken: store.meta_access_token,
+      testEventCode: store.meta_test_event_code,
+      eventId,
+      eventTime,
+      eventSourceUrl: `${appUrl}/shop/${store.slug}/checkout/confirmation`,
+      userData,
+      customData,
+      eventRowId,
+    });
+  },
+});
+
+/**
+ * Met à jour le statut d'acquittement CAPI d'un événement Meta Pixel.
+ * Appelé par sendPurchaseEvent après réception de la réponse Graph API.
+ */
+export const ackPixelEvent = internalMutation({
+  args: {
+    eventRowId: v.id("meta_pixel_events"),
+    ack: v.boolean(),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.eventRowId, {
+      capi_ack: args.ack,
+      ...(args.error ? { capi_error: args.error } : {}),
+    });
   },
 });
 
 /**
  * Envoi effectif de l'événement Purchase à Meta CAPI (internalAction).
  * Appelé via scheduler depuis trackPurchase.
+ * Met à jour capi_ack sur la ligne meta_pixel_events après réponse de Meta.
  */
 export const sendPurchaseEvent = internalAction({
   args: {
@@ -150,8 +171,9 @@ export const sendPurchaseEvent = internalAction({
     eventSourceUrl: v.string(),
     userData: v.any(),
     customData: v.any(),
+    eventRowId: v.id("meta_pixel_events"),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, args) => {
     const url = `${META_GRAPH_URL}/${args.pixelId}/events`;
 
     const payload = {
@@ -176,7 +198,26 @@ export const sendPurchaseEvent = internalAction({
     });
 
     if (!response.ok) {
+      let errorMsg: string;
+      try {
+        const body = (await response.json()) as {
+          error?: { message?: string };
+        };
+        errorMsg = body?.error?.message ?? `HTTP ${response.status}`;
+      } catch {
+        errorMsg = `HTTP ${response.status}`;
+      }
+      await ctx.runMutation(internal.meta.mutations.ackPixelEvent, {
+        eventRowId: args.eventRowId,
+        ack: false,
+        error: errorMsg,
+      });
       return;
     }
+
+    await ctx.runMutation(internal.meta.mutations.ackPixelEvent, {
+      eventRowId: args.eventRowId,
+      ack: true,
+    });
   },
 });
