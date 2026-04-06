@@ -3,9 +3,9 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useAction } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import { Settings2, Pencil, Check, X, RotateCcw, Bell } from "lucide-react";
+import { Settings2, Pencil, Check, X, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -327,96 +327,6 @@ function ConfigRow({
   );
 }
 
-// ─── Broadcast Notification Section ──────────────────────────
-
-function BroadcastSection() {
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [url, setUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ sent: number } | null>(null);
-
-  const broadcast = useAction(api.admin.actions.broadcastPushToVendors);
-
-  async function handleBroadcast() {
-    if (!title.trim() || !body.trim()) return;
-    setLoading(true);
-    setResult(null);
-    try {
-      const res = await broadcast({
-        title: title.trim(),
-        body: body.trim(),
-        url: url.trim() || undefined,
-      });
-      setResult(res);
-      setTitle("");
-      setBody("");
-      setUrl("");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <Bell className="size-4 text-primary" />
-          Notification push broadcast
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-4 pb-4 space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Envoie une notification push + in-app à tous les vendeurs actifs sur
-          la plateforme.
-        </p>
-        <div className="space-y-2">
-          <label className="text-xs font-medium">Titre</label>
-          <Input
-            placeholder="Ex : Mise à jour importante"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={80}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-xs font-medium">Message</label>
-          <Textarea
-            placeholder="Ex : Nouvelle fonctionnalité disponible dans votre dashboard…"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={3}
-            maxLength={200}
-          />
-          <p className="text-[10px] text-muted-foreground text-right">
-            {body.length}/200
-          </p>
-        </div>
-        <div className="space-y-2">
-          <label className="text-xs font-medium">Lien (optionnel)</label>
-          <Input
-            placeholder="Ex : /vendor/dashboard"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-        </div>
-        {result && (
-          <p className="text-sm text-green-600 font-medium">
-            Envoyé à {result.sent} vendeur{result.sent !== 1 ? "s" : ""}.
-          </p>
-        )}
-        <Button
-          onClick={handleBroadcast}
-          disabled={!title.trim() || !body.trim() || loading}
-          className="w-full sm:w-auto"
-        >
-          {loading ? "Envoi en cours…" : "Envoyer à tous les vendeurs"}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
 // ─── Main Template ────────────────────────────────────────────
 
 export function AdminConfigTemplate({ config }: Props) {
@@ -474,8 +384,6 @@ export function AdminConfigTemplate({ config }: Props) {
             </CardContent>
           </Card>
         ))}
-
-        <BroadcastSection />
       </div>
     </div>
   );

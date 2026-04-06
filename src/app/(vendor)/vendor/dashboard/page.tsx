@@ -30,6 +30,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils";
 import { getOrderStatusConfig, formatShortDate } from "@/lib/order-helpers";
 import { SetupGuide } from "@/components/onboarding/SetupGuide";
+import { VendorAnnouncementBanner } from "@/components/vendor/VendorAnnouncementBanner";
 
 const WA_BANNER_KEY = "pm_wa_banner_dismissed";
 
@@ -100,6 +101,9 @@ export default function VendorDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Bandeau d'annonce admin */}
+      <VendorAnnouncementBanner />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
