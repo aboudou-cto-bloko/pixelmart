@@ -697,3 +697,63 @@ export const getMetaFunnel = query({
     return { hasPixel: true, pixelId, funnel };
   },
 });
+
+// ─── CAPI Ack Stats ───────────────────────────────────────────
+
+/**
+ * Taux d'acquittement des événements Purchase envoyés via CAPI.
+ * Permet de vérifier que Meta a bien reçu chaque événement.
+ */
+export const getCapiAckStats = query({
+  args: {
+    period: v.union(
+      v.literal("1d"),
+      v.literal("7d"),
+      v.literal("30d"),
+      v.literal("90d"),
+      v.literal("12m"),
+    ),
+  },
+  handler: async (ctx, { period }) => {
+    const result = await getVendorStore(ctx);
+    if (!result) return null;
+    const { store } = result;
+
+    const pixelId = store.meta_pixel_id ?? null;
+    if (!pixelId)
+      return { hasPixel: false, total: 0, acked: 0, failed: 0, pending: 0 };
+
+    const { current } = getDateRanges(period as AnalyticsPeriod);
+
+    const events = await ctx.db
+      .query("meta_pixel_events")
+      .withIndex("by_pixel_occurred_at", (q) => q.eq("pixel_id", pixelId))
+      .collect();
+
+    const serverPurchases = events.filter(
+      (e) =>
+        e.store_id === store._id &&
+        e.source === "server" &&
+        e.event_name === "Purchase" &&
+        e.occurred_at >= current.start &&
+        e.occurred_at <= current.end,
+    );
+
+    const total = serverPurchases.length;
+    const acked = serverPurchases.filter((e) => e.capi_ack === true).length;
+    const failed = serverPurchases.filter((e) => e.capi_ack === false).length;
+    const pending = total - acked - failed;
+
+    return {
+      hasPixel: true,
+      total,
+      acked,
+      failed,
+      pending,
+      errors: serverPurchases
+        .filter((e) => e.capi_ack === false && e.capi_error)
+        .slice(-5)
+        .map((e) => ({ occurredAt: e.occurred_at, error: e.capi_error! })),
+    };
+  },
+});

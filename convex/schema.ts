@@ -1263,6 +1263,8 @@ export default defineSchema({
     occurred_at: v.number(), // timestamp ms
     day_bucket: v.string(), // format "YYYY-MM-DD" — pour les groupements
     source: v.union(v.literal("browser"), v.literal("server")), // fbq = browser, CAPI = server
+    capi_ack: v.optional(v.boolean()), // true = Facebook a confirmé (CAPI), undefined = browser ou en attente
+    capi_error: v.optional(v.string()), // message d'erreur si Facebook a rejeté
   })
     .index("by_store_day", ["store_id", "day_bucket"])
     .index("by_store_event_day", ["store_id", "event_name", "day_bucket"])
