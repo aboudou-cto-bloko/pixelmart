@@ -49,12 +49,22 @@ crons.interval(
   internal.crons_handlers.processAdBookings,
 );
 
-// ─── Expire Pending Orders (toutes les 30min) ────────────────
-// Annule les commandes "pending" (online) de plus de 2h et restaure le stock
+// ─── Expire Pending Orders (toutes les 10min) ────────────────
+// • Commandes avec payment_reference > 15min → verifyPayment (détection rapide d'échec)
+// • Commandes sans payment_reference > 2h → annulation directe (panier abandonné)
 crons.interval(
   "expire-pending-orders",
-  { minutes: 30 },
+  { minutes: 10 },
   internal.crons_handlers.expirePendingOrders,
+);
+
+// ─── Wishlist Reminders (toutes les 24h) ─────────────────────
+// Envoie un email de relance aux utilisateurs dont des articles en wishlist
+// ont été ajoutés il y a 7-8 jours (une seule relance par article).
+crons.interval(
+  "wishlist-reminders",
+  { hours: 24 },
+  internal.crons_handlers.sendWishlistReminders,
 );
 
 // ─── Expire Stale Storage Requests (toutes les 6h) ───────────

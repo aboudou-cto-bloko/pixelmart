@@ -288,16 +288,34 @@ export const failPayment = internalMutation({
         url: "/orders",
       });
 
-      // Email d'annulation au client
-      await ctx.scheduler.runAfter(0, internal.emails.send.sendOrderCancelled, {
+      // Hydrater les slugs produit pour les liens de relance dans l'email
+      const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
+      const isVendorShop = order.source === "vendor_shop";
+      const storeSlug = store?.slug ?? "";
+
+      const itemsWithUrls = await Promise.all(
+        order.items.map(async (item) => {
+          const product = await ctx.db.get(item.product_id);
+          const slug = product?.slug ?? "";
+          const productUrl = isVendorShop
+            ? `${siteUrl}/shop/${storeSlug}/products/${slug}`
+            : `${siteUrl}/products/${slug}`;
+          return { title: item.title, quantity: item.quantity, productUrl };
+        }),
+      );
+
+      const retryUrl = isVendorShop ? `${siteUrl}/shop/${storeSlug}` : siteUrl;
+
+      // Email ciblé avec liens vers les produits pour repasser commande
+      await ctx.scheduler.runAfter(0, internal.emails.send.sendPaymentFailed, {
         customerEmail: customer.email,
         customerName: customer.name ?? "Client",
         orderNumber: order.order_number,
         storeName: store?.name ?? "",
         totalAmount: order.total_amount,
         currency: order.currency,
-        reason: "Paiement non abouti",
-        wasRefunded: false,
+        items: itemsWithUrls,
+        retryUrl,
       });
     }
 
