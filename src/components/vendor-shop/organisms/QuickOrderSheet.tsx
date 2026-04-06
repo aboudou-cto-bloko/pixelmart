@@ -4,7 +4,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
+import Link from "next/link";
 import Image from "next/image";
 import {
   Loader2,
@@ -13,6 +14,7 @@ import {
   Banknote,
   AlertCircle,
   X,
+  Info,
 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -144,6 +146,15 @@ export function QuickOrderSheet({
   const [error, setError] = useState<string | null>(null);
   const [guestEmail, setGuestEmail] = useState("");
   const [guestEmailError, setGuestEmailError] = useState<string | null>(null);
+
+  const validGuestEmail =
+    !isAuthenticated &&
+    guestEmail.includes("@") &&
+    guestEmail.split("@")[1]!.length > 0;
+  const guestEmailCheck = useQuery(
+    api.users.queries.checkGuestEmail,
+    validGuestEmail ? { email: guestEmail.trim().toLowerCase() } : "skip",
+  );
 
   // ── Delivery service scenarios (même logique que checkout/page.tsx) ──
   // A: use_pixelmart_service + has_storage_plan  → produits en entrepôt PM
@@ -438,6 +449,21 @@ export function QuickOrderSheet({
                   <p className="text-xs text-muted-foreground">
                     Pour recevoir la confirmation et suivre votre commande.
                   </p>
+                )}
+                {guestEmailCheck?.isRegistered && (
+                  <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Cette adresse est liée à un compte Pixel-Mart. La commande
+                      sera automatiquement associée à votre compte.{" "}
+                      <Link
+                        href={`/login?returnTo=/shop/${storeSlug}/checkout`}
+                        className="font-medium underline underline-offset-2"
+                      >
+                        Se connecter
+                      </Link>
+                    </span>
+                  </div>
                 )}
               </div>
             )}
