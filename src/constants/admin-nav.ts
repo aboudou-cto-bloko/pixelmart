@@ -15,6 +15,7 @@ import {
   Globe,
   FileText,
   Package,
+  BellRing,
   type LucideIcon,
 } from "lucide-react";
 
@@ -102,6 +103,13 @@ export const ADMIN_NAV: AdminNavItem[] = [
     icon: Megaphone,
     section: "Contenus",
     roles: ["admin", "marketing", "finance"],
+  },
+  {
+    title: "Communication",
+    href: "/admin/communication",
+    icon: BellRing,
+    section: "Contenus",
+    roles: ["admin", "marketing"],
   },
 
   // ── Entrepôt

@@ -8,30 +8,48 @@ import { ADMIN_ROLES } from "../users/helpers";
 import type { Id } from "../_generated/dataModel";
 
 /**
- * Envoie une notification push + in-app à tous les vendeurs actifs.
+ * Envoie une notification push + in-app à une cible donnée.
+ * target:
+ *   "vendors"   — tous les vendeurs actifs
+ *   "customers" — tous les clients avec un compte réel (non provisoire)
+ *   "both"      — vendeurs + clients
  * Réservé aux administrateurs.
  */
-export const broadcastPushToVendors = action({
+export const broadcastPush = action({
   args: {
+    target: v.union(
+      v.literal("vendors"),
+      v.literal("customers"),
+      v.literal("both"),
+    ),
     title: v.string(),
     body: v.string(),
     url: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Auth check via internal query (actions have no ctx.db)
     const admin = await ctx.runQuery(internal.admin.queries.getAdminUser);
     if (!admin || !(ADMIN_ROLES as readonly string[]).includes(admin.role)) {
       throw new Error("Accès réservé aux administrateurs");
     }
 
-    const vendors = await ctx.runQuery(
-      internal.admin.queries.listVendorUserIds,
-    );
+    const userIds: Id<"users">[] = [];
+
+    if (args.target === "vendors" || args.target === "both") {
+      const vendors = await ctx.runQuery(
+        internal.admin.queries.listVendorUserIds,
+      );
+      vendors.forEach((v) => userIds.push(v._id as Id<"users">));
+    }
+
+    if (args.target === "customers" || args.target === "both") {
+      const customers = await ctx.runQuery(
+        internal.admin.queries.listCustomerUserIds,
+      );
+      customers.forEach((c) => userIds.push(c._id as Id<"users">));
+    }
 
     let sent = 0;
-    for (const vendor of vendors) {
-      const userId = vendor._id as Id<"users">;
-
+    for (const userId of userIds) {
       await ctx.runMutation(internal.notifications.mutations.create, {
         userId,
         type: "promo",

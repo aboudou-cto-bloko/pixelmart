@@ -1323,7 +1323,7 @@ export const getAdminUser = internalQuery({
 
 /**
  * Retourne les IDs utilisateurs de tous les vendeurs actifs.
- * Utilisé par broadcastPushToVendors action.
+ * Utilisé par broadcastPush action.
  */
 export const listVendorUserIds = internalQuery({
   args: {},
@@ -1333,5 +1333,44 @@ export const listVendorUserIds = internalQuery({
       .withIndex("by_role", (q) => q.eq("role", "vendor"))
       .collect();
     return vendors.map((u) => ({ _id: u._id }));
+  },
+});
+
+// ─── listCustomerUserIds — internal ──────────────────────────
+
+/**
+ * Retourne les IDs utilisateurs de tous les clients (non provisoires).
+ * Utilisé par broadcastPush action pour les envois ciblés clients.
+ */
+export const listCustomerUserIds = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const customers = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "customer"))
+      .filter((q) => q.eq(q.field("guest_setup_token"), undefined))
+      .collect();
+    return customers.map((u) => ({ _id: u._id }));
+  },
+});
+
+// ─── getVendorBanner ─────────────────────────────────────────
+
+/**
+ * Retourne la configuration du bandeau d'annonce vendeurs.
+ * Résout l'URL de l'image si bg_type === "image".
+ */
+export const getVendorBanner = query({
+  args: {},
+  handler: async (ctx) => {
+    const banner = await ctx.db.query("vendor_banner").first();
+    if (!banner) return null;
+    let bg_image_url: string | null = null;
+    if (banner.bg_type === "image" && banner.bg_value) {
+      bg_image_url = await ctx.storage.getUrl(
+        banner.bg_value as Parameters<typeof ctx.storage.getUrl>[0],
+      );
+    }
+    return { ...banner, bg_image_url };
   },
 });

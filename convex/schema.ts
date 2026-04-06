@@ -1247,6 +1247,24 @@ export default defineSchema({
   // ============================================
   // Journalise les événements envoyés à Meta (Facebook) pour chaque boutique
   // ayant un Pixel configuré. Permet au vendeur de visualiser son funnel.
+  // ── Bandeau d'annonce vendeurs ────────────────────────────────
+  // Singleton — un seul document, accédé via .first()
+  vendor_banner: defineTable({
+    enabled: v.boolean(),
+    text: v.string(),
+    link_url: v.optional(v.string()),
+    link_text: v.optional(v.string()),
+    bg_type: v.union(
+      v.literal("color"),
+      v.literal("gradient"),
+      v.literal("image"),
+    ),
+    bg_value: v.string(), // hex | CSS gradient string | storageId
+    text_color: v.string(), // hex e.g. "#ffffff"
+    updated_at: v.number(),
+    updated_by: v.optional(v.id("users")),
+  }),
+
   meta_pixel_events: defineTable({
     store_id: v.id("stores"),
     pixel_id: v.string(), // ID du Pixel Meta au moment de l'événement — clé de scopage
