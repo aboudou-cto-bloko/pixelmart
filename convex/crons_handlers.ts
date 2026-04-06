@@ -9,8 +9,11 @@ import { getBalanceReleaseDelayMs } from "./lib/getConfig";
 import { formatAmountText } from "./lib/format";
 const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+const FIFTEEN_MIN_MS = 15 * 60 * 1000;
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const FORTY_EIGHT_HOURS_NOTIF_MS = 48 * 60 * 60 * 1000;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
 
 // ─── Balance Release ─────────────────────────────────────────
 
@@ -284,15 +287,20 @@ export const autoPublishReviews = internalMutation({
 export const expirePendingOrders = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const cutoff = Date.now() - TWO_HOURS_MS;
+    const now = Date.now();
+    // Seuil bas : détecte les paiements échoués dès 15 min (webhook Moneroo perdu)
+    const fifteenMinCutoff = now - FIFTEEN_MIN_MS;
+    // Seuil haut : annulation définitive si aucun paiement initié après 2h
+    const twoHourCutoff = now - TWO_HOURS_MS;
 
+    // Récupère toutes les commandes pending online de plus de 15 min
     const pendingOrders = await ctx.db
       .query("orders")
       .filter((q) =>
         q.and(
           q.eq(q.field("status"), "pending"),
           q.eq(q.field("payment_mode"), "online"),
-          q.lte(q.field("_creationTime"), cutoff),
+          q.lte(q.field("_creationTime"), fifteenMinCutoff),
         ),
       )
       .collect();
@@ -301,8 +309,8 @@ export const expirePendingOrders = internalMutation({
     let verifyingCount = 0;
 
     for (const order of pendingOrders) {
-      // Si la commande a une référence Moneroo, vérifier d'abord le statut réel
-      // avant d'annuler (le webhook a peut-être été perdu).
+      // Si la commande a une référence Moneroo : vérifier le statut réel
+      // quelle que soit l'ancienneté (détection rapide des échecs dès 15 min).
       if (order.payment_reference) {
         await ctx.scheduler.runAfter(0, api.payments.moneroo.verifyPayment, {
           orderId: order._id,
@@ -310,6 +318,10 @@ export const expirePendingOrders = internalMutation({
         verifyingCount++;
         continue;
       }
+
+      // Sans référence : l'utilisateur n'a pas initié le paiement.
+      // On attend 2h avant d'annuler (laisser le temps de revenir finaliser).
+      if (order._creationTime > twoHourCutoff) continue;
 
       // Pas de référence → annuler directement (l'utilisateur n'a jamais initié le paiement)
       const now = Date.now();
@@ -580,5 +592,98 @@ export const processAdBookings = internalMutation({
     for (const slotId of slotsFreed) {
       await promoteQueuedBookings(ctx, slotId);
     }
+  },
+});
+
+// ─── Wishlist Reminders (toutes les 24h) ─────────────────────
+
+/**
+ * Envoie un email de relance aux utilisateurs dont des articles en wishlist
+ * ont été ajoutés il y a 7-8 jours. La fenêtre glissante de 24h garantit
+ * qu'un même article ne déclenche qu'un seul email de relance.
+ */
+export const sendWishlistReminders = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const sevenDaysCutoff = now - SEVEN_DAYS_MS;
+    const eightDaysCutoff = now - EIGHT_DAYS_MS;
+
+    // Articles ajoutés entre il y a 7 et 8 jours (fenêtre 24h)
+    const staleItems = await ctx.db
+      .query("wishlists")
+      .withIndex("by_added_at", (q) =>
+        q.gte("added_at", eightDaysCutoff).lte("added_at", sevenDaysCutoff),
+      )
+      .collect();
+
+    if (staleItems.length === 0) return { sent: 0 };
+
+    // Regrouper par utilisateur
+    const byUser = new Map<string, typeof staleItems>();
+    for (const item of staleItems) {
+      const key = item.user_id;
+      const existing = byUser.get(key) ?? [];
+      existing.push(item);
+      byUser.set(key, existing);
+    }
+
+    const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
+    let sent = 0;
+
+    for (const [userId, wishlistItems] of byUser) {
+      const user = await ctx.db.get(
+        userId as (typeof wishlistItems)[0]["user_id"],
+      );
+      if (!user?.email) continue;
+
+      // Hydrater les produits
+      const hydratedItems = (
+        await Promise.all(
+          wishlistItems.map(async (wi) => {
+            const product = await ctx.db.get(wi.product_id);
+            if (!product || product.status !== "active") return null;
+            return {
+              title: product.title,
+              price: product.price,
+              currency: "XOF" as string,
+              productUrl: `${siteUrl}/products/${product.slug}`,
+            };
+          }),
+        )
+      ).filter((item): item is NonNullable<typeof item> => item !== null);
+
+      if (hydratedItems.length === 0) continue;
+
+      // Formatter les prix côté serveur (XOF : pas de ÷100)
+      const NO_SUBUNIT = ["XOF", "XAF", "GNF", "CDF"];
+      const itemsForEmail = hydratedItems.map((item) => ({
+        title: item.title,
+        price: new Intl.NumberFormat("fr-FR", {
+          style: "currency",
+          currency: item.currency,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(
+          NO_SUBUNIT.includes(item.currency) ? item.price : item.price / 100,
+        ),
+        productUrl: item.productUrl,
+      }));
+
+      await ctx.scheduler.runAfter(
+        sent * 200, // étaler les envois (200ms entre chaque) pour ne pas dépasser les limites Resend
+        internal.emails.send.sendWishlistReminder,
+        {
+          customerEmail: user.email,
+          customerName: user.name ?? "Client",
+          items: itemsForEmail,
+          shopUrl: siteUrl,
+        },
+      );
+
+      sent++;
+    }
+
+    return { sent };
   },
 });

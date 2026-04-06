@@ -1212,7 +1212,8 @@ export default defineSchema({
     added_at: v.number(),
   })
     .index("by_user", ["user_id"])
-    .index("by_user_product", ["user_id", "product_id"]),
+    .index("by_user_product", ["user_id", "product_id"])
+    .index("by_added_at", ["added_at"]),
 
   // ============================================
   // WEBHOOK EVENTS (DÉDUPLICATION MONEROO)

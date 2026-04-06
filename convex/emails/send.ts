@@ -14,6 +14,8 @@ import OrderShipped from "../../emails/OrderShipped";
 import OrderDelivered from "../../emails/OrderDelivered";
 import OrderCancelled from "../../emails/OrderCancelled";
 import { GuestAccountSetup } from "../../emails/GuestAccountSetup";
+import PaymentFailed from "../../emails/PaymentFailed";
+import WishlistReminder from "../../emails/WishlistReminder";
 
 const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
@@ -297,6 +299,90 @@ export const sendGuestAccountSetup = internalAction({
       from: EMAIL_FROM,
       to: args.customerEmail,
       subject: `Commande ${args.orderNumber} confirmée — Créez votre compte Pixel-Mart`,
+      html,
+    });
+  },
+});
+
+// ─── Payment Failed → Client ─────────────────────────────────
+
+export const sendPaymentFailed = internalAction({
+  args: {
+    customerEmail: v.string(),
+    customerName: v.string(),
+    orderNumber: v.string(),
+    storeName: v.string(),
+    totalAmount: v.number(),
+    currency: v.string(),
+    items: v.array(
+      v.object({
+        title: v.string(),
+        quantity: v.number(),
+        productUrl: v.string(),
+      }),
+    ),
+    retryUrl: v.string(), // lien vers la boutique pour repasser commande
+  },
+  handler: async (_ctx, args) => {
+    const resend = getResend();
+    const siteUrl = getSiteUrl();
+
+    const html = await render(
+      PaymentFailed({
+        customerName: args.customerName,
+        orderNumber: args.orderNumber,
+        storeName: args.storeName,
+        total: formatAmount(args.totalAmount, args.currency),
+        items: args.items,
+        retryUrl: args.retryUrl,
+        ordersUrl: `${siteUrl}/orders`,
+      }),
+    );
+
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: args.customerEmail,
+      subject: `Paiement échoué — Commande ${args.orderNumber}`,
+      html,
+    });
+  },
+});
+
+// ─── Wishlist Reminder → Client ──────────────────────────────
+
+export const sendWishlistReminder = internalAction({
+  args: {
+    customerEmail: v.string(),
+    customerName: v.string(),
+    items: v.array(
+      v.object({
+        title: v.string(),
+        price: v.string(),
+        productUrl: v.string(),
+      }),
+    ),
+    shopUrl: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const resend = getResend();
+
+    const html = await render(
+      WishlistReminder({
+        customerName: args.customerName,
+        items: args.items,
+        shopUrl: args.shopUrl,
+      }),
+    );
+
+    const preview =
+      args.items.length > 1
+        ? `${args.items.length} articles vous attendent dans votre liste de souhaits`
+        : `"${args.items[0].title}" vous attend dans votre liste de souhaits`;
+
+    await resend.emails.send({
+      from: EMAIL_FROM,
+      to: args.customerEmail,
+      subject: preview,
       html,
     });
   },
