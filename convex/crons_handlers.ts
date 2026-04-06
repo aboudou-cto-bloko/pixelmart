@@ -637,17 +637,29 @@ export const sendWishlistReminders = internalMutation({
       );
       if (!user?.email) continue;
 
-      // Hydrater les produits
+      // Hydrater les produits + leur store pour générer le bon lien
+      // (shop vendeur si vendor_shop_enabled, marketplace sinon)
       const hydratedItems = (
         await Promise.all(
           wishlistItems.map(async (wi) => {
             const product = await ctx.db.get(wi.product_id);
             if (!product || product.status !== "active") return null;
+
+            const store = await ctx.db.get(product.store_id);
+            const productUrl =
+              store?.vendor_shop_enabled && store.slug
+                ? `${siteUrl}/shop/${store.slug}/products/${product.slug}`
+                : `${siteUrl}/products/${product.slug}`;
+
             return {
               title: product.title,
               price: product.price,
-              currency: "XOF" as string,
-              productUrl: `${siteUrl}/products/${product.slug}`,
+              currency: store?.currency ?? "XOF",
+              productUrl,
+              shopUrl:
+                store?.vendor_shop_enabled && store.slug
+                  ? `${siteUrl}/shop/${store.slug}`
+                  : siteUrl,
             };
           }),
         )
@@ -670,6 +682,9 @@ export const sendWishlistReminders = internalMutation({
         productUrl: item.productUrl,
       }));
 
+      // CTA principal : boutique du premier article, ou marketplace par défaut
+      const ctaUrl = hydratedItems[0].shopUrl;
+
       await ctx.scheduler.runAfter(
         sent * 200, // étaler les envois (200ms entre chaque) pour ne pas dépasser les limites Resend
         internal.emails.send.sendWishlistReminder,
@@ -677,7 +692,7 @@ export const sendWishlistReminders = internalMutation({
           customerEmail: user.email,
           customerName: user.name ?? "Client",
           items: itemsForEmail,
-          shopUrl: siteUrl,
+          shopUrl: ctaUrl,
         },
       );
 
