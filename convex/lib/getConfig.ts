@@ -14,6 +14,8 @@ import {
   BALANCE_RELEASE_DELAY_MS,
   STORAGE_FEES,
   STORAGE_DEBT_BLOCK_DELAY_MS,
+  AFFILIATE_MAX_COMMISSION_BP,
+  AFFILIATE_MAX_DURATION_DAYS,
   type SubscriptionTier,
 } from "./constants";
 
@@ -132,4 +134,24 @@ export async function getStorageDebtBlockDelayMs(ctx: AnyCtx): Promise<number> {
 /** Nombre maximum de produits actifs pour le plan Gratuit (défaut 50). */
 export async function getFreeMaxActiveProducts(ctx: AnyCtx): Promise<number> {
   return getConfigValue(ctx, "subscription_free_max_products", 50);
+}
+
+// ─── Affiliate config ─────────────────────────────────────────
+
+export async function getAffiliateConfig(
+  ctx: AnyCtx,
+): Promise<{ maxCommissionBp: number; maxDurationDays: number }> {
+  const [maxCommissionBp, maxDurationDays] = await Promise.all([
+    getConfigValue(
+      ctx,
+      "affiliate_max_commission_bp",
+      AFFILIATE_MAX_COMMISSION_BP,
+    ),
+    getConfigValue(
+      ctx,
+      "affiliate_max_duration_days",
+      AFFILIATE_MAX_DURATION_DAYS,
+    ),
+  ]);
+  return { maxCommissionBp, maxDurationDays };
 }

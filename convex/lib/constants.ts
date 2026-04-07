@@ -72,3 +72,11 @@ export const STORAGE_FEES = {
  * retirer ses produits physiques.
  */
 export const STORAGE_DEBT_BLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
+
+// ── Affiliation ──────────────────────────────────────────────
+
+/** Taux de commission affilié maximum (basis points). Défaut : 1000 = 10 % */
+export const AFFILIATE_MAX_COMMISSION_BP = 1000;
+
+/** Durée maximale d'un lien affilié en jours. Défaut : 365 (1 an) */
+export const AFFILIATE_MAX_DURATION_DAYS = 365;

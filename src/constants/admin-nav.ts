@@ -16,6 +16,7 @@ import {
   FileText,
   Package,
   BellRing,
+  Handshake,
   type LucideIcon,
 } from "lucide-react";
 
@@ -149,5 +150,12 @@ export const ADMIN_NAV: AdminNavItem[] = [
     icon: Globe,
     section: "Paramètres",
     roles: ["admin", "logistics"],
+  },
+  {
+    title: "Affiliation",
+    href: "/admin/affiliation",
+    icon: Handshake,
+    section: "Programme",
+    roles: ["admin", "finance"],
   },
 ];

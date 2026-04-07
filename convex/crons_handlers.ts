@@ -702,3 +702,26 @@ export const sendWishlistReminders = internalMutation({
     return { sent };
   },
 });
+
+// ─── Expire Affiliate Links ───────────────────────────────────
+// Désactive les liens affiliés dont expires_at est dans le passé
+
+export const expireAffiliateLinks = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const activeLinks = await ctx.db
+      .query("affiliate_links")
+      .withIndex("by_active", (q) => q.eq("is_active", true))
+      .collect();
+
+    let expired = 0;
+    for (const link of activeLinks) {
+      if (link.expires_at !== undefined && link.expires_at < now) {
+        await ctx.db.patch(link._id, { is_active: false, updated_at: now });
+        expired++;
+      }
+    }
+    return { expired };
+  },
+});

@@ -1,6 +1,7 @@
 // filepath: convex/stores/mutations.ts
 
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v, ConvexError } from "convex/values";
 import { getVendorStore, requireVendor } from "../users/helpers";
 import { rateLimiter } from "../lib/ratelimits";
@@ -408,6 +409,7 @@ export const createAdditionalStore = mutation({
     custom_pickup_lat: v.optional(v.number()),
     custom_pickup_lon: v.optional(v.number()),
     custom_pickup_label: v.optional(v.string()),
+    affiliate_code: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { user } = await getVendorStore(ctx);
@@ -476,6 +478,19 @@ export const createAdditionalStore = mutation({
       active_store_id: storeId,
       updated_at: Date.now(),
     });
+
+    // Affiliation : lier la boutique au parrain si un code est fourni
+    if (args.affiliate_code) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.affiliate.mutations.linkStoreToAffiliate,
+        {
+          store_id: storeId,
+          owner_id: user._id,
+          affiliate_code: args.affiliate_code,
+        },
+      );
+    }
 
     return { storeId, slug };
   },

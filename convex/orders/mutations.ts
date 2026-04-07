@@ -415,6 +415,33 @@ export const createOrder = mutation({
         });
       }
 
+      // Affiliation : créer un enregistrement de commission si la boutique a un parrain
+      if (store.affiliate_link_id && store.affiliate_commission_rate_bp) {
+        const affiliateLink = await ctx.db.get(store.affiliate_link_id);
+        if (affiliateLink && affiliateLink.is_active) {
+          const affiliateCommissionAmount = Math.round(
+            ((subtotal - discountAmount) * store.affiliate_commission_rate_bp) /
+              10_000,
+          );
+          if (affiliateCommissionAmount > 0) {
+            await ctx.scheduler.runAfter(
+              0,
+              internal.affiliate.mutations.createCommissionRecord,
+              {
+                affiliate_link_id: store.affiliate_link_id,
+                referrer_store_id: affiliateLink.referrer_store_id,
+                referlee_store_id: store._id,
+                order_id: orderId,
+                order_subtotal: subtotal - discountAmount,
+                commission_rate_bp: store.affiliate_commission_rate_bp,
+                commission_amount: affiliateCommissionAmount,
+                currency,
+              },
+            );
+          }
+        }
+      }
+
       // Créditer le pending_balance (libéré après 48h par cron)
       await ctx.db.patch(store._id, {
         pending_balance: balanceAfter,
@@ -841,6 +868,13 @@ export const cancelOrder = mutation({
       status: "cancelled",
       updated_at: Date.now(),
     });
+
+    // Affiliation : annuler les commissions liées à cette commande
+    await ctx.scheduler.runAfter(
+      0,
+      internal.affiliate.mutations.cancelCommissionsForOrder,
+      { order_id: args.orderId },
+    );
 
     const customer = await ctx.db.get(order.customer_id);
     const store = await ctx.db.get(order.store_id);

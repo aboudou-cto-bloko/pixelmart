@@ -2,8 +2,8 @@
 
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -41,6 +41,7 @@ import {
   Check,
   Package,
   X,
+  Handshake,
 } from "lucide-react";
 import {
   LocationPicker,
@@ -59,8 +60,9 @@ const STEPS = [
   { id: 4, title: "Finalisation", icon: FileText },
 ] as const;
 
-export default function VendorOnboardingPage() {
+function VendorOnboardingForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: isUserLoading } = useCurrentUser();
   const becomeVendor = useMutation(api.users.mutations.becomeVendor);
   const commissionRates = useQuery(api.stores.queries.getPublicCommissionRates);
@@ -69,6 +71,19 @@ export default function VendorOnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  // Lire le code d'affiliation une seule fois au mount (lazy initializer évite setState-in-effect)
+  const [affiliateCode] = useState<string | null>(() => {
+    const urlRef = searchParams.get("ref");
+    if (urlRef) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pm_affiliate_code", urlRef);
+      }
+      return urlRef;
+    }
+    return typeof window !== "undefined"
+      ? localStorage.getItem("pm_affiliate_code")
+      : null;
+  });
 
   const [formData, setFormData] = useState<VendorOnboardingValues>({
     store_name: "",
@@ -183,7 +198,11 @@ export default function VendorOnboardingPage() {
           serviceMode === "delivery_only" ? customPickup?.lon : undefined,
         custom_pickup_label:
           serviceMode === "delivery_only" ? customPickup?.label : undefined,
+        affiliate_code: affiliateCode ?? undefined,
       });
+
+      // Supprimer le code d'affiliation du localStorage après utilisation
+      localStorage.removeItem("pm_affiliate_code");
 
       router.push("/vendor/dashboard");
     } catch (err) {
@@ -267,6 +286,15 @@ export default function VendorOnboardingPage() {
             {/* Step 1 — Store name */}
             {step === 1 && (
               <div className="space-y-4">
+                {affiliateCode && (
+                  <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary">
+                    <Handshake className="h-4 w-4 shrink-0" />
+                    <span>
+                      Code de parrainage appliqué — vous rejoignez le réseau
+                      d&apos;un partenaire Pixel-Mart.
+                    </span>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="store_name">Nom de la boutique</Label>
                   <Input
@@ -619,5 +647,13 @@ export default function VendorOnboardingPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function VendorOnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <VendorOnboardingForm />
+    </Suspense>
   );
 }
