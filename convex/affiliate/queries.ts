@@ -184,6 +184,33 @@ export const getCommissionsStats = query({
   },
 });
 
+// ─── Vendor: accès au programme d'affiliation ────────────────
+// Retourne true uniquement si l'admin a créé au moins un lien pour cette boutique.
+// Utilisé pour masquer le menu "Parrainage" aux non-participants.
+
+export const isEnrolledInAffiliateProgram = query({
+  args: {},
+  handler: async (ctx) => {
+    let result;
+    try {
+      result = await getVendorStore(ctx);
+    } catch {
+      return false;
+    }
+    if (!result) return false;
+    const { store } = result;
+
+    const link = await ctx.db
+      .query("affiliate_links")
+      .withIndex("by_referrer_store", (q) =>
+        q.eq("referrer_store_id", store._id),
+      )
+      .first();
+
+    return link !== null;
+  },
+});
+
 // ─── Vendor: mes liens affiliés ──────────────────────────────
 
 export const listMyAffiliateLinks = query({
