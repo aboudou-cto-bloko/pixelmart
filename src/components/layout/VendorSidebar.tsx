@@ -367,13 +367,22 @@ function WhatsAppCommunity() {
 
 // ---- Sidebar Export ----
 export function VendorSidebar(props: React.ComponentProps<typeof Sidebar>) {
+  const isAffiliate = useQuery(
+    api.affiliate.queries.isEnrolledInAffiliateProgram,
+  );
+
+  // Masquer "Parrainage" si la boutique n'est pas inscrite au programme
+  const navItems = VENDOR_NAV_MAIN.filter(
+    (item) => item.url !== "/vendor/parrainage" || isAffiliate === true,
+  );
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <StoreSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <NavSection label="Gestion" items={VENDOR_NAV_MAIN} />
+        <NavSection label="Gestion" items={navItems} />
         <NavSection label="Configuration" items={VENDOR_NAV_SETTINGS} />
         <SidebarGroup>
           <SidebarMenu>

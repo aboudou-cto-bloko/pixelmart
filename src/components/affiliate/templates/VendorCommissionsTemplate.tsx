@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { VendorCommissionsTable } from "../organisms/VendorCommissionsTable";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Lock } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,8 +19,12 @@ import {
 type StatusFilter = "all" | "pending" | "paid" | "cancelled";
 
 export function VendorCommissionsTemplate() {
+  const isAffiliate = useQuery(
+    api.affiliate.queries.isEnrolledInAffiliateProgram,
+  );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
+  // Tous les hooks AVANT tout early return (règles des hooks React)
   const data = useQuery(api.affiliate.queries.listMyCommissions, {
     paginationOpts: { numItems: 50, cursor: null },
     status:
@@ -27,6 +32,22 @@ export function VendorCommissionsTemplate() {
         ? undefined
         : (statusFilter as "pending" | "paid" | "cancelled"),
   });
+
+  if (isAffiliate === false) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
+        <div className="rounded-full bg-muted p-4">
+          <Lock className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold">Accès restreint</h2>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+            Vous n&apos;êtes pas inscrit au programme de parrainage.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
