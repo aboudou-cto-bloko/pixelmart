@@ -3,7 +3,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Loader2, PlayCircle, Truck, CheckCircle } from "lucide-react";
+import {
+  Loader2,
+  PlayCircle,
+  Truck,
+  CheckCircle,
+  FlaskConical,
+} from "lucide-react";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 
 type OrderStatus = Doc<"orders">["status"];
@@ -14,6 +20,8 @@ interface OrderStatusActionsProps {
   onShip: () => void;
   onDeliver: () => void;
   isLoading: boolean;
+  isDemo?: boolean;
+  onSimulatePayment?: () => void;
 }
 
 export function OrderStatusActions({
@@ -22,6 +30,8 @@ export function OrderStatusActions({
   onShip,
   onDeliver,
   isLoading,
+  isDemo,
+  onSimulatePayment,
 }: OrderStatusActionsProps) {
   // Pas d'actions pour les statuts terminaux
   if (
@@ -32,8 +42,31 @@ export function OrderStatusActions({
     return null;
   }
 
+  // For demo accounts with pending orders, show simulate payment button
+  if (status === "pending" && !isDemo) {
+    return null;
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
+      {/* Demo: Pending → simulate payment */}
+      {status === "pending" && isDemo && onSimulatePayment && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onSimulatePayment}
+          disabled={isLoading}
+          className="border-primary/40 text-primary hover:bg-primary/10"
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <FlaskConical className="h-4 w-4 mr-1.5" />
+          )}
+          Simuler le paiement
+        </Button>
+      )}
+
       {/* Paid → Processing */}
       {status === "paid" && (
         <Button size="sm" onClick={onProcess} disabled={isLoading}>

@@ -52,6 +52,9 @@ export default defineSchema({
     guest_setup_token: v.optional(v.string()),
     guest_setup_expires_at: v.optional(v.number()),
 
+    // Demo account (partners / tutorial creators)
+    is_demo: v.optional(v.boolean()),
+
     // Metadata
     updated_at: v.number(),
   })
@@ -141,6 +144,9 @@ export default defineSchema({
     affiliate_link_id: v.optional(v.id("affiliate_links")),
     // Taux snapshoté au moment de l'inscription (ne change pas si le lien est modifié ensuite)
     affiliate_commission_rate_bp: v.optional(v.number()),
+
+    // Demo store (owned by a demo account — data isolated from production)
+    is_demo: v.optional(v.boolean()),
 
     // Metadata
     updated_at: v.number(),
@@ -1315,6 +1321,27 @@ export default defineSchema({
     .index("by_referlee_store", ["referlee_store_id"])
     .index("by_affiliate_link", ["affiliate_link_id"])
     .index("by_status", ["status", "created_at"]),
+
+  // ============================================
+  // DEMO INVITES
+  // ============================================
+  demo_invites: defineTable({
+    email: v.string(),
+    token: v.string(), // 32-char random alphanumeric — used in /demo?token=xxx
+    status: v.union(
+      v.literal("pending"),
+      v.literal("used"),
+      v.literal("expired"),
+    ),
+    invited_by: v.id("users"),
+    invited_by_name: v.string(), // denormalized for display
+    expires_at: v.number(), // 7 days from creation
+    used_at: v.optional(v.number()),
+    used_by: v.optional(v.id("users")),
+    note: v.optional(v.string()), // partner name / purpose
+  })
+    .index("by_token", ["token"])
+    .index("by_status", ["status"]),
 
   meta_pixel_events: defineTable({
     store_id: v.id("stores"),

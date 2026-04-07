@@ -23,6 +23,7 @@ import VendorOrderCancelled from "../../emails/VendorOrderCancelled";
 import VendorOrderDelivered from "../../emails/VendorOrderDelivered";
 import VendorDeliveryFailed from "../../emails/VendorDeliveryFailed";
 import OrderRefunded from "../../emails/OrderRefunded";
+import DemoInvite from "../../emails/DemoInvite";
 
 const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
@@ -1282,5 +1283,34 @@ export const notifyOrderRefunded = internalAction({
       body: `${formatted} remboursé`,
       url: "/orders",
     });
+  },
+});
+
+// ─── Demo invite email ────────────────────────────────────────
+export const notifyDemoInvite = internalAction({
+  args: {
+    email: v.string(),
+    token: v.string(),
+    inviterName: v.string(),
+    note: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    const resend = getResend();
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ?? "https://pixel-mart-bj.com";
+    const demoUrl = `${appUrl}/demo?token=${args.token}`;
+    try {
+      const html = await render(
+        DemoInvite({ inviterName: args.inviterName, demoUrl, note: args.note }),
+      );
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.email,
+        subject: "Votre accès démo Pixel-Mart",
+        html,
+      });
+    } catch (error) {
+      console.error("[Notification] DemoInvite email failed:", error);
+    }
   },
 });
