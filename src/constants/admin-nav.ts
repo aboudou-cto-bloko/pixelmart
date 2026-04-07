@@ -17,6 +17,7 @@ import {
   Package,
   BellRing,
   Handshake,
+  FlaskConical,
   type LucideIcon,
 } from "lucide-react";
 
@@ -157,5 +158,12 @@ export const ADMIN_NAV: AdminNavItem[] = [
     icon: Handshake,
     section: "Programme",
     roles: ["admin", "finance"],
+  },
+  {
+    title: "Comptes démo",
+    href: "/admin/demo",
+    icon: FlaskConical,
+    section: "Programme",
+    roles: ["admin"],
   },
 ];

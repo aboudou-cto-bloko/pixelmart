@@ -3,7 +3,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -87,6 +87,8 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
   const updateStatus = useMutation(api.orders.mutations.updateStatus);
   const addTracking = useMutation(api.orders.mutations.addTracking);
+  const isDemo = useQuery(api.demo.queries.isCurrentUserDemo);
+  const simulatePayment = useAction(api.demo.actions.simulatePayment);
 
   if (order === undefined) {
     return (
@@ -143,6 +145,21 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
     setShowTrackingForm(true);
   };
 
+  const handleSimulatePayment = async () => {
+    if (!order) return;
+    setIsLoading(true);
+    try {
+      await simulatePayment({ orderId: order._id });
+      toast.success("Paiement simulé — commande payée");
+    } catch (err) {
+      toast.error("Erreur", {
+        description: err instanceof Error ? err.message : "Erreur inconnue",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const addr = order.shipping_address;
 
   return (
@@ -190,6 +207,8 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         onShip={handleShipWithTracking}
         onDeliver={() => handleStatusChange("delivered")}
         isLoading={isLoading}
+        isDemo={isDemo === true}
+        onSimulatePayment={handleSimulatePayment}
       />
 
       {/* Tracking form (affiché quand on clique "Marquer comme expédié") */}
@@ -314,7 +333,9 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
       <Separator />
 
       {/* Infos livraison */}
-      {(order.delivery_type || order.delivery_distance_km || order.payment_mode === "cod") && (
+      {(order.delivery_type ||
+        order.delivery_distance_km ||
+        order.payment_mode === "cod") && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Livraison</h3>
           <div className="rounded-lg border p-3 text-sm space-y-1.5">
@@ -322,7 +343,13 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Type</span>
                 <span className="capitalize">
-                  {{ standard: "Standard", urgent: "Urgent", fragile: "Fragile" }[order.delivery_type]}
+                  {
+                    {
+                      standard: "Standard",
+                      urgent: "Urgent",
+                      fragile: "Fragile",
+                    }[order.delivery_type]
+                  }
                 </span>
               </div>
             )}
@@ -334,30 +361,37 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
             )}
             {order.delivery_fee !== undefined && order.delivery_fee > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Frais de livraison</span>
+                <span className="text-muted-foreground">
+                  Frais de livraison
+                </span>
                 <span>{formatPrice(order.delivery_fee, order.currency)}</span>
               </div>
             )}
             {order.payment_mode && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Mode de paiement</span>
-                <span>{order.payment_mode === "cod" ? "À la livraison" : "En ligne"}</span>
+                <span>
+                  {order.payment_mode === "cod" ? "À la livraison" : "En ligne"}
+                </span>
               </div>
             )}
-            {order.delivery_lat !== undefined && order.delivery_lon !== undefined && (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Localisation GPS</span>
-                <a
-                  href={`https://www.openstreetmap.org/?mlat=${order.delivery_lat}&mlon=${order.delivery_lon}&zoom=16`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1 text-xs"
-                >
-                  <MapPin className="size-3" />
-                  Voir sur la carte
-                </a>
-              </div>
-            )}
+            {order.delivery_lat !== undefined &&
+              order.delivery_lon !== undefined && (
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">
+                    Localisation GPS
+                  </span>
+                  <a
+                    href={`https://www.openstreetmap.org/?mlat=${order.delivery_lat}&mlon=${order.delivery_lon}&zoom=16`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline flex items-center gap-1 text-xs"
+                  >
+                    <MapPin className="size-3" />
+                    Voir sur la carte
+                  </a>
+                </div>
+              )}
           </div>
         </div>
       )}
