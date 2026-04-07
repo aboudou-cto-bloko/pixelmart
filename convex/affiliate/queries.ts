@@ -189,8 +189,9 @@ export const getCommissionsStats = query({
 export const listMyAffiliateLinks = query({
   args: {},
   handler: async (ctx) => {
-    const store = await getVendorStore(ctx);
-    if (!store) return [];
+    const result = await getVendorStore(ctx);
+    if (!result) return [];
+    const { store } = result;
 
     return ctx.db
       .query("affiliate_links")
@@ -215,8 +216,9 @@ export const listMyCommissions = query({
     ),
   },
   handler: async (ctx, args) => {
-    const store = await getVendorStore(ctx);
-    if (!store) return { page: [], isDone: true, continueCursor: "" };
+    const vendorResult = await getVendorStore(ctx);
+    if (!vendorResult) return { page: [], isDone: true, continueCursor: "" };
+    const { store } = vendorResult;
 
     let page;
 
@@ -278,8 +280,9 @@ export const listMyCommissions = query({
 export const getMyAffiliateStats = query({
   args: {},
   handler: async (ctx) => {
-    const store = await getVendorStore(ctx);
-    if (!store) return null;
+    const statsResult = await getVendorStore(ctx);
+    if (!statsResult) return null;
+    const { store } = statsResult;
 
     const [links, commissions] = await Promise.all([
       ctx.db

@@ -128,7 +128,11 @@ export const becomeVendor = mutation({
       await ctx.scheduler.runAfter(
         0,
         internal.affiliate.mutations.linkStoreToAffiliate,
-        { store_id: storeId, affiliate_code: args.affiliate_code },
+        {
+          store_id: storeId,
+          owner_id: user._id,
+          affiliate_code: args.affiliate_code,
+        },
       );
     }
 
