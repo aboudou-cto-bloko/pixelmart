@@ -542,6 +542,35 @@ export const createOrder = mutation({
       }
     }
 
+    // Pour les commandes en ligne (paiement non encore confirmé), notifier le vendeur
+    // qu'une commande est en attente de paiement (in-app + push uniquement — pas d'email
+    // pour éviter le spam sur les commandes abandonnées).
+    if (paymentMode === "online") {
+      const vendor = await ctx.db.get(store.owner_id);
+      if (vendor) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.notifications.send.createInAppNotification,
+          {
+            userId: vendor._id,
+            type: "order_status",
+            title: `Commande ${orderNumber} en attente`,
+            body: `${user.name ?? "Client"} — paiement en cours (${orderNumber})`,
+            link: `/vendor/orders`,
+            channels: ["in_app", "push"],
+            sentVia: ["in_app"],
+            metadata: undefined,
+          },
+        );
+        await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+          userId: vendor._id,
+          title: `Commande en attente de paiement`,
+          body: `${user.name ?? "Client"} a lancé le paiement pour la commande ${orderNumber}.`,
+          url: "/vendor/orders",
+        });
+      }
+    }
+
     // Si c'est un nouvel invité (compte provisoire), envoyer l'email de setup
     if (user.guest_setup_token && args.guestEmail) {
       const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";

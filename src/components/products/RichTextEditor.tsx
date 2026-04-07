@@ -77,30 +77,106 @@ function ToolbarSeparator() {
   return <div className="w-px h-5 bg-border mx-1 shrink-0" />;
 }
 
-function ImageNodeView({ node, deleteNode }: NodeViewProps) {
+// ─── Image size presets ────────────────────────────────────────
+const SIZE_PRESETS: { label: string; value: string }[] = [
+  { label: "25%", value: "25%" },
+  { label: "50%", value: "50%" },
+  { label: "75%", value: "75%" },
+  { label: "100%", value: "100%" },
+];
+
+function ImageNodeView({ node, updateAttributes, deleteNode }: NodeViewProps) {
+  const [showControls, setShowControls] = useState(false);
+  const currentWidth: string = (node.attrs.width as string) || "100%";
+
   return (
     <NodeViewWrapper>
-      <div className="relative inline-block group max-w-full my-2">
+      <div
+        className="relative inline-block group my-2"
+        style={{ width: currentWidth, maxWidth: "100%" }}
+        onMouseEnter={() => setShowControls(true)}
+        onMouseLeave={() => setShowControls(false)}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={node.attrs.src as string}
           alt={(node.attrs.alt as string) || ""}
-          className="rounded-lg max-w-full h-auto block"
-          style={{ maxHeight: "400px", objectFit: "contain" }}
+          style={{ width: "100%", height: "auto", display: "block" }}
+          className="rounded-lg"
         />
-        <button
-          type="button"
-          contentEditable={false}
-          onClick={() => deleteNode()}
-          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 bg-black/60 hover:bg-destructive text-white rounded-full p-1 transition-all"
-          title="Supprimer l'image"
-        >
-          <X className="size-3" />
-        </button>
+
+        {/* Controls overlay */}
+        {showControls && (
+          <div className="absolute inset-0 rounded-lg ring-2 ring-primary/60 pointer-events-none" />
+        )}
+
+        {/* Size preset toolbar */}
+        {showControls && (
+          <div
+            className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-0.5 bg-black/70 backdrop-blur-sm rounded-md px-1 py-0.5 pointer-events-auto z-10"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {SIZE_PRESETS.map((preset) => (
+              <button
+                key={preset.value}
+                type="button"
+                onClick={() => updateAttributes({ width: preset.value })}
+                className={cn(
+                  "text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors",
+                  currentWidth === preset.value
+                    ? "bg-white text-black"
+                    : "text-white hover:bg-white/20",
+                )}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Delete button */}
+        {showControls && (
+          <button
+            type="button"
+            contentEditable={false}
+            onClick={() => deleteNode()}
+            className="absolute top-1.5 right-1.5 bg-black/60 hover:bg-destructive text-white rounded-full p-1 transition-all pointer-events-auto z-10"
+            title="Supprimer l'image"
+          >
+            <X className="size-3" />
+          </button>
+        )}
       </div>
     </NodeViewWrapper>
   );
 }
+
+// ─── Custom Image extension : sérialise width en style inline ─
+// Cela permet aux pages produit d'afficher la bonne taille même avec
+// les classes Tailwind prose qui reset les attributs HTML width/height.
+const ResizableImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (element) => {
+          return element.style.width || element.getAttribute("width") || null;
+        },
+        renderHTML: (attributes) => {
+          if (!attributes.width) return {};
+          return { style: `width: ${attributes.width}; max-width: 100%;` };
+        },
+      },
+    };
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageNodeView);
+  },
+}).configure({
+  inline: false,
+  allowBase64: false,
+});
 
 export function RichTextEditor({
   value,
@@ -146,14 +222,7 @@ export function RichTextEditor({
       }),
       TextStyle,
       Color,
-      Image.extend({
-        addNodeView() {
-          return ReactNodeViewRenderer(ImageNodeView);
-        },
-      }).configure({
-        inline: false,
-        allowBase64: false,
-      }),
+      ResizableImage,
     ],
     content: value || "",
     immediatelyRender: false,
