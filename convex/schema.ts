@@ -137,6 +137,11 @@ export default defineSchema({
     contact_facebook: v.optional(v.string()), // URL complète ou handle
     contact_instagram: v.optional(v.string()), // URL complète ou handle
 
+    // Affiliation — lien de parrainage ayant amené ce vendeur
+    affiliate_link_id: v.optional(v.id("affiliate_links")),
+    // Taux snapshoté au moment de l'inscription (ne change pas si le lien est modifié ensuite)
+    affiliate_commission_rate_bp: v.optional(v.number()),
+
     // Metadata
     updated_at: v.number(),
   })
@@ -1264,6 +1269,52 @@ export default defineSchema({
     updated_at: v.number(),
     updated_by: v.optional(v.id("users")),
   }),
+
+  // ── Programme d'affiliation ───────────────────────────────────
+
+  affiliate_links: defineTable({
+    created_by: v.id("users"), // admin qui a généré le lien
+    referrer_store_id: v.id("stores"), // vendeur parrain
+    code: v.string(), // code unique URL-safe, ex : "PM-AFF-X7K2"
+    commission_rate_bp: v.number(), // basis points, ex : 300 = 3 %
+    duration_days: v.optional(v.number()), // undefined = illimité
+    expires_at: v.optional(v.number()), // epoch ms, calculé à la création
+    is_active: v.boolean(),
+    referral_count: v.number(), // nb de vendeurs inscrits via ce lien
+    total_commission_earned: v.number(), // centimes, total cumulé
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_code", ["code"])
+    .index("by_referrer_store", ["referrer_store_id"])
+    .index("by_active", ["is_active", "created_at"]),
+
+  affiliate_commissions: defineTable({
+    affiliate_link_id: v.id("affiliate_links"),
+    referrer_store_id: v.id("stores"), // perçoit la commission
+    referlee_store_id: v.id("stores"), // boutique dont la vente a déclenché la commission
+    order_id: v.id("orders"),
+    order_subtotal: v.number(), // centimes (snapshot)
+    commission_rate_bp: v.number(), // snapshot du taux au moment de l'inscription
+    commission_amount: v.number(), // centimes
+    currency: v.string(), // "XOF"
+    status: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("cancelled"), // ex : commande remboursée
+    ),
+    manual_override_amount: v.optional(v.number()), // centimes, édition admin
+    admin_note: v.optional(v.string()),
+    paid_at: v.optional(v.number()),
+    paid_by: v.optional(v.id("users")),
+    created_at: v.number(),
+    updated_at: v.number(),
+  })
+    .index("by_order", ["order_id"])
+    .index("by_referrer_store", ["referrer_store_id", "status"])
+    .index("by_referlee_store", ["referlee_store_id"])
+    .index("by_affiliate_link", ["affiliate_link_id"])
+    .index("by_status", ["status", "created_at"]),
 
   meta_pixel_events: defineTable({
     store_id: v.id("stores"),

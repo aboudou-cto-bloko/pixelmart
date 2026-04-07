@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useRef } from "react";
+import { Suspense, useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Eye, EyeOff, Check, X } from "lucide-react";
+import { Loader2, Eye, EyeOff, Check, X, Handshake } from "lucide-react";
 import {
   getPasswordStrength,
   getStrengthLabel,
@@ -35,6 +35,14 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const setupEmail = searchParams.get("email") ?? "";
   const isSetupFlow = Boolean(searchParams.get("token") && setupEmail);
+  const affiliateCode = searchParams.get("ref");
+
+  // Persister le code d'affiliation en localStorage pour le récupérer à l'onboarding
+  useEffect(() => {
+    if (affiliateCode) {
+      localStorage.setItem("pm_affiliate_code", affiliateCode);
+    }
+  }, [affiliateCode]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -152,6 +160,15 @@ function RegisterForm() {
   return (
     <Card>
       <CardHeader className="text-center">
+        {affiliateCode && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-left text-sm text-primary">
+            <Handshake className="h-4 w-4 shrink-0" />
+            <span>
+              Vous avez été invité à rejoindre Pixel-Mart. Votre code de
+              parrainage sera appliqué lors de la création de votre boutique.
+            </span>
+          </div>
+        )}
         <CardTitle className="text-2xl">
           {isSetupFlow ? "Finalisez votre compte" : "Créer un compte"}
         </CardTitle>

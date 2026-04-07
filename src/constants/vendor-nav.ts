@@ -14,6 +14,7 @@ import {
   Tag,
   Receipt,
   Trophy,
+  Handshake,
   type LucideIcon,
 } from "lucide-react";
 import { ROUTES } from "./routes";
@@ -106,6 +107,15 @@ export const VENDOR_NAV_MAIN: NavItem[] = [
     title: "Classement vendeurs",
     url: ROUTES.VENDOR_LEADERBOARD,
     icon: Trophy,
+  },
+  {
+    title: "Parrainage",
+    url: ROUTES.VENDOR_PARRAINAGE,
+    icon: Handshake,
+    items: [
+      { title: "Mes liens", url: ROUTES.VENDOR_PARRAINAGE },
+      { title: "Commissions", url: ROUTES.VENDOR_PARRAINAGE_COMMISSIONS },
+    ],
   },
   {
     title: "Notifications",

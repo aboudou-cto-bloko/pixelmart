@@ -71,6 +71,14 @@ export const ROUTES = {
 
   // ---- Agent ----
   AGENT_HOME: "/agent",
+
+  // ---- Vendor Parrainage (Affiliate) ----
+  VENDOR_PARRAINAGE: "/vendor/parrainage",
+  VENDOR_PARRAINAGE_COMMISSIONS: "/vendor/parrainage/commissions",
+
+  // ---- Admin Affiliation ----
+  ADMIN_AFFILIATION: "/admin/affiliation",
+  ADMIN_AFFILIATION_COMMISSIONS: "/admin/affiliation/commissions",
 } as const;
 
 export const SHOP_ROUTES = {

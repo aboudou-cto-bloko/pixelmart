@@ -1,4 +1,5 @@
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { requireAppUser } from "./helpers";
 
@@ -32,6 +33,8 @@ export const becomeVendor = mutation({
     custom_pickup_lat: v.optional(v.number()),
     custom_pickup_lon: v.optional(v.number()),
     custom_pickup_label: v.optional(v.string()),
+    // Affiliation — code de parrainage optionnel (via ?ref= URL param)
+    affiliate_code: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAppUser(ctx);
@@ -119,6 +122,15 @@ export const becomeVendor = mutation({
       role: "vendor",
       updated_at: Date.now(),
     });
+
+    // Affiliation : lier la boutique au parrain si un code est fourni
+    if (args.affiliate_code) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.affiliate.mutations.linkStoreToAffiliate,
+        { store_id: storeId, affiliate_code: args.affiliate_code },
+      );
+    }
 
     return { storeId, slug };
   },

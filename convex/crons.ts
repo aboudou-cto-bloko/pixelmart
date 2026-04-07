@@ -83,4 +83,12 @@ crons.interval(
   internal.crons_handlers.notifyOverdueStorageDebts,
 );
 
+// ─── Expire Affiliate Links (toutes les 24h) ─────────────────
+// Désactive les liens affiliés dont la date d'expiration est dépassée
+crons.interval(
+  "expire-affiliate-links",
+  { hours: 24 },
+  internal.crons_handlers.expireAffiliateLinks,
+);
+
 export default crons;
