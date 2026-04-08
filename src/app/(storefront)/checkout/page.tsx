@@ -200,6 +200,8 @@ export default function CheckoutPage() {
   const { stores, totalItems, clearStore } = useCart();
   const createOrder = useMutation(api.orders.mutations.createOrder);
   const initializePayment = useAction(api.payments.moneroo.initializePayment);
+  const simulatePayment = useAction(api.demo.actions.simulatePayment);
+  const isDemo = useQuery(api.demo.queries.isCurrentUserDemo);
 
   // ── Per-store delivery config ──
   const storeIds = stores.map((s) => s.storeId as Id<"stores">);
@@ -466,15 +468,25 @@ export default function CheckoutPage() {
           `${ROUTES.ORDER_CONFIRMATION}?orders=${encodeURIComponent(orderNumbers)}&paid=false&cod=true`,
         );
       } else {
-        // Online : Initialiser le paiement Moneroo
+        // Online : Initialiser le paiement
         const orderIds = orderResults.map((r) => r.orderId);
         setPaymentQueue(orderIds);
 
-        const { checkoutUrl } = await initializePayment({
-          orderId: orderIds[0],
-        });
-
-        window.location.href = checkoutUrl;
+        if (isDemo) {
+          // Compte démo — simuler le paiement directement sans Moneroo
+          for (const orderId of orderIds) {
+            await simulatePayment({ orderId: orderId as Id<"orders"> });
+          }
+          const orderNumbers = orderResults.map((r) => r.orderNumber).join(",");
+          router.push(
+            `${ROUTES.ORDER_CONFIRMATION}?orders=${encodeURIComponent(orderNumbers)}&paid=true`,
+          );
+        } else {
+          const { checkoutUrl } = await initializePayment({
+            orderId: orderIds[0],
+          });
+          window.location.href = checkoutUrl;
+        }
       }
     } catch (error) {
       const message =

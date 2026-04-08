@@ -210,7 +210,8 @@ export const createOrder = mutation({
     }
 
     // 10. Un vendor ne peut pas acheter dans sa propre boutique
-    if (store.owner_id === user._id) {
+    // Exception : les comptes démo peuvent tester le flux achat complet
+    if (store.owner_id === user._id && !store.is_demo) {
       throw new ConvexError(
         "Vous ne pouvez pas acheter dans votre propre boutique",
       );

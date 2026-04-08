@@ -4,6 +4,9 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { generateDemoToken } from "./helpers";
+import { DEFAULT_CURRENCY } from "../lib/constants";
+import { computeStorageFee } from "../storage/helpers";
+import { getEffectiveStorageFees } from "../lib/getConfig";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -228,6 +231,34 @@ export const deleteStoreDemoData = internalMutation({
       .collect();
     await deleteAll(notifications);
 
+    // Storage requests
+    const storageRequests = await ctx.db
+      .query("storage_requests")
+      .withIndex("by_store", (q) => q.eq("store_id", storeId))
+      .collect();
+    for (const req of storageRequests) {
+      if (req.invoice_id) {
+        const debt = await ctx.db
+          .query("storage_debt")
+          .withIndex("by_store_period", (q) => q.eq("store_id", storeId))
+          .collect();
+        for (const d of debt) await ctx.db.delete(d._id);
+        const invoices = await ctx.db
+          .query("storage_invoices")
+          .withIndex("by_store", (q) => q.eq("store_id", storeId))
+          .collect();
+        await deleteAll(invoices);
+      }
+    }
+    await deleteAll(storageRequests);
+
+    // Payouts
+    const payouts = await ctx.db
+      .query("payouts")
+      .withIndex("by_store", (q) => q.eq("store_id", storeId))
+      .collect();
+    await deleteAll(payouts);
+
     // Reset store financials
     await ctx.db.patch(storeId, {
       balance: 0,
@@ -235,6 +266,180 @@ export const deleteStoreDemoData = internalMutation({
       total_orders: 0,
       avg_rating: 0,
       updated_at: Date.now(),
+    });
+  },
+});
+
+// ─── Demo simulation helpers ──────────────────────────────────
+
+/**
+ * Internal — marks a storage request as received (skips agent auth).
+ * Only for demo stores.
+ */
+export const forceStorageReceived = internalMutation({
+  args: { requestId: v.id("storage_requests") },
+  handler: async (ctx, { requestId }) => {
+    const request = await ctx.db.get(requestId);
+    if (!request) throw new Error("Demande introuvable");
+
+    const store = await ctx.db.get(request.store_id);
+    if (!store?.is_demo) throw new Error("Réservé aux comptes démo");
+    if (request.status !== "pending_drop_off")
+      throw new Error("La demande n'est pas en attente de dépôt");
+
+    const now = Date.now();
+    await ctx.db.patch(requestId, {
+      status: "received",
+      measurement_type: "units",
+      actual_qty: request.estimated_qty ?? 1,
+      received_at: now,
+      updated_at: now,
+    });
+
+    // Notify store owner + admin (fire-and-forget)
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: store.owner_id,
+        type: "storage_received",
+        title: "Colis réceptionné (démo)",
+        body: `${request.storage_code} — Votre produit a bien été réceptionné en entrepôt.`,
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
+  },
+});
+
+/**
+ * Internal — validates a received storage request and generates invoice.
+ * Only for demo stores.
+ */
+export const forceStorageValidated = internalMutation({
+  args: { requestId: v.id("storage_requests") },
+  handler: async (ctx, { requestId }) => {
+    const request = await ctx.db.get(requestId);
+    if (!request) throw new Error("Demande introuvable");
+
+    const store = await ctx.db.get(request.store_id);
+    if (!store?.is_demo) throw new Error("Réservé aux comptes démo");
+    if (request.status !== "received")
+      throw new Error("La demande doit être en statut 'received'");
+    if (!request.measurement_type) throw new Error("Aucune mesure enregistrée");
+
+    const measureValue =
+      request.measurement_type === "units"
+        ? (request.actual_qty ?? 0)
+        : (request.actual_weight_kg ?? 0);
+
+    const storageFees = await getEffectiveStorageFees(ctx);
+    const storageFee = computeStorageFee(
+      request.measurement_type,
+      measureValue,
+      storageFees,
+    );
+    const now = Date.now();
+
+    const invoiceId = await ctx.db.insert("storage_invoices", {
+      store_id: request.store_id,
+      request_id: requestId,
+      amount: storageFee,
+      currency: DEFAULT_CURRENCY,
+      status: "unpaid",
+      payment_method: "deferred",
+      created_at: now,
+      updated_at: now,
+    });
+
+    await ctx.db.patch(requestId, {
+      status: "in_stock",
+      storage_fee: storageFee,
+      invoice_id: invoiceId,
+      validated_at: now,
+      updated_at: now,
+    });
+
+    if (request.product_id && request.actual_qty) {
+      const product = await ctx.db.get(request.product_id);
+      if (product) {
+        await ctx.db.patch(request.product_id, {
+          quantity: product.quantity + request.actual_qty,
+          warehouse_qty: (product.warehouse_qty ?? 0) + request.actual_qty,
+          status: "active",
+          updated_at: now,
+        });
+      }
+    }
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.notifications.send.createInAppNotification,
+      {
+        userId: store.owner_id,
+        type: "storage_validated",
+        title: "Produit en stock (démo)",
+        body: `${request.storage_code} — Votre produit est maintenant disponible en entrepôt.`,
+        channels: ["in_app"],
+        sentVia: ["in_app"],
+        metadata: undefined,
+      },
+    );
+  },
+});
+
+/**
+ * Internal — forces pending_balance → balance for a demo store.
+ * Simulates the 48h release cron without the delay.
+ */
+export const forceBalanceRelease = internalMutation({
+  args: { storeId: v.id("stores") },
+  handler: async (ctx, { storeId }) => {
+    const store = await ctx.db.get(storeId);
+    if (!store?.is_demo) throw new Error("Réservé aux comptes démo");
+    if (store.pending_balance <= 0) throw new Error("Aucun solde en attente");
+
+    const releasable = store.pending_balance;
+    const balanceAfter = store.balance + releasable;
+
+    await ctx.db.insert("transactions", {
+      store_id: storeId,
+      type: "credit",
+      direction: "credit",
+      amount: releasable,
+      currency: store.currency,
+      balance_before: store.balance,
+      balance_after: balanceAfter,
+      status: "completed",
+      description: "Déblocage manuel démo",
+      processed_at: Date.now(),
+    });
+
+    await ctx.db.patch(storeId, {
+      balance: balanceAfter,
+      pending_balance: 0,
+      updated_at: Date.now(),
+    });
+  },
+});
+
+/**
+ * Internal — confirms a pending demo payout without going through Moneroo.
+ */
+export const forcePayoutConfirmed = internalMutation({
+  args: { payoutId: v.id("payouts") },
+  handler: async (ctx, { payoutId }) => {
+    const payout = await ctx.db.get(payoutId);
+    if (!payout) throw new Error("Virement introuvable");
+
+    const store = await ctx.db.get(payout.store_id);
+    if (!store?.is_demo) throw new Error("Réservé aux comptes démo");
+    if (payout.status !== "pending") throw new Error("Virement non en attente");
+
+    await ctx.runMutation(internal.payouts.mutations.confirmPayout, {
+      payoutId,
+      externalRef: `DEMO-PAYOUT-${Date.now()}`,
     });
   },
 });
