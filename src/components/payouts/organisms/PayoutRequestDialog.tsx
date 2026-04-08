@@ -41,13 +41,13 @@ const METHOD_META: Record<string, MethodMeta> = {
   mtn_bj: {
     field: "msisdn",
     label: "Numéro MTN",
-    example: "229XXXXXXXXX",
+    example: "22901XXXXXXXX",
     currency: "XOF",
   },
   moov_bj: {
     field: "msisdn",
     label: "Numéro Moov",
-    example: "229XXXXXXXXX",
+    example: "22901XXXXXXXX",
     currency: "XOF",
   },
   mtn_ci: {
