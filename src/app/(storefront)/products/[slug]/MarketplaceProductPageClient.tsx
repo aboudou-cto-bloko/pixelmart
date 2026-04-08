@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, usePreloadedQuery, useMutation } from "convex/react";
 import { VariantSelector } from "@/components/products/VariantSelector";
+import { RichTextViewer } from "@/components/products/RichTextViewer";
 import type { Preloaded } from "convex/react";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useCart } from "@/hooks/useCart";
@@ -723,10 +724,7 @@ export function MarketplaceProductPageClient({
           <div>
             <h2 className="text-base font-semibold mb-4">Description</h2>
             <div className="overflow-x-hidden">
-              <div
-                className="prose prose-sm max-w-none text-left prose-headings:text-foreground prose-headings:font-semibold prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground prose-p:text-muted-foreground prose-p:leading-relaxed prose-img:rounded-lg prose-img:my-4 prose-img:max-w-full prose-img:h-auto [&_img]:max-w-full [&_img]:h-auto [&_img]:w-auto [&_img]:block [&_img]:mx-auto [&_figure]:max-w-full [&_figure]:overflow-hidden"
-                dangerouslySetInnerHTML={{ __html: product.description }}
-              />
+              <RichTextViewer content={product.description} />
             </div>
           </div>
         </>

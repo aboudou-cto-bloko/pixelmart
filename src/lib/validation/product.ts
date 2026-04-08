@@ -17,6 +17,7 @@ const ALLOWED_TAGS = [
   "ul",
   "ol",
   "li",
+  "h1",
   "h2",
   "h3",
   "h4",
@@ -27,14 +28,39 @@ const ALLOWED_TAGS = [
   "img",
   "span",
   "mark",
+  "hr",
+  "code",
+  "pre",
 ];
 
-const ALLOWED_ATTR = ["style", "href", "target", "rel", "src", "alt", "class"];
+const ALLOWED_ATTR = [
+  "style",
+  "href",
+  "target",
+  "rel",
+  "src",
+  "alt",
+  "class",
+  "width",
+  "height",
+];
 
 /**
  * Sanitizes HTML content to prevent XSS attacks
  */
 export function sanitizeHTML(html: string): string {
+  // JSON content (TipTap JSON) — pass through, sanitized server-side
+  if (html.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(html) as { type?: string };
+      if (parsed && typeof parsed === "object" && parsed.type === "doc") {
+        return html;
+      }
+    } catch {
+      // Not valid JSON — fall through to HTML sanitization
+    }
+  }
+
   if (typeof window === "undefined") {
     // Server-side: basic tag stripping (fallback)
     return html.replace(/<[^>]*>/g, "");
@@ -93,7 +119,7 @@ export const productFormSchema = z
     description: z
       .string()
       .min(10, "La description doit contenir au moins 10 caractères")
-      .max(10000, "La description ne peut pas dépasser 10 000 caractères")
+      .max(50000, "La description est trop longue")
       .transform(sanitizeHTML),
 
     shortDescription: z
