@@ -99,8 +99,67 @@ export async function generateProductSlug(
  * Server-side HTML sanitization to prevent XSS attacks.
  * Allows TipTap-generated tags with safe attributes only.
  */
+/**
+ * Sanitizes TipTap JSON content by walking the node tree and cleaning
+ * dangerous attribute values (javascript: URLs, event handlers, etc.)
+ */
+function sanitizeJSONContent(json: string): string {
+  try {
+    const doc = JSON.parse(json) as Record<string, unknown>;
+    if (!doc || typeof doc !== "object" || doc.type !== "doc") return json;
+    sanitizeNode(doc);
+    return JSON.stringify(doc);
+  } catch {
+    return json;
+  }
+}
+
+function sanitizeNode(node: Record<string, unknown>): void {
+  const attrs = node.attrs as Record<string, unknown> | undefined;
+  if (attrs) {
+    // Sanitize href — allow only http/https
+    if (typeof attrs.href === "string") {
+      if (!/^https?:\/\//i.test(attrs.href)) {
+        delete attrs.href;
+      }
+    }
+    // Sanitize src — allow only http/https
+    if (typeof attrs.src === "string") {
+      if (!/^https?:\/\//i.test(attrs.src)) {
+        delete attrs.src;
+      }
+    }
+    // Remove any event handler strings
+    for (const key of Object.keys(attrs)) {
+      if (key.startsWith("on")) {
+        delete attrs[key];
+      }
+    }
+  }
+  const content = node.content as Record<string, unknown>[] | undefined;
+  if (Array.isArray(content)) {
+    for (const child of content) {
+      if (child && typeof child === "object") {
+        sanitizeNode(child);
+      }
+    }
+  }
+  const marks = node.marks as Record<string, unknown>[] | undefined;
+  if (Array.isArray(marks)) {
+    for (const mark of marks) {
+      if (mark && typeof mark === "object") {
+        sanitizeNode(mark);
+      }
+    }
+  }
+}
+
 export function sanitizeHTML(html: string): string {
   if (!html) return "";
+  // Handle JSON content (TipTap JSON format)
+  if (html.startsWith("{")) {
+    return sanitizeJSONContent(html);
+  }
 
   // Remove script/style tags and their content
   let sanitized = html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, "");
@@ -121,6 +180,7 @@ export function sanitizeHTML(html: string): string {
     "u",
     "s",
     "ul",
+    "h1",
     "ol",
     "li",
     "h2",
@@ -133,10 +193,13 @@ export function sanitizeHTML(html: string): string {
     "img",
     "span",
     "mark",
+    "hr",
+    "code",
+    "pre",
   ]);
 
-  // Safe style properties allowed on any element (TipTap text-align + color)
-  const safeStyleProps = /^(color|text-align)\s*:/i;
+  // Safe style properties allowed on any element (TipTap text-align + color + image sizing)
+  const safeStyleProps = /^(color|text-align|width|height|max-width)\s*:/i;
 
   function sanitizeStyleAttr(style: string): string {
     return (

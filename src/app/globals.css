@@ -360,6 +360,23 @@
   color: var(--primary) !important;
 }
 
+/* ── Novel / TipTap editor placeholder ── */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap p.is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+}
+
 .force-dark-theme p,
 .force-dark-theme span,
 .force-dark-theme li {

@@ -7,6 +7,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { formatPrice, formatDate } from "@/lib/format";
+import { RichTextViewer } from "@/components/products/RichTextViewer";
 import {
   Table,
   TableBody,
@@ -329,10 +330,7 @@ function ProductPreviewModal({
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
                       Description
                     </p>
-                    <div
-                      className="prose prose-sm max-w-none prose-headings:text-foreground prose-headings:font-semibold prose-p:text-muted-foreground prose-p:leading-relaxed prose-li:text-muted-foreground prose-strong:text-foreground prose-img:rounded-lg prose-img:my-3"
-                      dangerouslySetInnerHTML={{ __html: product.description }}
-                    />
+                    <RichTextViewer content={product.description} />
                   </div>
                 </>
               )}
