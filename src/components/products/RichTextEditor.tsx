@@ -27,6 +27,7 @@ import {
   HighlightExtension,
   TiptapUnderline,
   TextStyle,
+  Command,
   Color,
 } from "novel";
 import TextAlign from "@tiptap/extension-text-align";
@@ -159,6 +160,7 @@ const extensions = [
   TiptapUnderline,
   TextStyle,
   Color,
+  Command,
   TextAlign.configure({
     types: ["heading", "paragraph"],
   }),
