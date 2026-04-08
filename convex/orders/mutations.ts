@@ -547,19 +547,20 @@ export const createOrder = mutation({
     }
 
     // Pour les commandes en ligne (paiement non encore confirmé), notifier le vendeur
-    // qu'une commande est en attente de paiement (in-app + push uniquement — pas d'email
+    // avec un message enthousiaste (in-app + push uniquement — pas d'email
     // pour éviter le spam sur les commandes abandonnées).
     if (paymentMode === "online") {
       const vendor = await ctx.db.get(store.owner_id);
       if (vendor) {
+        const customerName = user.name ?? "Un client";
         await ctx.scheduler.runAfter(
           0,
           internal.notifications.send.createInAppNotification,
           {
             userId: vendor._id,
             type: "order_status",
-            title: `Commande ${orderNumber} en attente`,
-            body: `${user.name ?? "Client"} — paiement en cours (${orderNumber})`,
+            title: `Woohoo ! Nouvelle commande en route !`,
+            body: `${customerName} est en train de finaliser son paiement — commande ${orderNumber}`,
             link: `/vendor/orders`,
             channels: ["in_app", "push"],
             sentVia: ["in_app"],
@@ -568,8 +569,8 @@ export const createOrder = mutation({
         );
         await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
           userId: vendor._id,
-          title: `Commande en attente de paiement`,
-          body: `${user.name ?? "Client"} a lancé le paiement pour la commande ${orderNumber}.`,
+          title: `Woohoo ! Nouvelle commande !`,
+          body: `${customerName} finalise son paiement pour la commande ${orderNumber}.`,
           url: "/vendor/orders",
         });
       }
