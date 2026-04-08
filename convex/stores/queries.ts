@@ -167,6 +167,7 @@ export const getBySlug = query({
       has_storage_plan: store.has_storage_plan,
       custom_pickup_lat: store.custom_pickup_lat,
       custom_pickup_lon: store.custom_pickup_lon,
+      is_demo: store.is_demo ?? false,
     };
   },
 });

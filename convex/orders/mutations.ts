@@ -1116,6 +1116,13 @@ export const confirmDelivery = mutation({
           },
         );
       }
+
+      // Compte démo : libère immédiatement le pending_balance sans attendre le cron 48h
+      if (store.is_demo && store.pending_balance > 0) {
+        ctx.scheduler.runAfter(0, internal.demo.mutations.forceBalanceRelease, {
+          storeId: store._id,
+        });
+      }
     }
 
     return { success: true };
