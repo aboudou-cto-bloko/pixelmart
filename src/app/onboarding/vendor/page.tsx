@@ -71,8 +71,8 @@ function VendorOnboardingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  // Lire le code d'affiliation une seule fois au mount (lazy initializer évite setState-in-effect)
-  const [affiliateCode] = useState<string | null>(() => {
+  // Lire le code d'affiliation une seule fois au mount, modifiable manuellement
+  const [affiliateCode, setAffiliateCode] = useState<string>(() => {
     const urlRef = searchParams.get("ref");
     if (urlRef) {
       if (typeof window !== "undefined") {
@@ -81,8 +81,8 @@ function VendorOnboardingForm() {
       return urlRef;
     }
     return typeof window !== "undefined"
-      ? localStorage.getItem("pm_affiliate_code")
-      : null;
+      ? (localStorage.getItem("pm_affiliate_code") ?? "")
+      : "";
   });
 
   const [formData, setFormData] = useState<VendorOnboardingValues>({
@@ -198,7 +198,7 @@ function VendorOnboardingForm() {
           serviceMode === "delivery_only" ? customPickup?.lon : undefined,
         custom_pickup_label:
           serviceMode === "delivery_only" ? customPickup?.label : undefined,
-        affiliate_code: affiliateCode ?? undefined,
+        affiliate_code: affiliateCode.trim() || undefined,
       });
 
       // Supprimer le code d'affiliation du localStorage après utilisation
@@ -286,7 +286,7 @@ function VendorOnboardingForm() {
             {/* Step 1 — Store name */}
             {step === 1 && (
               <div className="space-y-4">
-                {affiliateCode && (
+                {affiliateCode.trim() && (
                   <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary">
                     <Handshake className="h-4 w-4 shrink-0" />
                     <span>
@@ -574,6 +574,37 @@ function VendorOnboardingForm() {
                   />
                   <p className="text-xs text-muted-foreground">
                     {(formData.description ?? "").length}/500 caractères
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="affiliate_code"
+                    className="flex items-center gap-2"
+                  >
+                    <Handshake className="size-4 text-primary" />
+                    Code de parrainage{" "}
+                    <span className="text-muted-foreground">(optionnel)</span>
+                  </Label>
+                  <Input
+                    id="affiliate_code"
+                    placeholder="ex: PM-AFF-XXXXXX"
+                    value={affiliateCode}
+                    onChange={(e) => {
+                      setAffiliateCode(e.target.value.toUpperCase());
+                      if (e.target.value) {
+                        localStorage.setItem(
+                          "pm_affiliate_code",
+                          e.target.value.toUpperCase(),
+                        );
+                      } else {
+                        localStorage.removeItem("pm_affiliate_code");
+                      }
+                    }}
+                    maxLength={30}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Si quelqu&apos;un vous a parrainé, entrez son code ici.
                   </p>
                 </div>
               </div>

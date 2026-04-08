@@ -59,7 +59,7 @@ export default function AdminAffiliateLinkDetailPage() {
                 </p>
                 <AffiliateCodeCard
                   code={link.code}
-                  referral_url={`${siteUrl}/onboarding/vendor?ref=${link.code}`}
+                  referral_url={`${siteUrl}/register?ref=${link.code}`}
                 />
               </div>
               <div className="flex justify-between">
