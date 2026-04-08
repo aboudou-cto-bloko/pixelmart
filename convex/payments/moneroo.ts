@@ -414,9 +414,10 @@ export const requestRefund = internalAction({
     };
 
     // recipient.msisdn requis pour les méthodes mobile money
+    // Normalisation complète : strip +, espaces, tirets, parenthèses
     const phone = order.customer_phone;
     if (phone) {
-      payload.recipient = { msisdn: phone.replace(/^\+/, "") };
+      payload.recipient = { msisdn: phone.replace(/[^\d]/g, "") };
     }
 
     let response: Response;
