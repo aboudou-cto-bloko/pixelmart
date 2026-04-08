@@ -86,6 +86,8 @@ export const confirmPayment = internalMutation({
     const balanceBefore = store.pending_balance;
     const balanceAfter = balanceBefore + netAmount;
 
+    const isDemoStore = store.is_demo === true;
+
     await ctx.db.insert("transactions", {
       store_id: store._id,
       order_id: args.orderId,
@@ -99,6 +101,7 @@ export const confirmPayment = internalMutation({
       reference: args.paymentReference,
       description: `Vente commande ${order.order_number}`,
       processed_at: Date.now(),
+      is_demo: isDemoStore ? true : undefined,
     });
 
     // 5. F-01 : Transaction "fee" — commission Pixel-Mart
@@ -116,6 +119,7 @@ export const confirmPayment = internalMutation({
         reference: args.paymentReference,
         description: `Commission Pixel-Mart commande ${order.order_number}`,
         processed_at: Date.now(),
+        is_demo: isDemoStore ? true : undefined,
       });
     }
 
