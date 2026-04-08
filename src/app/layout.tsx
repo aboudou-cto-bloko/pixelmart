@@ -9,6 +9,7 @@ import { ConvexClientProvider } from "./ConvexClientProvider";
 import { CartProvider } from "@/providers/CartProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Toaster } from "sonner";
+import { AppIntro } from "@/components/atoms/AppIntro";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -132,6 +133,7 @@ export default function RootLayout({
             <ErrorBoundary>
               <CartProvider>
                 <TooltipProvider>
+                  <AppIntro />
                   {children}
                   <Toaster richColors position="bottom-right" />
                 </TooltipProvider>
