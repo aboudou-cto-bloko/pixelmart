@@ -95,6 +95,44 @@ export const createAffiliateLink = mutation({
   },
 });
 
+// ─── Admin: supprimer un lien affilié ────────────────────────
+
+export const deleteAffiliateLink = mutation({
+  args: { link_id: v.id("affiliate_links") },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx);
+    const link = await ctx.db.get(args.link_id);
+    if (!link) throw new Error("Lien introuvable");
+
+    // Détacher les boutiques qui référencent ce lien
+    const stores = await ctx.db
+      .query("stores")
+      .filter((q) => q.eq(q.field("affiliate_link_id"), args.link_id))
+      .collect();
+    for (const store of stores) {
+      await ctx.db.patch(store._id, {
+        affiliate_link_id: undefined,
+        affiliate_commission_rate_bp: undefined,
+      });
+    }
+
+    // Annuler les commissions pending liées à ce lien
+    const pendingCommissions = await ctx.db
+      .query("affiliate_commissions")
+      .withIndex("by_affiliate_link", (q) =>
+        q.eq("affiliate_link_id", args.link_id),
+      )
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+    const now = Date.now();
+    for (const c of pendingCommissions) {
+      await ctx.db.patch(c._id, { status: "cancelled", updated_at: now });
+    }
+
+    await ctx.db.delete(args.link_id);
+  },
+});
+
 // ─── Admin: activer / désactiver un lien ─────────────────────
 
 export const toggleAffiliateLink = mutation({

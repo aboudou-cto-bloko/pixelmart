@@ -16,7 +16,18 @@ import {
 } from "@/components/ui/table";
 import { AffiliateLinkBadge } from "../molecules/AffiliateLinkBadge";
 import { AffiliateCodeCard } from "../molecules/AffiliateCodeCard";
-import { ToggleLeft, ToggleRight, ChevronRight } from "lucide-react";
+import { ToggleLeft, ToggleRight, ChevronRight, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
@@ -39,6 +50,7 @@ export function AdminAffiliateLinkTable({
   links,
 }: AdminAffiliateLinkTableProps) {
   const toggleLink = useMutation(api.affiliate.mutations.toggleAffiliateLink);
+  const deleteLink = useMutation(api.affiliate.mutations.deleteAffiliateLink);
 
   async function handleToggle(linkId: Id<"affiliate_links">, current: boolean) {
     try {
@@ -46,6 +58,15 @@ export function AdminAffiliateLinkTable({
       toast.success(current ? "Lien désactivé" : "Lien activé");
     } catch {
       toast.error("Erreur lors de la mise à jour");
+    }
+  }
+
+  async function handleDelete(linkId: Id<"affiliate_links">) {
+    try {
+      await deleteLink({ link_id: linkId });
+      toast.success("Lien supprimé");
+    } catch {
+      toast.error("Erreur lors de la suppression");
     }
   }
 
@@ -106,6 +127,7 @@ export function AdminAffiliateLinkTable({
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => handleToggle(link._id, link.is_active)}
+                    title={link.is_active ? "Désactiver" : "Activer"}
                   >
                     {link.is_active ? (
                       <ToggleRight className="h-4 w-4 text-green-600" />
@@ -113,6 +135,41 @@ export function AdminAffiliateLinkTable({
                       <ToggleLeft className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer ce lien ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Le lien{" "}
+                          <span className="font-mono font-semibold">
+                            {link.code}
+                          </span>{" "}
+                          sera supprimé définitivement. Les boutiques affiliées
+                          via ce lien perdront leur statut de filleul. Les
+                          commissions en attente seront annulées.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(link._id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <Button
                     variant="ghost"
                     size="icon"
