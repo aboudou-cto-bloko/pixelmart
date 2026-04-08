@@ -9,7 +9,7 @@ import {
   Color,
   HighlightExtension,
   TiptapLink,
-  TiptapImage,
+  UpdatedImage,
   type JSONContent,
 } from "novel";
 import TextAlign from "@tiptap/extension-text-align";
@@ -32,7 +32,7 @@ const viewerExtensions = [
       rel: "noopener noreferrer",
     },
   }),
-  TiptapImage.configure({
+  UpdatedImage.configure({
     inline: false,
     allowBase64: false,
   }),
