@@ -1,17 +1,55 @@
+// filepath: components/products/ProductDescriptionEditor.tsx
+
 "use client";
 
 import { RichTextEditor } from "./RichTextEditor";
+import type { JSONContent } from "novel";
 
 interface ProductDescriptionEditorProps {
   value: string;
   onChange: (html: string) => void;
 }
 
-function getTextLength(html: string): number {
-  if (typeof window === "undefined") return 0;
-  const div = document.createElement("div");
-  div.innerHTML = html;
-  return (div.textContent ?? "").length;
+/**
+ * Extrait le texte brut depuis un document TipTap (format JSON)
+ */
+function extractTextFromJSON(node: JSONContent): string {
+  let text = "";
+  if (node.type === "text" && node.text) {
+    text += node.text;
+  }
+  if (node.content && Array.isArray(node.content)) {
+    for (const child of node.content) {
+      text += " " + extractTextFromJSON(child);
+    }
+  }
+  return text.trim();
+}
+
+/**
+ * Calcule la longueur du texte contenu dans une chaîne qui peut être
+ * soit du JSON TipTap, soit du HTML (legacy).
+ */
+function getTextLength(content: string): number {
+  if (!content) return 0;
+
+  // Essayer de parser comme JSON TipTap
+  try {
+    const parsed = JSON.parse(content) as JSONContent;
+    if (parsed && typeof parsed === "object" && parsed.type === "doc") {
+      return extractTextFromJSON(parsed).length;
+    }
+  } catch {
+    // Ce n'est pas du JSON -> traiter comme HTML
+  }
+
+  // Fallback: supprimer les balises HTML
+  if (typeof window !== "undefined") {
+    const div = document.createElement("div");
+    div.innerHTML = content;
+    return (div.textContent ?? "").length;
+  }
+  return content.replace(/<[^>]*>/g, "").length;
 }
 
 function CharCounter({ html }: { html: string }) {
@@ -30,7 +68,9 @@ function CharCounter({ html }: { html: string }) {
     <div className="flex items-center justify-between text-xs mt-1.5">
       <span className={countColor}>{count} caractères</span>
       {showSeoHint && (
-        <span className="text-green-600">✓ Longueur idéale pour la conversion</span>
+        <span className="text-green-600">
+          ✓ Longueur idéale pour la conversion
+        </span>
       )}
     </div>
   );
