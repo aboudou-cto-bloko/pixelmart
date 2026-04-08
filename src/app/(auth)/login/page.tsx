@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,22 @@ import {
 } from "@/lib/validation/auth";
 import { z } from "zod";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+
+  // Si le callbackUrl contient un ?ref=, le stocker en localStorage pour l'onboarding
+  useEffect(() => {
+    try {
+      const url = new URL(callbackUrl, window.location.origin);
+      const ref = url.searchParams.get("ref");
+      if (ref) localStorage.setItem("pm_affiliate_code", ref);
+    } catch {
+      // callbackUrl invalide, on ignore
+    }
+  }, [callbackUrl]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -73,14 +87,14 @@ export default function LoginPage() {
       const { error: signInError } = await authClient.signIn.email({
         email: validatedData.email,
         password: validatedData.password,
-        callbackURL: "/dashboard",
+        callbackURL: callbackUrl,
       });
 
       setIsLoading(false);
       if (signInError) {
         setError(getSafeErrorMessage(signInError));
       } else {
-        router.push("/dashboard");
+        router.push(callbackUrl);
       }
     } catch (err) {
       setIsLoading(false);
@@ -183,7 +197,17 @@ export default function LoginPage() {
         <p className="text-sm text-muted-foreground">
           Pas encore de compte ?{" "}
           <Link
-            href="/register"
+            href={(() => {
+              try {
+                const ref = new URL(
+                  callbackUrl,
+                  window.location.origin,
+                ).searchParams.get("ref");
+                return ref ? `/register?ref=${ref}` : "/register";
+              } catch {
+                return "/register";
+              }
+            })()}
             className="underline text-foreground hover:text-primary"
           >
             S&apos;inscrire
@@ -191,5 +215,13 @@ export default function LoginPage() {
         </p>
       </CardFooter>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
