@@ -16,6 +16,17 @@ function getMonerooKey(): string {
 
 // ─── Initialize Payout via Moneroo ──────────────────────────
 
+/** Champ recipient attendu par Moneroo selon le code de méthode */
+function getRecipientField(method: string): "msisdn" | "account_number" {
+  if (method === "moneroo_payout_demo") return "account_number";
+  return "msisdn";
+}
+
+/** Normalise un numéro de téléphone en entier international (ex: "229 97 00 00 00" → "22997000000") */
+function normalizePhoneNumber(phone: string): string {
+  return phone.replace(/[^\d]/g, "");
+}
+
 export const initializePayoutViaMoneroo = internalAction({
   args: {
     payoutId: v.id("payouts"),
@@ -33,10 +44,11 @@ export const initializePayoutViaMoneroo = internalAction({
 
     const monerooAmount = centimesToMonerooAmount(args.amount, args.currency);
 
-    // Construire le recipient selon la méthode
+    // Construire le recipient avec le bon champ selon l'opérateur
     const recipient: Record<string, string> = {};
     if (args.phoneNumber) {
-      recipient.msisdn = args.phoneNumber;
+      const field = getRecipientField(args.method);
+      recipient[field] = normalizePhoneNumber(args.phoneNumber);
     }
 
     // Séparer le nom en first/last
