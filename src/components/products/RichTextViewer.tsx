@@ -68,14 +68,19 @@ export function RichTextViewer({ content, className }: RichTextViewerProps) {
   return (
     <div
       className={cn(
-        "prose prose-sm sm:prose-base max-w-none",
+        "prose prose-sm sm:prose-base max-w-none dark:prose-invert",
         "prose-headings:text-foreground prose-headings:font-semibold",
         "prose-p:text-muted-foreground prose-p:leading-relaxed",
         "prose-a:text-primary prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-primary/80",
         "prose-strong:text-foreground",
+        "prose-em:text-muted-foreground",
+        "prose-li:text-muted-foreground",
         "prose-img:rounded-lg prose-img:max-w-full prose-img:mx-auto",
-        "prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic",
-        "prose-mark:bg-yellow-200 prose-mark:px-1 prose-mark:rounded-sm",
+        "prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-muted-foreground",
+        "prose-mark:bg-yellow-200 prose-mark:text-yellow-900 dark:prose-mark:bg-yellow-800 dark:prose-mark:text-yellow-100 prose-mark:px-1 prose-mark:rounded-sm",
+        "prose-code:bg-muted prose-code:text-foreground prose-code:rounded-md prose-code:px-1.5 prose-code:py-0.5",
+        "prose-pre:bg-muted prose-pre:text-foreground",
+        "prose-hr:border-border",
         "prose-ul:list-disc prose-ol:list-decimal",
         className,
       )}

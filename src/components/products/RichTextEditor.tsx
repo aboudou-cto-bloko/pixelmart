@@ -132,7 +132,7 @@ const extensions = [
       },
     },
     horizontalRule: false,
-    dropcursor: { color: "#DBEAFE", width: 4 },
+    dropcursor: { color: "oklch(0.75 0.18 70)", width: 4 },
   }),
   TiptapLink.configure({
     autolink: true,
@@ -559,7 +559,7 @@ export function RichTextEditor({
         <EditorContent
           initialContent={initialContent}
           extensions={extensions}
-          className="prose prose-sm max-w-none"
+          className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-em:text-muted-foreground prose-li:text-muted-foreground prose-mark:bg-yellow-200 prose-mark:text-yellow-900 dark:prose-mark:bg-yellow-800 dark:prose-mark:text-yellow-100 prose-code:bg-muted prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground prose-hr:border-border prose-blockquote:text-muted-foreground"
           editorProps={{
             handleDOMEvents: {
               keydown: (_view, event) =>
