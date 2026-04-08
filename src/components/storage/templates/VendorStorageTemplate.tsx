@@ -26,6 +26,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatPrice, formatDate } from "@/lib/format";
 import {
   Plus,
@@ -97,30 +104,38 @@ const STATUS_BADGE: Record<
 
 function NewRequestDialog() {
   const [open, setOpen] = useState(false);
-  const [productName, setProductName] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [estimatedQty, setEstimatedQty] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<{ storageCode: string } | null>(null);
 
   const createRequest = useMutation(api.storage.mutations.createRequest);
+  const products = useQuery(api.products.queries.listByStore, {
+    status: "active",
+  });
+
+  const selectedProduct = products?.find((p) => p._id === selectedProductId);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!productName.trim()) return;
+    if (!selectedProduct) return;
     setIsSubmitting(true);
     try {
       const res = await createRequest({
-        product_name: productName.trim(),
+        product_name: selectedProduct.title,
+        product_id: selectedProduct._id as Id<"products">,
         estimated_qty: estimatedQty ? Number(estimatedQty) : undefined,
         notes: notes.trim() || undefined,
       });
       setResult({ storageCode: res.storageCode });
-      setProductName("");
+      setSelectedProductId("");
       setEstimatedQty("");
       setNotes("");
     } catch (err) {
-      console.error(err);
+      toast.error(
+        err instanceof Error ? err.message : "Erreur lors de la création",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -165,15 +180,30 @@ function NewRequestDialog() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="productName">Nom du produit *</Label>
-              <Input
-                id="productName"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="Ex : Robe Wax Premium"
-                maxLength={200}
-                required
-              />
+              <Label htmlFor="productSelect">Produit *</Label>
+              {products === undefined ? (
+                <div className="h-9 rounded-md border bg-muted animate-pulse" />
+              ) : products.length === 0 ? (
+                <p className="text-sm text-muted-foreground rounded-md border px-3 py-2">
+                  Aucun produit actif dans votre boutique.
+                </p>
+              ) : (
+                <Select
+                  value={selectedProductId}
+                  onValueChange={setSelectedProductId}
+                >
+                  <SelectTrigger id="productSelect">
+                    <SelectValue placeholder="Sélectionner un produit…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((p) => (
+                      <SelectItem key={p._id} value={p._id}>
+                        {p.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="estimatedQty">Quantité estimée (optionnel)</Label>
@@ -206,7 +236,7 @@ function NewRequestDialog() {
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !productName.trim()}
+                disabled={isSubmitting || !selectedProductId}
               >
                 {isSubmitting ? "Création…" : "Créer la demande"}
               </Button>
