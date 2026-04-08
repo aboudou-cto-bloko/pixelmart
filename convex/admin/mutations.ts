@@ -1015,6 +1015,29 @@ export const deleteUser = mutation({
       });
     }
 
+    // ── Demo account: schedule store + data purge before deleting user ────
+    if (user.is_demo) {
+      const demoStore = await ctx.db
+        .query("stores")
+        .withIndex("by_owner", (q) => q.eq("owner_id", args.userId))
+        .filter((q) => q.eq(q.field("is_demo"), true))
+        .first();
+      if (demoStore) {
+        ctx.scheduler.runAfter(0, internal.demo.mutations.deleteStoreDemoData, {
+          storeId: demoStore._id,
+          alsoDeleteStore: true,
+        });
+      }
+      // Mark the demo invite as expired
+      const invite = await ctx.db
+        .query("demo_invites")
+        .collect()
+        .then((all) => all.find((i) => i.used_by === args.userId));
+      if (invite) {
+        await ctx.db.patch(invite._id, { status: "expired" });
+      }
+    }
+
     // ── App-level cleanup ─────────────────────────────────────
     const notifs = await ctx.db
       .query("notifications")

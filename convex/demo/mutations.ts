@@ -158,8 +158,12 @@ export const revokeInvite = mutation({
  * Called by the resetDemoData action.
  */
 export const deleteStoreDemoData = internalMutation({
-  args: { storeId: v.id("stores") },
-  handler: async (ctx, { storeId }) => {
+  args: {
+    storeId: v.id("stores"),
+    /** When true, deletes the store record itself after cleaning up its data. */
+    alsoDeleteStore: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { storeId, alsoDeleteStore }) => {
     const store = await ctx.db.get(storeId);
     if (!store?.is_demo) throw new Error("Boutique non démo");
 
@@ -259,14 +263,19 @@ export const deleteStoreDemoData = internalMutation({
       .collect();
     await deleteAll(payouts);
 
-    // Reset store financials
-    await ctx.db.patch(storeId, {
-      balance: 0,
-      pending_balance: 0,
-      total_orders: 0,
-      avg_rating: 0,
-      updated_at: Date.now(),
-    });
+    if (alsoDeleteStore) {
+      // Full deletion: remove the store record entirely
+      await ctx.db.delete(storeId);
+    } else {
+      // Reset only: keep the store but zero-out financials (used by resetDemoData)
+      await ctx.db.patch(storeId, {
+        balance: 0,
+        pending_balance: 0,
+        total_orders: 0,
+        avg_rating: 0,
+        updated_at: Date.now(),
+      });
+    }
   },
 });
 

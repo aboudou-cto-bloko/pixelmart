@@ -60,6 +60,7 @@ export default function ShopCheckoutPage() {
   const initializePayment = useAction(
     api.payments.moneroo.initializeShopPayment,
   );
+  const simulatePayment = useAction(api.demo.actions.simulatePayment);
 
   const [address, setAddress] = useState<ShippingAddress>(() => ({
     full_name: user?.name ?? "",
@@ -260,7 +261,17 @@ export default function ShopCheckoutPage() {
         return;
       }
 
-      // Online payment → redirect to Moneroo
+      // Online payment
+      if (store?.is_demo) {
+        // Compte démo — simuler le paiement sans Moneroo
+        await simulatePayment({ orderId: orderId as Id<"orders"> });
+        clearCart();
+        router.push(
+          `${SHOP_ROUTES.CONFIRMATION(storeSlug)}?order=${orderId}&paid=true`,
+        );
+        return;
+      }
+
       const { checkoutUrl } = await initializePayment({
         orderId,
         storeSlug,

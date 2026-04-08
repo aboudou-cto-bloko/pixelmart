@@ -7,7 +7,15 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-import { Users, Search, Trash2, ShieldOff, ShieldCheck, X } from "lucide-react";
+import {
+  Users,
+  Search,
+  Trash2,
+  ShieldOff,
+  ShieldCheck,
+  X,
+  FlaskConical,
+} from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { useBulkSelection } from "@/hooks/useBulkSelection";
 import {
@@ -58,14 +66,14 @@ type UserRole =
   | "agent";
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  admin:     "Super Admin",
-  finance:   "Financier",
+  admin: "Super Admin",
+  finance: "Financier",
   logistics: "Logistique",
   developer: "Développeur",
   marketing: "Marketing",
-  vendor:    "Vendeur",
-  customer:  "Client",
-  agent:     "Agent",
+  vendor: "Vendeur",
+  customer: "Client",
+  agent: "Agent",
 };
 
 type UserItem = {
@@ -75,6 +83,7 @@ type UserItem = {
   role: UserRole;
   is_banned: boolean;
   is_verified: boolean;
+  is_demo: boolean;
   _creationTime: number;
   last_login_at: number | undefined;
 };
@@ -87,21 +96,27 @@ interface Props {
 
 function RoleBadge({ role }: { role: UserRole }) {
   const map: Record<UserRole, string> = {
-    admin:     "bg-red-100 text-red-700 border-red-300",
-    finance:   "bg-emerald-100 text-emerald-700 border-emerald-300",
+    admin: "bg-red-100 text-red-700 border-red-300",
+    finance: "bg-emerald-100 text-emerald-700 border-emerald-300",
     logistics: "bg-blue-100 text-blue-700 border-blue-300",
     developer: "bg-violet-100 text-violet-700 border-violet-300",
     marketing: "bg-orange-100 text-orange-700 border-orange-300",
-    vendor:    "bg-purple-100 text-purple-700 border-purple-300",
-    customer:  "bg-slate-100 text-slate-700 border-slate-300",
-    agent:     "bg-amber-100 text-amber-700 border-amber-300",
+    vendor: "bg-purple-100 text-purple-700 border-purple-300",
+    customer: "bg-slate-100 text-slate-700 border-slate-300",
+    agent: "bg-amber-100 text-amber-700 border-amber-300",
   };
   return <Badge className={map[role]}>{ROLE_LABELS[role]}</Badge>;
 }
 
 // ─── Change Role Dialog ───────────────────────────────────────
 
-function ChangeRoleDialog({ user, onClose }: { user: UserItem | null; onClose: () => void }) {
+function ChangeRoleDialog({
+  user,
+  onClose,
+}: {
+  user: UserItem | null;
+  onClose: () => void;
+}) {
   const changeRole = useMutation(api.admin.mutations.changeUserRole);
   const [role, setRole] = useState<UserRole | "">("");
   const [loading, setLoading] = useState(false);
@@ -125,11 +140,21 @@ function ChangeRoleDialog({ user, onClose }: { user: UserItem | null; onClose: (
   };
 
   return (
-    <Dialog open={!!user} onOpenChange={() => { onClose(); setRole(""); setError(null); }}>
+    <Dialog
+      open={!!user}
+      onOpenChange={() => {
+        onClose();
+        setRole("");
+        setError(null);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Changer le rôle</DialogTitle>
-          <DialogDescription>Modifier le rôle de <span className="font-semibold">{user.name}</span></DialogDescription>
+          <DialogDescription>
+            Modifier le rôle de{" "}
+            <span className="font-semibold">{user.name}</span>
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm">
@@ -137,9 +162,13 @@ function ChangeRoleDialog({ user, onClose }: { user: UserItem | null; onClose: (
             <RoleBadge role={user.role} />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground w-24">Nouveau rôle</span>
+            <span className="text-sm text-muted-foreground w-24">
+              Nouveau rôle
+            </span>
             <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Choisir…" /></SelectTrigger>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Choisir…" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">👑 Super Admin</SelectItem>
                 <SelectItem value="finance">💰 Financier</SelectItem>
@@ -155,7 +184,9 @@ function ChangeRoleDialog({ user, onClose }: { user: UserItem | null; onClose: (
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Annuler
+          </Button>
           <Button onClick={handleSubmit} disabled={loading || !role}>
             {loading ? "Enregistrement…" : "Confirmer"}
           </Button>
@@ -167,7 +198,13 @@ function ChangeRoleDialog({ user, onClose }: { user: UserItem | null; onClose: (
 
 // ─── Ban Dialog ───────────────────────────────────────────────
 
-function BanDialog({ user, onClose }: { user: UserItem | null; onClose: () => void }) {
+function BanDialog({
+  user,
+  onClose,
+}: {
+  user: UserItem | null;
+  onClose: () => void;
+}) {
   const ban = useMutation(api.admin.mutations.banUser);
   const unban = useMutation(api.admin.mutations.unbanUser);
   const [loading, setLoading] = useState(false);
@@ -194,7 +231,9 @@ function BanDialog({ user, onClose }: { user: UserItem | null; onClose: () => vo
     <Dialog open={!!user} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isBanned ? "Débannir l'utilisateur" : "Bannir l'utilisateur"}</DialogTitle>
+          <DialogTitle>
+            {isBanned ? "Débannir l'utilisateur" : "Bannir l'utilisateur"}
+          </DialogTitle>
           <DialogDescription>
             {isBanned
               ? `${user.name} pourra à nouveau accéder à la plateforme.`
@@ -203,8 +242,14 @@ function BanDialog({ user, onClose }: { user: UserItem | null; onClose: () => vo
         </DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
-          <Button variant={isBanned ? "default" : "destructive"} onClick={handleAction} disabled={loading}>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Annuler
+          </Button>
+          <Button
+            variant={isBanned ? "default" : "destructive"}
+            onClick={handleAction}
+            disabled={loading}
+          >
             {loading ? "…" : isBanned ? "Débannir" : "Bannir"}
           </Button>
         </DialogFooter>
@@ -215,7 +260,13 @@ function BanDialog({ user, onClose }: { user: UserItem | null; onClose: () => vo
 
 // ─── Delete User Dialog ───────────────────────────────────────
 
-function DeleteUserDialog({ user, onClose }: { user: UserItem | null; onClose: () => void }) {
+function DeleteUserDialog({
+  user,
+  onClose,
+}: {
+  user: UserItem | null;
+  onClose: () => void;
+}) {
   const deleteUser = useMutation(api.admin.mutations.deleteUser);
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -238,19 +289,31 @@ function DeleteUserDialog({ user, onClose }: { user: UserItem | null; onClose: (
   };
 
   return (
-    <Dialog open={!!user} onOpenChange={() => { onClose(); setConfirm(""); setError(null); }}>
+    <Dialog
+      open={!!user}
+      onOpenChange={() => {
+        onClose();
+        setConfirm("");
+        setError(null);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-destructive">Supprimer le compte</DialogTitle>
+          <DialogTitle className="text-destructive">
+            Supprimer le compte
+          </DialogTitle>
           <DialogDescription>
             Cette action est <strong>irréversible</strong>. Le compte de{" "}
-            <span className="font-semibold">{user.name}</span> ({user.email}) sera
-            supprimé de la plateforme et de l'authentification. Les commandes existantes sont conservées.
+            <span className="font-semibold">{user.name}</span> ({user.email})
+            sera supprimé de la plateforme et de l'authentification. Les
+            commandes existantes sont conservées.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Saisissez <span className="font-mono font-semibold">{user.email}</span> pour confirmer
+            Saisissez{" "}
+            <span className="font-mono font-semibold">{user.email}</span> pour
+            confirmer
           </p>
           <Input
             value={confirm}
@@ -261,7 +324,9 @@ function DeleteUserDialog({ user, onClose }: { user: UserItem | null; onClose: (
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Annuler
+          </Button>
           <Button
             variant="destructive"
             onClick={handleDelete}
@@ -306,16 +371,25 @@ function BulkDeleteDialog({
     <Dialog open onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-destructive">Supprimer {count} compte{count > 1 ? "s" : ""}</DialogTitle>
+          <DialogTitle className="text-destructive">
+            Supprimer {count} compte{count > 1 ? "s" : ""}
+          </DialogTitle>
           <DialogDescription>
-            Cette action est irréversible. {count} compte{count > 1 ? "s" : ""} seront définitivement supprimés.
-            Les comptes administrateurs seront ignorés.
+            Cette action est irréversible. {count} compte{count > 1 ? "s" : ""}{" "}
+            seront définitivement supprimés. Les comptes administrateurs seront
+            ignorés.
           </DialogDescription>
         </DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
-          <Button variant="destructive" onClick={handleConfirm} disabled={loading}>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Annuler
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={loading}
+          >
             {loading ? "Suppression…" : "Confirmer la suppression"}
           </Button>
         </DialogFooter>
@@ -329,6 +403,7 @@ function BulkDeleteDialog({
 export function AdminUsersTemplate({ users }: Props) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  const [demoOnly, setDemoOnly] = useState(false);
   const router = useRouter();
   const [roleTarget, setRoleTarget] = useState<UserItem | null>(null);
   const [banTarget, setBanTarget] = useState<UserItem | null>(null);
@@ -345,11 +420,18 @@ export function AdminUsersTemplate({ users }: Props) {
       u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase());
     const matchRole = roleFilter === "all" || u.role === roleFilter;
-    return matchSearch && matchRole;
+    const matchDemo = !demoOnly || u.is_demo;
+    return matchSearch && matchRole && matchDemo;
   });
 
-  const { selectedIds, toggle, toggleAll, clear, isAllSelected, count: selectedCount } =
-    useBulkSelection();
+  const {
+    selectedIds,
+    toggle,
+    toggleAll,
+    clear,
+    isAllSelected,
+    count: selectedCount,
+  } = useBulkSelection();
 
   const filteredIds = filtered.map((u) => u._id);
   const allSelected = isAllSelected(filteredIds);
@@ -373,7 +455,9 @@ export function AdminUsersTemplate({ users }: Props) {
     <div className="space-y-6">
       {/* Heading */}
       <div>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Utilisateurs</h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          Utilisateurs
+        </h1>
         <p className="text-sm text-muted-foreground">
           {users.length} utilisateur{users.length !== 1 ? "s" : ""} au total
         </p>
@@ -390,8 +474,13 @@ export function AdminUsersTemplate({ users }: Props) {
             className="pl-9"
           />
         </div>
-        <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as UserRole | "all")}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+        <Select
+          value={roleFilter}
+          onValueChange={(v) => setRoleFilter(v as UserRole | "all")}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les rôles</SelectItem>
             <SelectItem value="admin">Super Admin</SelectItem>
@@ -404,6 +493,15 @@ export function AdminUsersTemplate({ users }: Props) {
             <SelectItem value="agent">Agent</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant={demoOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setDemoOnly((v) => !v)}
+          className="gap-1.5 shrink-0"
+        >
+          <FlaskConical className="size-3.5" />
+          Démo
+        </Button>
       </div>
 
       {/* Bulk action bar */}
@@ -413,11 +511,23 @@ export function AdminUsersTemplate({ users }: Props) {
             {selectedCount} sélectionné{selectedCount > 1 ? "s" : ""}
           </span>
           <div className="flex items-center gap-2 ml-auto">
-            <Button size="sm" variant="outline" onClick={handleBulkBan} className="gap-1.5">
-              <ShieldOff className="size-3.5" />Bannir
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBulkBan}
+              className="gap-1.5"
+            >
+              <ShieldOff className="size-3.5" />
+              Bannir
             </Button>
-            <Button size="sm" variant="outline" onClick={handleBulkUnban} className="gap-1.5">
-              <ShieldCheck className="size-3.5" />Débannir
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleBulkUnban}
+              className="gap-1.5"
+            >
+              <ShieldCheck className="size-3.5" />
+              Débannir
             </Button>
             <Button
               size="sm"
@@ -425,10 +535,17 @@ export function AdminUsersTemplate({ users }: Props) {
               onClick={() => setShowBulkDelete(true)}
               className="gap-1.5"
             >
-              <Trash2 className="size-3.5" />Supprimer
+              <Trash2 className="size-3.5" />
+              Supprimer
             </Button>
-            <Button size="sm" variant="ghost" onClick={clear} className="gap-1.5">
-              <X className="size-3.5" />Annuler
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={clear}
+              className="gap-1.5"
+            >
+              <X className="size-3.5" />
+              Annuler
             </Button>
           </div>
         </div>
@@ -467,7 +584,12 @@ export function AdminUsersTemplate({ users }: Props) {
                   key={user._id}
                   className={`${user.is_banned ? "opacity-60" : ""} cursor-pointer hover:bg-muted/50`}
                   onClick={(e) => {
-                    if ((e.target as HTMLElement).closest('[role="checkbox"], [role="menuitem"], button')) return;
+                    if (
+                      (e.target as HTMLElement).closest(
+                        '[role="checkbox"], [role="menuitem"], button',
+                      )
+                    )
+                      return;
                     router.push(`/admin/users/${user._id}`);
                   }}
                 >
@@ -478,15 +600,33 @@ export function AdminUsersTemplate({ users }: Props) {
                       aria-label={`Sélectionner ${user.name}`}
                     />
                   </TableCell>
-                  <TableCell className="font-medium text-sm">{user.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
-                  <TableCell><RoleBadge role={user.role} /></TableCell>
+                  <TableCell className="font-medium text-sm">
+                    {user.name}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {user.email}
+                  </TableCell>
                   <TableCell>
-                    {user.is_banned ? (
-                      <Badge className="bg-red-100 text-red-700 border-red-300">banni</Badge>
-                    ) : (
-                      <Badge className="bg-green-100 text-green-700 border-green-300">actif</Badge>
-                    )}
+                    <RoleBadge role={user.role} />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {user.is_banned ? (
+                        <Badge className="bg-red-100 text-red-700 border-red-300">
+                          banni
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-green-100 text-green-700 border-green-300">
+                          actif
+                        </Badge>
+                      )}
+                      {user.is_demo && (
+                        <Badge className="bg-amber-100 text-amber-700 border-amber-300 gap-1">
+                          <FlaskConical className="size-2.5" />
+                          démo
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatDate(user._creationTime)}
@@ -494,10 +634,15 @@ export function AdminUsersTemplate({ users }: Props) {
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {user.last_login_at ? formatDate(user.last_login_at) : "—"}
                   </TableCell>
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <TableCell
+                    className="text-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 px-2">•••</Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2">
+                          •••
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => setRoleTarget(user)}>
@@ -505,7 +650,11 @@ export function AdminUsersTemplate({ users }: Props) {
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          className={user.is_banned ? "text-green-600" : "text-destructive"}
+                          className={
+                            user.is_banned
+                              ? "text-green-600"
+                              : "text-destructive"
+                          }
                           onClick={() => setBanTarget(user)}
                           disabled={user.role === "admin"}
                         >
@@ -531,7 +680,10 @@ export function AdminUsersTemplate({ users }: Props) {
 
       <ChangeRoleDialog user={roleTarget} onClose={() => setRoleTarget(null)} />
       <BanDialog user={banTarget} onClose={() => setBanTarget(null)} />
-      <DeleteUserDialog user={deleteTarget} onClose={() => setDeleteTarget(null)} />
+      <DeleteUserDialog
+        user={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+      />
       {showBulkDelete && (
         <BulkDeleteDialog
           count={selectedCount}
