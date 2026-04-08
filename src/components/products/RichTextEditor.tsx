@@ -15,6 +15,7 @@ import {
   handleCommandNavigation,
   createImageUpload,
   createSuggestionItems,
+  renderItems,
   type SuggestionItem,
   type JSONContent,
 } from "novel";
@@ -57,7 +58,7 @@ import {
   Code,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCallback, useRef, useState, useEffect } from "react";
+import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -97,74 +98,6 @@ function useConvexImageUpload() {
 
   return { onUpload, uploadedImages };
 }
-
-// ─── Extensions ─────────────────────────────────────────────
-
-const extensions = [
-  StarterKit.configure({
-    heading: { levels: [1, 2, 3] },
-    bulletList: {
-      HTMLAttributes: {
-        class: "list-disc list-outside leading-3 -mt-2",
-      },
-    },
-    orderedList: {
-      HTMLAttributes: {
-        class: "list-decimal list-outside leading-3 -mt-2",
-      },
-    },
-    listItem: {
-      HTMLAttributes: { class: "leading-normal -mb-2" },
-    },
-    blockquote: {
-      HTMLAttributes: {
-        class: "border-l-4 border-primary",
-      },
-    },
-    codeBlock: {
-      HTMLAttributes: {
-        class:
-          "rounded-md bg-muted text-muted-foreground border p-5 font-mono font-medium",
-      },
-    },
-    code: {
-      HTMLAttributes: {
-        class: "rounded-md bg-muted px-1.5 py-1 font-mono font-medium",
-      },
-    },
-    horizontalRule: false,
-    dropcursor: { color: "oklch(0.75 0.18 70)", width: 4 },
-  }),
-  TiptapLink.configure({
-    autolink: true,
-    defaultProtocol: "https",
-    linkOnPaste: true,
-    HTMLAttributes: {
-      class:
-        "text-primary underline underline-offset-[3px] hover:text-primary/80 transition-colors cursor-pointer",
-    },
-  }),
-  UpdatedImage.configure({
-    HTMLAttributes: { class: "rounded-lg border border-muted" },
-  }),
-  Placeholder.configure({
-    placeholder: ({ node }) => {
-      if (node.type.name === "heading") {
-        return `Titre ${node.attrs.level as number}`;
-      }
-      return "Tapez '/' pour les commandes...";
-    },
-    includeChildren: true,
-  }),
-  HighlightExtension.configure({ multicolor: true }),
-  TiptapUnderline,
-  TextStyle,
-  Color,
-  Command,
-  TextAlign.configure({
-    types: ["heading", "paragraph"],
-  }),
-];
 
 // ─── Slash command items ────────────────────────────────────
 
@@ -498,6 +431,86 @@ export function RichTextEditor({
   // Parse initial content
   const initialContent = parseInitialContent(value);
 
+  // Stable slash items — imageInputRef is a stable ref, so no deps needed
+  const slashItems = useMemo(
+    () => createSlashItems(() => imageInputRef.current?.click()),
+    [],
+  );
+
+  // Extensions — created once, Command configured with items + render
+  const editorExtensions = useMemo(
+    () => [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        bulletList: {
+          HTMLAttributes: {
+            class: "list-disc list-outside leading-3 -mt-2",
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: "list-decimal list-outside leading-3 -mt-2",
+          },
+        },
+        listItem: {
+          HTMLAttributes: { class: "leading-normal -mb-2" },
+        },
+        blockquote: {
+          HTMLAttributes: {
+            class: "border-l-4 border-primary",
+          },
+        },
+        codeBlock: {
+          HTMLAttributes: {
+            class:
+              "rounded-md bg-muted text-muted-foreground border p-5 font-mono font-medium",
+          },
+        },
+        code: {
+          HTMLAttributes: {
+            class: "rounded-md bg-muted px-1.5 py-1 font-mono font-medium",
+          },
+        },
+        dropcursor: { color: "oklch(0.75 0.18 70)", width: 4 },
+      }),
+      TiptapLink.configure({
+        autolink: true,
+        defaultProtocol: "https",
+        linkOnPaste: true,
+        HTMLAttributes: {
+          class:
+            "text-primary underline underline-offset-[3px] hover:text-primary/80 transition-colors cursor-pointer",
+        },
+      }),
+      UpdatedImage.configure({
+        HTMLAttributes: { class: "rounded-lg border border-muted" },
+      }),
+      Placeholder.configure({
+        placeholder: ({ node }) => {
+          if (node.type.name === "heading") {
+            return `Titre ${node.attrs.level as number}`;
+          }
+          return "Tapez '/' pour les commandes...";
+        },
+        includeChildren: true,
+      }),
+      HighlightExtension.configure({ multicolor: true }),
+      TiptapUnderline,
+      TextStyle,
+      Color,
+      Command.configure({
+        suggestion: {
+          items: () => slashItems,
+          render: () => renderItems(),
+        },
+      }),
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+      }),
+    ],
+    [slashItems],
+  );
+
   // Image upload handler for Novel's createImageUpload
   const uploadFn = createImageUpload({
     validateFn: (file) => {
@@ -517,11 +530,6 @@ export function RichTextEditor({
         setUploading(false);
       }
     },
-  });
-
-  // Slash command items with image callback
-  const slashItems = createSlashItems(() => {
-    imageInputRef.current?.click();
   });
 
   // Handle manual image input (from slash command "Image")
@@ -560,7 +568,7 @@ export function RichTextEditor({
       <EditorRoot>
         <EditorContent
           initialContent={initialContent}
-          extensions={extensions}
+          extensions={editorExtensions}
           className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-em:text-muted-foreground prose-li:text-muted-foreground prose-mark:bg-yellow-200 prose-mark:text-yellow-900 dark:prose-mark:bg-yellow-800 dark:prose-mark:text-yellow-100 prose-code:bg-muted prose-code:text-foreground prose-pre:bg-muted prose-pre:text-foreground prose-hr:border-border prose-blockquote:text-muted-foreground"
           editorProps={{
             handleDOMEvents: {
