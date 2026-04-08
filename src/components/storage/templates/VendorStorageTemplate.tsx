@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPrice, formatDate } from "@/lib/format";
-import { Plus, Package, Clock, AlertCircle, CheckCircle2, ArrowDownToLine, Lock } from "lucide-react";
+import {
+  Plus,
+  Package,
+  CheckCircle2,
+  ArrowDownToLine,
+  Lock,
+  FlaskConical,
+  Loader2,
+} from "lucide-react";
+import { toast } from "sonner";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 type StorageStatus = Doc<"storage_requests">["status"];
@@ -209,7 +218,11 @@ function NewRequestDialog() {
   );
 }
 
-function WithdrawalDialog({ requestId, productName, availableQty }: {
+function WithdrawalDialog({
+  requestId,
+  productName,
+  availableQty,
+}: {
   requestId: Id<"storage_requests">;
   productName: string;
   availableQty: number;
@@ -220,7 +233,9 @@ function WithdrawalDialog({ requestId, productName, availableQty }: {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  const requestWithdrawal = useMutation(api.storage.mutations.requestWithdrawal);
+  const requestWithdrawal = useMutation(
+    api.storage.mutations.requestWithdrawal,
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -264,14 +279,18 @@ function WithdrawalDialog({ requestId, productName, availableQty }: {
           <div className="space-y-4 py-4 text-center">
             <CheckCircle2 className="mx-auto h-10 w-10 text-green-500" />
             <p className="text-sm text-muted-foreground">
-              Votre demande de retrait a été soumise. Un agent vous contactera pour organiser la récupération.
+              Votre demande de retrait a été soumise. Un agent vous contactera
+              pour organiser la récupération.
             </p>
-            <Button className="w-full" onClick={handleClose}>Fermer</Button>
+            <Button className="w-full" onClick={handleClose}>
+              Fermer
+            </Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Produit : <span className="font-medium text-foreground">{productName}</span>
+              Produit :{" "}
+              <span className="font-medium text-foreground">{productName}</span>
             </p>
             <div className="space-y-2">
               <Label htmlFor="withdrawQty">
@@ -298,12 +317,20 @@ function WithdrawalDialog({ requestId, productName, availableQty }: {
               />
             </div>
             <div className="flex gap-2 justify-end">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
                 Annuler
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || Number(quantity) < 1 || Number(quantity) > availableQty}
+                disabled={
+                  isSubmitting ||
+                  Number(quantity) < 1 ||
+                  Number(quantity) > availableQty
+                }
               >
                 {isSubmitting ? "Envoi…" : "Soumettre"}
               </Button>
@@ -342,12 +369,79 @@ function MeasureLabel({ request }: { request: StorageRequest }) {
   return <span className="text-muted-foreground">—</span>;
 }
 
+function DemoStorageActions({
+  requestId,
+  status,
+}: {
+  requestId: string;
+  status: StorageStatus;
+}) {
+  const [loading, setLoading] = useState(false);
+  const simulateReceived = useAction(api.demo.actions.simulateStorageReceived);
+  const simulateValidated = useAction(
+    api.demo.actions.simulateStorageValidated,
+  );
+
+  if (status !== "pending_drop_off" && status !== "received") return null;
+
+  const handleReceive = async () => {
+    setLoading(true);
+    try {
+      await simulateReceived({
+        requestId: requestId as Parameters<
+          typeof simulateReceived
+        >[0]["requestId"],
+      });
+      toast.success("Réception simulée");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleValidate = async () => {
+    setLoading(true);
+    try {
+      await simulateValidated({
+        requestId: requestId as Parameters<
+          typeof simulateValidated
+        >[0]["requestId"],
+      });
+      toast.success("Validation simulée — produit en stock");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={loading}
+      onClick={status === "pending_drop_off" ? handleReceive : handleValidate}
+      className="border-primary/40 text-primary hover:bg-primary/10 text-xs"
+    >
+      {loading ? (
+        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+      ) : (
+        <FlaskConical className="h-3 w-3 mr-1" />
+      )}
+      {status === "pending_drop_off" ? "Sim. réception" : "Sim. validation"}
+    </Button>
+  );
+}
+
 function StorageRequestsTable({
   requests,
   isLoading,
+  isDemo,
 }: {
   requests: StorageRequest[];
   isLoading: boolean;
+  isDemo?: boolean;
 }) {
   if (isLoading) {
     return (
@@ -423,7 +517,9 @@ function StorageRequestsTable({
               </TableCell>
               <TableCell className="hidden md:table-cell text-center">
                 {req.status === "in_stock" ? (
-                  req.pending_orders_count != null && req.pending_orders_count > 0 ? (
+                  req.pending_orders_count !== null &&
+                  req.pending_orders_count !== undefined &&
+                  req.pending_orders_count > 0 ? (
                     <Badge className="bg-teal-100 text-teal-700 border-teal-300">
                       {req.pending_orders_count} cmd
                     </Badge>
@@ -441,6 +537,10 @@ function StorageRequestsTable({
                     productName={req.product_name}
                     availableQty={req.actual_qty ?? 0}
                   />
+                ) : isDemo &&
+                  (req.status === "pending_drop_off" ||
+                    req.status === "received") ? (
+                  <DemoStorageActions requestId={req._id} status={req.status} />
                 ) : (
                   <span className="text-xs text-muted-foreground">—</span>
                 )}
@@ -467,6 +567,8 @@ export function VendorStorageTemplate({
   isLoading,
   usePmService = true,
 }: VendorStorageTemplateProps) {
+  const isDemo = useQuery(api.demo.queries.isCurrentUserDemo);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -583,7 +685,11 @@ export function VendorStorageTemplate({
           </TabsList>
         </Tabs>
 
-        <StorageRequestsTable requests={requests} isLoading={isLoading} />
+        <StorageRequestsTable
+          requests={requests}
+          isLoading={isLoading}
+          isDemo={isDemo === true}
+        />
       </div>
     </div>
   );

@@ -101,6 +101,8 @@ export default function OrderDetailPage({
   const cancelOrder = useMutation(api.orders.mutations.cancelOrder);
   const confirmDelivery = useMutation(api.orders.mutations.confirmDelivery);
   const initializePayment = useAction(api.payments.moneroo.initializePayment);
+  const simulatePayment = useAction(api.demo.actions.simulatePayment);
+  const isDemo = useQuery(api.demo.queries.isCurrentUserDemo);
 
   const [isCancelling, setIsCancelling] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -199,10 +201,14 @@ export default function OrderDetailPage({
     setIsPaying(true);
     setError(null);
     try {
-      const { checkoutUrl } = await initializePayment({
-        orderId: order!._id,
-      });
-      window.location.href = checkoutUrl;
+      if (isDemo) {
+        await simulatePayment({ orderId: order!._id });
+      } else {
+        const { checkoutUrl } = await initializePayment({
+          orderId: order!._id,
+        });
+        window.location.href = checkoutUrl;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur de paiement");
       setIsPaying(false);
@@ -682,12 +688,12 @@ export default function OrderDetailPage({
               {isPaying ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
-                  Redirection…
+                  {isDemo ? "Simulation…" : "Redirection…"}
                 </>
               ) : (
                 <>
                   <CreditCard className="size-4 mr-2" />
-                  Payer maintenant
+                  {isDemo ? "Simuler le paiement" : "Payer maintenant"}
                 </>
               )}
             </Button>

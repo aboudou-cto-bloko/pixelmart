@@ -5,8 +5,8 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 
 /**
- * Demo — simulates a Moneroo payment for a pending order.
- * Only works when the order belongs to a demo store.
+ * Demo — simulates a Moneroo payment for one or more pending orders.
+ * Only works when the orders belong to demo stores.
  */
 export const simulatePayment = action({
   args: { orderId: v.id("orders") },
@@ -27,6 +27,66 @@ export const simulatePayment = action({
       paymentReference: `DEMO-${Date.now()}`,
       amountPaid: order.total_amount,
       currency: order.currency ?? store.currency,
+    });
+  },
+});
+
+/**
+ * Demo — simulates storage reception by an agent (pending_drop_off → received).
+ * Bypasses the requireAgent role check for demo stores.
+ */
+export const simulateStorageReceived = action({
+  args: { requestId: v.id("storage_requests") },
+  handler: async (ctx, { requestId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Non authentifié");
+    await ctx.runMutation(internal.demo.mutations.forceStorageReceived, {
+      requestId,
+    });
+  },
+});
+
+/**
+ * Demo — simulates admin storage validation (received → in_stock + invoice).
+ * Bypasses the requireAgent/admin role check for demo stores.
+ */
+export const simulateStorageValidated = action({
+  args: { requestId: v.id("storage_requests") },
+  handler: async (ctx, { requestId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Non authentifié");
+    await ctx.runMutation(internal.demo.mutations.forceStorageValidated, {
+      requestId,
+    });
+  },
+});
+
+/**
+ * Demo — forces pending_balance → balance without the 48h delay.
+ * Simulates delivered orders being released.
+ */
+export const simulateBalanceRelease = action({
+  args: { storeId: v.id("stores") },
+  handler: async (ctx, { storeId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Non authentifié");
+    await ctx.runMutation(internal.demo.mutations.forceBalanceRelease, {
+      storeId,
+    });
+  },
+});
+
+/**
+ * Demo — simulates payout confirmation for a pending demo payout.
+ * Calls confirmPayout directly without Moneroo webhook.
+ */
+export const simulatePayout = action({
+  args: { payoutId: v.id("payouts") },
+  handler: async (ctx, { payoutId }) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Non authentifié");
+    await ctx.runMutation(internal.demo.mutations.forcePayoutConfirmed, {
+      payoutId,
     });
   },
 });
