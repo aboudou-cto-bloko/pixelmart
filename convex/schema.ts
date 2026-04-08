@@ -124,6 +124,8 @@ export default defineSchema({
     meta_pixel_enabled_events: v.optional(v.array(v.string())), // Événements activés (ex: ["PageView","Purchase"])
     vendor_shop_enabled: v.optional(v.boolean()), // true = /shop/[slug] actif
     hide_from_marketplace: v.optional(v.boolean()), // true = produits masqués sur la marketplace Pixel-Mart
+    leaderboard_alias: v.optional(v.string()), // Pseudo affiché sur le classement vendeurs (à la place du vrai nom)
+    hide_from_leaderboard: v.optional(v.boolean()), // true = retiré du classement vendeurs
 
     // Delivery & Pickup
     use_pixelmart_service: v.optional(v.boolean()), // default true — uses Pixel-Mart warehouse

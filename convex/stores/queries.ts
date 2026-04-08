@@ -191,7 +191,8 @@ export const listActive = query({
       .withIndex("by_status", (q) => q.eq("status", "active"))
       .take(200);
 
-    let stores = allStores;
+    // Exclure les boutiques démo
+    let stores = allStores.filter((s) => !s.is_demo);
 
     // Filter by country
     if (args.country) {
@@ -292,8 +293,9 @@ export const getFeaturedStores = query({
       .filter((q) => q.eq(q.field("status"), "active"))
       .collect();
 
-    // Trier par avg_rating desc, puis total_orders desc
+    // Trier par avg_rating desc, puis total_orders desc (sans les boutiques démo)
     const sorted = stores
+      .filter((s) => !s.is_demo)
       .sort((a, b) => {
         if (b.avg_rating !== a.avg_rating) return b.avg_rating - a.avg_rating;
         return b.total_orders - a.total_orders;
@@ -514,17 +516,20 @@ export const getVendorLeaderboard = query({
       storeOrders[sid] = (storeOrders[sid] ?? 0) + 1;
     }
 
-    const allStores = await ctx.db
-      .query("stores")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+    const allStores = (
+      await ctx.db
+        .query("stores")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
+        .collect()
+    ).filter((s) => !s.is_demo && !s.hide_from_leaderboard);
 
     const ranked = await Promise.all(
       allStores.map(async (s) => {
         const owner = await ctx.db.get(s.owner_id);
         return {
           _id: s._id,
-          owner_name: owner?.name ?? s.name,
+          // Alias si défini, sinon nom du propriétaire, sinon nom de la boutique
+          owner_name: s.leaderboard_alias ?? owner?.name ?? s.name,
           subscription_tier: s.subscription_tier,
           is_verified: s.is_verified,
           avg_rating: s.avg_rating ?? 0,
