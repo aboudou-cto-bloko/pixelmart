@@ -375,6 +375,26 @@ export const validateAffiliateCode = query({
   },
 });
 
+// ─── Vendor: récupérer son propre statut d'affilié ───────────
+
+export const getMyAffiliateStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const { store } = await getVendorStore(ctx);
+    if (!store.affiliate_link_id) return null;
+    const link = await ctx.db.get(store.affiliate_link_id);
+    if (!link) return null;
+    const referrerStore = await ctx.db.get(link.referrer_store_id);
+    return {
+      referrer_store_name: referrerStore?.name ?? null,
+      commission_rate_bp:
+        store.affiliate_commission_rate_bp ?? link.commission_rate_bp,
+      is_active: link.is_active,
+      expires_at: link.expires_at,
+    };
+  },
+});
+
 // ─── Internal: récupérer le lien affilié d'une boutique ──────
 
 export const getStorAffiliateInfo = internalQuery({

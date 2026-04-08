@@ -62,7 +62,7 @@ export function VendorAffiliateLinksTable({
               <TableCell className="max-w-[280px]">
                 <AffiliateCodeCard
                   code={link.code}
-                  referral_url={`${siteUrl}/onboarding/vendor?ref=${link.code}`}
+                  referral_url={`${siteUrl}/register?ref=${link.code}`}
                 />
               </TableCell>
               <TableCell className="text-right font-mono text-sm">

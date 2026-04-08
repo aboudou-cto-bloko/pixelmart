@@ -19,6 +19,7 @@ import {
   Package,
   Check,
   Info,
+  Handshake,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export default function StoreSettingsPage() {
   const store = useQuery(api.stores.queries.getMyStore);
   const hasPendingOrders = useQuery(api.stores.queries.hasPendingOrders);
   const commissionRates = useQuery(api.stores.queries.getPublicCommissionRates);
+  const affiliateStatus = useQuery(api.affiliate.queries.getMyAffiliateStatus);
   const updateStore = useMutation(api.stores.mutations.updateStore);
   const updateDeliverySettings = useMutation(
     api.stores.mutations.updateDeliverySettings,
@@ -883,6 +885,73 @@ export default function StoreSettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Affiliation */}
+      {affiliateStatus !== undefined && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Handshake className="size-4 text-primary" />
+              Parrainage
+            </CardTitle>
+            <CardDescription>
+              Statut d&apos;affiliation de votre boutique.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {affiliateStatus === null ? (
+              <p className="text-muted-foreground">
+                Votre boutique n&apos;est pas affiliée à un parrain.
+              </p>
+            ) : (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Parrain</span>
+                  <span className="font-medium">
+                    {affiliateStatus.referrer_store_name ?? "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Commission reversée
+                  </span>
+                  <span className="font-medium">
+                    {(affiliateStatus.commission_rate_bp / 100).toFixed(1)}%
+                    <span className="text-xs text-muted-foreground ml-1">
+                      sur chaque vente
+                    </span>
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Statut</span>
+                  <Badge
+                    variant={
+                      affiliateStatus.is_active ? "default" : "secondary"
+                    }
+                    className="text-xs"
+                  >
+                    {affiliateStatus.is_active ? "Actif" : "Inactif"}
+                  </Badge>
+                </div>
+                {affiliateStatus.expires_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Expire le</span>
+                    <span>
+                      {new Date(affiliateStatus.expires_at).toLocaleDateString(
+                        "fr-FR",
+                      )}
+                    </span>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground pt-1">
+                  Cette commission est prélevée sur les revenus de la plateforme
+                  — elle ne réduit pas votre solde.
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Save */}
       <div className="flex items-center gap-3">
