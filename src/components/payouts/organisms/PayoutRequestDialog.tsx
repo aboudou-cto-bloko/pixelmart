@@ -28,6 +28,168 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/format";
 
+// ─── Méta des méthodes : champ requis + format numéro ──────
+
+interface MethodMeta {
+  field: "msisdn" | "account_number";
+  label: string;
+  example: string;
+  currency: string;
+}
+
+const METHOD_META: Record<string, MethodMeta> = {
+  mtn_bj: {
+    field: "msisdn",
+    label: "Numéro MTN",
+    example: "22901XXXXXXXX",
+    currency: "XOF",
+  },
+  moov_bj: {
+    field: "msisdn",
+    label: "Numéro Moov",
+    example: "22901XXXXXXXX",
+    currency: "XOF",
+  },
+  mtn_ci: {
+    field: "msisdn",
+    label: "Numéro MTN",
+    example: "225XXXXXXXXX",
+    currency: "XOF",
+  },
+  orange_ci: {
+    field: "msisdn",
+    label: "Numéro Orange",
+    example: "225XXXXXXXXX",
+    currency: "XOF",
+  },
+  wave_ci: {
+    field: "msisdn",
+    label: "Numéro Wave",
+    example: "225XXXXXXXXX",
+    currency: "XOF",
+  },
+  moov_ci: {
+    field: "msisdn",
+    label: "Numéro Moov",
+    example: "225XXXXXXXXX",
+    currency: "XOF",
+  },
+  djamo_ci: {
+    field: "msisdn",
+    label: "Numéro Djamo",
+    example: "225XXXXXXXXX",
+    currency: "XOF",
+  },
+  orange_sn: {
+    field: "msisdn",
+    label: "Numéro Orange",
+    example: "221XXXXXXXXX",
+    currency: "XOF",
+  },
+  wave_sn: {
+    field: "msisdn",
+    label: "Numéro Wave",
+    example: "221XXXXXXXXX",
+    currency: "XOF",
+  },
+  e_money_sn: {
+    field: "msisdn",
+    label: "Numéro E-Money",
+    example: "221XXXXXXXXX",
+    currency: "XOF",
+  },
+  freemoney_sn: {
+    field: "msisdn",
+    label: "Numéro Free Money",
+    example: "221XXXXXXXXX",
+    currency: "XOF",
+  },
+  djamo_sn: {
+    field: "msisdn",
+    label: "Numéro Djamo",
+    example: "221XXXXXXXXX",
+    currency: "XOF",
+  },
+  togocel: {
+    field: "msisdn",
+    label: "Numéro Togocel",
+    example: "228XXXXXXXXX",
+    currency: "XOF",
+  },
+  moov_tg: {
+    field: "msisdn",
+    label: "Numéro Moov",
+    example: "228XXXXXXXXX",
+    currency: "XOF",
+  },
+  orange_ml: {
+    field: "msisdn",
+    label: "Numéro Orange",
+    example: "223XXXXXXXXX",
+    currency: "XOF",
+  },
+  mtn_gh: {
+    field: "msisdn",
+    label: "Numéro MTN",
+    example: "233XXXXXXXXX",
+    currency: "GHS",
+  },
+  tigo_gh: {
+    field: "msisdn",
+    label: "Numéro Tigo",
+    example: "233XXXXXXXXX",
+    currency: "GHS",
+  },
+  vodafone_gh: {
+    field: "msisdn",
+    label: "Numéro Vodafone",
+    example: "233XXXXXXXXX",
+    currency: "GHS",
+  },
+  mtn_ng: {
+    field: "msisdn",
+    label: "Numéro MTN",
+    example: "234XXXXXXXXX",
+    currency: "NGN",
+  },
+  airtel_ng: {
+    field: "msisdn",
+    label: "Numéro Airtel",
+    example: "234XXXXXXXXX",
+    currency: "NGN",
+  },
+  mpesa_ke: {
+    field: "msisdn",
+    label: "Numéro M-Pesa",
+    example: "254XXXXXXXXX",
+    currency: "KES",
+  },
+  mtn_cm: {
+    field: "msisdn",
+    label: "Numéro MTN",
+    example: "237XXXXXXXXX",
+    currency: "XAF",
+  },
+  orange_cm: {
+    field: "msisdn",
+    label: "Numéro Orange",
+    example: "237XXXXXXXXX",
+    currency: "XAF",
+  },
+  eu_mobile_cm: {
+    field: "msisdn",
+    label: "Numéro EU Mobile",
+    example: "237XXXXXXXXX",
+    currency: "XAF",
+  },
+  moneroo_payout_demo: {
+    field: "account_number",
+    label: "Numéro de compte test",
+    example: "1XXXXXXXXX",
+    currency: "USD",
+  },
+};
+
 // ─── Fallback static list (used if Moneroo API is unreachable) ─
 
 const FALLBACK_METHODS: Record<string, Array<{ id: string; name: string }>> = {
@@ -137,20 +299,26 @@ export function PayoutRequestDialog({
       .then((result) => {
         if (!result) return;
         const country = storeCountry.toUpperCase();
-        const filtered = result.filter(
+        // Filtrer par pays ET par devise (cohérence avec le solde du vendeur)
+        const byCountry = result.filter(
           (m) =>
             m.active !== false &&
             (!m.country || m.country.toUpperCase() === country),
         );
+        const byCurrency = byCountry.filter(
+          (m) => !METHOD_META[m.id] || METHOD_META[m.id].currency === currency,
+        );
         setMonerooMethods(
-          filtered.length > 0
-            ? filtered
-            : result.filter((m) => m.active !== false),
+          byCurrency.length > 0
+            ? byCurrency
+            : byCountry.length > 0
+              ? byCountry
+              : result.filter((m) => m.active !== false),
         );
       })
       .catch(() => {})
       .finally(() => setMethodsLoading(false));
-  }, [open, fetchMethods, storeCountry, monerooMethods]);
+  }, [open, fetchMethods, storeCountry, currency, monerooMethods]);
 
   // Providers shown in selector: live Moneroo data or static fallback
   const providers: MonerooMethod[] =
@@ -354,14 +522,27 @@ export function PayoutRequestDialog({
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Numéro de téléphone</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+229 XX XX XX XX"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                />
+                {(() => {
+                  const meta = provider ? METHOD_META[provider] : undefined;
+                  const label = meta?.label ?? "Numéro de téléphone";
+                  const example = meta?.example ?? "XXXXXXXXXXXX";
+                  return (
+                    <>
+                      <Label htmlFor="phone">{label}</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder={example}
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Format international sans espace ni +&nbsp;:{" "}
+                        <span className="font-mono">{example}</span>
+                      </p>
+                    </>
+                  );
+                })()}
               </div>
             </>
           )}
