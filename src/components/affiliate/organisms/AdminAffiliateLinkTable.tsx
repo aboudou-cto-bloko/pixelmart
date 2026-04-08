@@ -57,8 +57,9 @@ export function AdminAffiliateLinkTable({
     );
   }
 
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com"
+  ).replace(/\/$/, "");
 
   return (
     <div className="rounded-lg border overflow-hidden">

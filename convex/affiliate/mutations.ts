@@ -14,6 +14,7 @@ export const createAffiliateLink = mutation({
     referrer_store_id: v.id("stores"),
     commission_rate_bp: v.number(),
     duration_days: v.optional(v.number()), // undefined = illimité
+    custom_code: v.optional(v.string()), // code personnalisé (optionnel)
   },
   handler: async (ctx, args) => {
     const admin = await requireSuperAdmin(ctx);
@@ -39,18 +40,35 @@ export const createAffiliateLink = mutation({
     const store = await ctx.db.get(args.referrer_store_id);
     if (!store) throw new Error("Boutique introuvable");
 
-    // Générer un code unique (retry si collision)
-    let code = generateAffiliateCode();
-    let attempts = 0;
-    while (
-      await ctx.db
+    let code: string;
+    if (args.custom_code) {
+      // Valider et normaliser le code custom
+      const normalized = args.custom_code.trim().toUpperCase();
+      if (!/^[A-Z0-9-]{3,30}$/.test(normalized)) {
+        throw new Error(
+          "Code invalide. Utilisez uniquement des lettres, chiffres et tirets (3–30 caractères).",
+        );
+      }
+      const existing = await ctx.db
         .query("affiliate_links")
-        .withIndex("by_code", (q) => q.eq("code", code))
-        .unique()
-    ) {
-      if (++attempts > 10)
-        throw new Error("Impossible de générer un code unique");
+        .withIndex("by_code", (q) => q.eq("code", normalized))
+        .unique();
+      if (existing) throw new Error("Ce code est déjà utilisé.");
+      code = normalized;
+    } else {
+      // Générer un code unique (retry si collision)
       code = generateAffiliateCode();
+      let attempts = 0;
+      while (
+        await ctx.db
+          .query("affiliate_links")
+          .withIndex("by_code", (q) => q.eq("code", code))
+          .unique()
+      ) {
+        if (++attempts > 10)
+          throw new Error("Impossible de générer un code unique");
+        code = generateAffiliateCode();
+      }
     }
 
     const now = Date.now();

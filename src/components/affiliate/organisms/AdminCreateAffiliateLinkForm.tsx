@@ -37,6 +37,7 @@ export function AdminCreateAffiliateLinkForm() {
   const [storeId, setStoreId] = useState<string>("");
   const [rateBp, setRateBp] = useState<string>("300");
   const [durationDays, setDurationDays] = useState<string>("");
+  const [customCode, setCustomCode] = useState<string>("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -57,12 +58,14 @@ export function AdminCreateAffiliateLinkForm() {
         referrer_store_id: storeId as Id<"stores">,
         commission_rate_bp: parsedRate,
         duration_days: durationDays ? parseInt(durationDays, 10) : undefined,
+        custom_code: customCode.trim() || undefined,
       });
       toast.success(`Lien créé : ${result.code}`);
       setOpen(false);
       setStoreId("");
       setRateBp("300");
       setDurationDays("");
+      setCustomCode("");
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Erreur lors de la création",
@@ -140,6 +143,21 @@ export function AdminCreateAffiliateLinkForm() {
               value={durationDays}
               onChange={(e) => setDurationDays(e.target.value)}
               placeholder="365"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Code personnalisé{" "}
+              <span className="text-muted-foreground text-xs">
+                (optionnel — lettres, chiffres, tirets)
+              </span>
+            </Label>
+            <Input
+              value={customCode}
+              onChange={(e) => setCustomCode(e.target.value)}
+              placeholder="PM-AFF-MONCODE (auto-généré si vide)"
+              maxLength={30}
             />
           </div>
 

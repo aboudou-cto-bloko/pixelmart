@@ -26,8 +26,9 @@ export default function AdminAffiliateLinkDetailPage() {
     referrer_store_id: link?.referrer_store_id as Id<"stores"> | undefined,
   });
 
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com";
+  const siteUrl = (
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.pixel-mart-bj.com"
+  ).replace(/\/$/, "");
 
   return (
     <div className="space-y-6">
