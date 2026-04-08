@@ -351,6 +351,7 @@ export const createOrder = mutation({
       delivery_fee: shippingAmount,
       estimated_weight_kg: args.estimatedWeightKg,
       source: args.source ?? "marketplace",
+      is_demo: store.is_demo === true ? true : undefined,
       updated_at: Date.now(),
     });
 
@@ -397,6 +398,7 @@ export const createOrder = mutation({
         status: "completed",
         description: `Vente COD commande ${orderNumber}`,
         processed_at: Date.now(),
+        is_demo: store.is_demo === true ? true : undefined,
       });
 
       // F-01 : Transaction "fee" — commission Pixel-Mart
@@ -413,6 +415,7 @@ export const createOrder = mutation({
           status: "completed",
           description: `Commission Pixel-Mart COD commande ${orderNumber}`,
           processed_at: Date.now(),
+          is_demo: store.is_demo === true ? true : undefined,
         });
       }
 

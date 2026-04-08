@@ -414,6 +414,9 @@ export default defineSchema({
       v.union(v.literal("marketplace"), v.literal("vendor_shop")),
     ), // Origine : marketplace Pixel-Mart ou boutique vendeur (/shop/slug)
 
+    // Demo flag — isolates demo orders from admin stats
+    is_demo: v.optional(v.boolean()),
+
     // Metadata
     updated_at: v.number(),
   })
@@ -501,6 +504,9 @@ export default defineSchema({
     description: v.string(),
     metadata: v.optional(v.any()),
     processed_at: v.optional(v.number()),
+
+    // Demo flag
+    is_demo: v.optional(v.boolean()),
   })
     .index("by_store", ["store_id"])
     .index("by_type", ["store_id", "type"])
@@ -694,6 +700,9 @@ export default defineSchema({
     requested_at: v.number(),
     processed_at: v.optional(v.number()),
     notes: v.optional(v.string()),
+
+    // Demo flag
+    is_demo: v.optional(v.boolean()),
   })
     .index("by_store", ["store_id"])
     .index("by_status", ["store_id", "status"])

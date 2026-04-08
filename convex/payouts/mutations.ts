@@ -65,6 +65,7 @@ export const requestPayout = mutation({
       status: "pending",
       description: `Retrait de ${formatAmountText(grossAmount, store.currency)}${outstandingDebt > 0 ? ` (dont ${formatAmountText(outstandingDebt, store.currency)} dette stockage)` : ""}`,
       processed_at: Date.now(),
+      is_demo: store.is_demo === true ? true : undefined,
     });
 
     // 5. Débiter le solde du store
@@ -86,6 +87,7 @@ export const requestPayout = mutation({
       verified_2fa: false,
       transaction_id: transactionId,
       requested_at: Date.now(),
+      is_demo: store.is_demo === true ? true : undefined,
     });
 
     // 7. Régler les dettes de stockage si applicable (F-05)
@@ -243,7 +245,8 @@ export const failPayout = internalMutation({
 
     // 2. Reversal — re-créditer le solde du store (F-01)
     const store = await ctx.db.get(payout.store_id);
-    if (!store) throw new Error("Boutique introuvable lors du remboursement du virement");
+    if (!store)
+      throw new Error("Boutique introuvable lors du remboursement du virement");
 
     const balanceBefore = store.balance;
     const balanceAfter = balanceBefore + payout.amount;

@@ -16,8 +16,10 @@ export const getPlatformStats = query({
     startOfToday.setHours(0, 0, 0, 0);
     const todayTs = startOfToday.getTime();
 
-    // All paid orders today
-    const allOrders = await ctx.db.query("orders").collect();
+    // All paid orders today (exclude demo data)
+    const allOrders = (await ctx.db.query("orders").collect()).filter(
+      (o) => !o.is_demo,
+    );
     const paidOrders = allOrders.filter((o) => o.payment_status === "paid");
     const todayOrders = paidOrders.filter((o) => o._creationTime >= todayTs);
 
@@ -27,23 +29,29 @@ export const getPlatformStats = query({
     );
     const ordersToday = todayOrders.length;
 
-    // New users today
-    const allUsers = await ctx.db.query("users").collect();
+    // New users today (exclude demo)
+    const allUsers = (await ctx.db.query("users").collect()).filter(
+      (u) => !u.is_demo,
+    );
     const newUsersToday = allUsers.filter(
       (u) => u._creationTime >= todayTs,
     ).length;
 
-    // New stores today
-    const allStores = await ctx.db.query("stores").collect();
+    // New stores today (exclude demo)
+    const allStores = (await ctx.db.query("stores").collect()).filter(
+      (s) => !s.is_demo,
+    );
     const newStoresToday = allStores.filter(
       (s) => s._creationTime >= todayTs,
     ).length;
 
-    // Alerts
-    const pendingPayouts = await ctx.db
-      .query("payouts")
-      .withIndex("by_status_only", (q) => q.eq("status", "pending"))
-      .collect();
+    // Alerts (exclude demo payouts)
+    const pendingPayouts = (
+      await ctx.db
+        .query("payouts")
+        .withIndex("by_status_only", (q) => q.eq("status", "pending"))
+        .collect()
+    ).filter((p) => !p.is_demo);
 
     const unverifiedStores = allStores.filter((s) => !s.is_verified).length;
 
@@ -171,6 +179,7 @@ export const listStores = query({
           name: store.name,
           slug: store.slug,
           is_verified: store.is_verified,
+          is_demo: store.is_demo ?? false,
           status: store.status,
           subscription_tier: store.subscription_tier,
           balance: store.balance,
@@ -194,10 +203,12 @@ export const listPendingPayouts = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const payouts = await ctx.db
-      .query("payouts")
-      .withIndex("by_status_only", (q) => q.eq("status", "pending"))
-      .collect();
+    const payouts = (
+      await ctx.db
+        .query("payouts")
+        .withIndex("by_status_only", (q) => q.eq("status", "pending"))
+        .collect()
+    ).filter((p) => !p.is_demo);
 
     const result = await Promise.all(
       payouts.map(async (payout) => {
@@ -228,7 +239,9 @@ export const listAllPayouts = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const payouts = await ctx.db.query("payouts").order("desc").take(100);
+    const payouts = (await ctx.db.query("payouts").order("desc").take(200))
+      .filter((p) => !p.is_demo)
+      .slice(0, 100);
 
     const result = await Promise.all(
       payouts.map(async (payout) => {
@@ -270,6 +283,7 @@ export const listUsers = query({
       role: u.role,
       is_banned: u.is_banned,
       is_verified: u.is_verified,
+      is_demo: u.is_demo ?? false,
       _creationTime: u._creationTime,
       last_login_at: u.last_login_at,
     }));
@@ -441,7 +455,9 @@ export const getAnalytics = query({
     const periodStart = now - periodMs;
     const prevPeriodStart = periodStart - periodMs;
 
-    const allOrders = await ctx.db.query("orders").collect();
+    const allOrders = (await ctx.db.query("orders").collect()).filter(
+      (o) => !o.is_demo,
+    );
     const paidOrders = allOrders.filter((o) => o.payment_status === "paid");
 
     // Période courante
@@ -470,8 +486,10 @@ export const getAnalytics = query({
       0,
     );
 
-    // Utilisateurs
-    const allUsers = await ctx.db.query("users").collect();
+    // Utilisateurs (exclude demo)
+    const allUsers = (await ctx.db.query("users").collect()).filter(
+      (u) => !u.is_demo,
+    );
     const newUsers = allUsers.filter(
       (u) => u._creationTime >= periodStart,
     ).length;
@@ -480,8 +498,10 @@ export const getAnalytics = query({
         u._creationTime >= prevPeriodStart && u._creationTime < periodStart,
     ).length;
 
-    // Boutiques
-    const allStores = await ctx.db.query("stores").collect();
+    // Boutiques (exclude demo)
+    const allStores = (await ctx.db.query("stores").collect()).filter(
+      (s) => !s.is_demo,
+    );
     const newStores = allStores.filter(
       (s) => s._creationTime >= periodStart,
     ).length;
@@ -641,11 +661,13 @@ export const getPlatformHealth = query({
     const sevenDaysAgo = now - 7 * 86400000;
     const twoDaysAgo = now - 2 * 86400000;
 
-    // Retraits en attente
-    const pendingPayouts = await ctx.db
-      .query("payouts")
-      .withIndex("by_status_only", (q) => q.eq("status", "pending"))
-      .collect();
+    // Retraits en attente (exclude demo)
+    const pendingPayouts = (
+      await ctx.db
+        .query("payouts")
+        .withIndex("by_status_only", (q) => q.eq("status", "pending"))
+        .collect()
+    ).filter((p) => !p.is_demo);
     const oldestPayout = pendingPayouts.reduce(
       (min, p) => Math.min(min, p.requested_at),
       Infinity,
@@ -653,11 +675,13 @@ export const getPlatformHealth = query({
     const oldestPayoutAgeMs =
       pendingPayouts.length > 0 ? now - oldestPayout : 0;
 
-    // Boutiques non vérifiées
-    const unverifiedStores = await ctx.db
-      .query("stores")
-      .filter((q) => q.eq(q.field("is_verified"), false))
-      .collect();
+    // Boutiques non vérifiées (exclude demo)
+    const unverifiedStores = (
+      await ctx.db
+        .query("stores")
+        .filter((q) => q.eq(q.field("is_verified"), false))
+        .collect()
+    ).filter((s) => !s.is_demo);
 
     // Factures stockage impayées
     const unpaidInvoices = await ctx.db
@@ -690,11 +714,13 @@ export const getPlatformHealth = query({
       .withIndex("by_status", (q) => q.eq("status", "pending_drop_off"))
       .collect();
 
-    // Commandes bloquées en "paid" depuis > 48h (vendor non-réactif)
-    const allPaidOrders = await ctx.db
-      .query("orders")
-      .filter((q) => q.eq(q.field("status"), "paid"))
-      .collect();
+    // Commandes bloquées en "paid" depuis > 48h (vendor non-réactif) — exclude demo
+    const allPaidOrders = (
+      await ctx.db
+        .query("orders")
+        .filter((q) => q.eq(q.field("status"), "paid"))
+        .collect()
+    ).filter((o) => !o.is_demo);
     const staleOrders = allPaidOrders.filter(
       (o) => o._creationTime < twoDaysAgo,
     );
@@ -713,12 +739,14 @@ export const getPlatformHealth = query({
       .filter((q) => q.eq(q.field("status"), "pending"))
       .collect();
 
-    // Erreurs paiement récentes (7j) — commandes restées "pending" > 24h
+    // Erreurs paiement récentes (7j) — commandes restées "pending" > 24h — exclude demo
     const oneDayAgo = now - 86400000;
-    const stalePendingOrders = await ctx.db
-      .query("orders")
-      .filter((q) => q.eq(q.field("status"), "pending"))
-      .collect();
+    const stalePendingOrders = (
+      await ctx.db
+        .query("orders")
+        .filter((q) => q.eq(q.field("status"), "pending"))
+        .collect()
+    ).filter((o) => !o.is_demo);
     const paymentFailures = stalePendingOrders.filter(
       (o) => o._creationTime < oneDayAgo && o._creationTime >= sevenDaysAgo,
     );
@@ -790,6 +818,7 @@ export const listOrders = query({
           status: order.status,
           payment_status: order.payment_status,
           items_count: order.items.length,
+          is_demo: order.is_demo ?? false,
           _creationTime: order._creationTime,
         };
       }),
@@ -1208,10 +1237,12 @@ export const getVendorLeaderboard = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const allOrders = await ctx.db
-      .query("orders")
-      .filter((q) => q.eq(q.field("payment_status"), "paid"))
-      .collect();
+    const allOrders = (
+      await ctx.db
+        .query("orders")
+        .filter((q) => q.eq(q.field("payment_status"), "paid"))
+        .collect()
+    ).filter((o) => !o.is_demo);
 
     const storeRevenue: Record<string, number> = {};
     const storeOrders: Record<string, number> = {};
@@ -1221,7 +1252,9 @@ export const getVendorLeaderboard = query({
       storeOrders[sid] = (storeOrders[sid] ?? 0) + 1;
     }
 
-    const allStores = await ctx.db.query("stores").collect();
+    const allStores = (await ctx.db.query("stores").collect()).filter(
+      (s) => !s.is_demo,
+    );
 
     const ranked = allStores
       .map((s) => ({
