@@ -151,11 +151,16 @@ export const listByCategory = query({
       .withIndex("by_category", (q) => q.eq("category_id", args.categoryId))
       .collect();
 
-    // Exclure les boutiques masquées de la marketplace
+    // Exclure les boutiques masquées de la marketplace et les boutiques démo
     const hiddenStores = await ctx.db
       .query("stores")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .filter((q) => q.eq(q.field("hide_from_marketplace"), true))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("hide_from_marketplace"), true),
+          q.eq(q.field("is_demo"), true),
+        ),
+      )
       .collect();
     const hiddenStoreIds = new Set(hiddenStores.map((s) => s._id as string));
 
@@ -268,12 +273,17 @@ export const search = query({
       }
     }
 
-    // Sur la marketplace (pas de filtre store), exclure les boutiques masquées
+    // Sur la marketplace (pas de filtre store), exclure les boutiques masquées et démo
     if (!args.storeId) {
       const hiddenStores = await ctx.db
         .query("stores")
         .withIndex("by_status", (q) => q.eq("status", "active"))
-        .filter((q) => q.eq(q.field("hide_from_marketplace"), true))
+        .filter((q) =>
+          q.or(
+            q.eq(q.field("hide_from_marketplace"), true),
+            q.eq(q.field("is_demo"), true),
+          ),
+        )
         .collect();
       const hiddenStoreIds = new Set(hiddenStores.map((s) => s._id as string));
       if (hiddenStoreIds.size > 0) {
@@ -374,11 +384,16 @@ export const listLatest = query({
     // Récupérer les produits actifs, ordonnés par création (desc par défaut dans Convex)
     const allProducts = await ctx.db.query("products").order("desc").take(200);
 
-    // Exclure les boutiques masquées de la marketplace
+    // Exclure les boutiques masquées de la marketplace et les boutiques démo
     const hiddenStores = await ctx.db
       .query("stores")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .filter((q) => q.eq(q.field("hide_from_marketplace"), true))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("hide_from_marketplace"), true),
+          q.eq(q.field("is_demo"), true),
+        ),
+      )
       .collect();
     const hiddenStoreIds = new Set(hiddenStores.map((s) => s._id as string));
 

@@ -1,10 +1,14 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { formatPrice } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import {
   Trophy,
   Star,
@@ -12,8 +16,11 @@ import {
   TrendingUp,
   Crown,
   Medal,
+  Settings2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 const TIER_LABELS: Record<string, string> = {
   free: "Gratuit",
@@ -41,6 +48,36 @@ function RankIcon({ rank }: { rank: number }) {
 export default function VendorLeaderboardPage() {
   const leaderboard = useQuery(api.stores.queries.getVendorLeaderboard);
   const myStore = useQuery(api.stores.queries.getMyStore);
+  const updateLeaderboardSettings = useMutation(
+    api.stores.mutations.updateLeaderboardSettings,
+  );
+
+  const [alias, setAlias] = useState("");
+  const [hideFromLeaderboard, setHideFromLeaderboard] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Pre-populate form from store data
+  useEffect(() => {
+    if (myStore) {
+      setAlias(myStore.leaderboard_alias ?? "");
+      setHideFromLeaderboard(myStore.hide_from_leaderboard ?? false);
+    }
+  }, [myStore]);
+
+  async function handleSaveSettings() {
+    setSaving(true);
+    try {
+      await updateLeaderboardSettings({
+        leaderboard_alias: alias || undefined,
+        hide_from_leaderboard: hideFromLeaderboard,
+      });
+      toast.success("Paramètres mis à jour");
+    } catch {
+      toast.error("Erreur lors de la mise à jour");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (!leaderboard) {
     return (
@@ -54,7 +91,6 @@ export default function VendorLeaderboardPage() {
   }
 
   const top3 = leaderboard.slice(0, 3);
-  const rest = leaderboard.slice(3);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 py-6">
@@ -68,6 +104,54 @@ export default function VendorLeaderboardPage() {
           en temps réel.
         </p>
       </div>
+
+      {/* Settings card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Settings2 className="size-4 text-primary" />
+            Mes paramètres de visibilité
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="leaderboard-alias">
+              Pseudo (affiché à la place de votre nom)
+            </Label>
+            <Input
+              id="leaderboard-alias"
+              placeholder="Laisser vide pour utiliser votre nom réel"
+              value={alias}
+              onChange={(e) => setAlias(e.target.value)}
+              maxLength={50}
+            />
+            <p className="text-xs text-muted-foreground">
+              Optionnel — permet d&apos;apparaître sous un pseudonyme dans le
+              classement.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="hide-leaderboard">
+                Masquer ma boutique du classement
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Votre boutique n&apos;apparaîtra plus dans le classement public.
+              </p>
+            </div>
+            <Switch
+              id="hide-leaderboard"
+              checked={hideFromLeaderboard}
+              onCheckedChange={setHideFromLeaderboard}
+            />
+          </div>
+
+          <Button onClick={handleSaveSettings} disabled={saving} size="sm">
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </CardContent>
+      </Card>
 
       {leaderboard.length === 0 && (
         <Card>

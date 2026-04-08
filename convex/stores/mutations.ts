@@ -521,3 +521,27 @@ export const toggleMarketplaceVisibility = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Met à jour les paramètres de visibilité dans le classement vendeurs.
+ * Permet de masquer son nom ou d'utiliser un pseudo.
+ */
+export const updateLeaderboardSettings = mutation({
+  args: {
+    leaderboard_alias: v.optional(v.string()),
+    hide_from_leaderboard: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    const alias = args.leaderboard_alias?.trim() || undefined;
+
+    await ctx.db.patch(store._id, {
+      leaderboard_alias: alias,
+      hide_from_leaderboard: args.hide_from_leaderboard || undefined,
+      updated_at: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
