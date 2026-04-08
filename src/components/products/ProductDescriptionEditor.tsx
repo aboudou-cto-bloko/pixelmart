@@ -6,8 +6,24 @@ import { RichTextEditor } from "./RichTextEditor";
 import type { JSONContent } from "novel";
 
 interface ProductDescriptionEditorProps {
-  value: string;
-  onChange: (html: string) => void;
+  value: string; // Peut être du JSON TipTap ou du HTML legacy
+  onChange: (json: string) => void; // Émet du JSON TipTap
+}
+
+/**
+ * Extrait le texte brut depuis un document TipTap (format JSON)
+ */
+function extractTextFromJSON(node: JSONContent): string {
+  let text = "";
+  if (node.type === "text" && node.text) {
+    text += node.text;
+  }
+  if (node.content && Array.isArray(node.content)) {
+    for (const child of node.content) {
+      text += " " + extractTextFromJSON(child);
+    }
+  }
+  return text.trim();
 }
 
 /**
@@ -52,8 +68,8 @@ function getTextLength(content: string): number {
   return content.replace(/<[^>]*>/g, "").length;
 }
 
-function CharCounter({ html }: { html: string }) {
-  const count = getTextLength(html);
+function CharCounter({ content }: { content: string }) {
+  const count = getTextLength(content);
 
   let countColor = "text-orange-500";
   if (count >= 150 && count <= 800) {
@@ -87,7 +103,7 @@ export function ProductDescriptionEditor({
         onChange={onChange}
         placeholder="Décrivez votre produit en détail pour maximiser les conversions..."
       />
-      <CharCounter html={value} />
+      <CharCounter content={value} />
     </div>
   );
 }
