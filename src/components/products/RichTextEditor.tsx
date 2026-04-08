@@ -420,7 +420,7 @@ function BubbleBtn({
 
 function BubbleBtnInner({
   icon: Icon,
-  isActive,
+  isActive: _isActive,
   title,
 }: {
   icon: React.ComponentType<{ className?: string }>;
@@ -596,39 +596,38 @@ export function RichTextEditor({
             editorRef.current = editor;
           }}
         >
-          {/* Slash commands */}
-          <EditorCommand className="z-50 h-auto max-h-[330px] overflow-y-auto rounded-md border bg-background px-1 py-2 shadow-md transition-all">
-            <EditorCommandEmpty className="px-2 text-muted-foreground text-sm">
-              Aucun resultat
-            </EditorCommandEmpty>
-            <EditorCommandList>
-              {slashItems.map((item) => (
-                <EditorCommandItem
-                  value={item.title}
-                  onCommand={(val) => item.command?.(val)}
-                  key={item.title}
-                  className="flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm hover:bg-accent aria-selected:bg-accent cursor-pointer"
-                >
-                  <div className="flex items-center justify-center size-8 rounded-md border bg-background">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <p className="font-medium">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.description}
-                    </p>
-                  </div>
-                </EditorCommandItem>
-              ))}
-            </EditorCommandList>
-          </EditorCommand>
-
-          {/* Bubble menu */}
+          {/* Bubble menu (doit rester à l'intérieur de EditorContent) */}
           <BubbleMenuContent />
-
-          {/* Image resizer (built-in from Novel) */}
-          <ImageResizer />
         </EditorContent>
+
+        {/* Slash commands et ImageResizer doivent être frères de EditorContent */}
+        <EditorCommand className="z-50 h-auto max-h-[330px] overflow-y-auto rounded-md border bg-background px-1 py-2 shadow-md transition-all">
+          <EditorCommandEmpty className="px-2 text-muted-foreground text-sm">
+            Aucun resultat
+          </EditorCommandEmpty>
+          <EditorCommandList>
+            {slashItems.map((item) => (
+              <EditorCommandItem
+                value={item.title}
+                onCommand={(val) => item.command?.(val)}
+                key={item.title}
+                className="flex items-center gap-2 w-full rounded-md px-2 py-1.5 text-sm hover:bg-accent aria-selected:bg-accent cursor-pointer"
+              >
+                <div className="flex items-center justify-center size-8 rounded-md border bg-background">
+                  {item.icon}
+                </div>
+                <div>
+                  <p className="font-medium">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.description}
+                  </p>
+                </div>
+              </EditorCommandItem>
+            ))}
+          </EditorCommandList>
+        </EditorCommand>
+
+        <ImageResizer />
       </EditorRoot>
 
       {/* Hidden file input for manual image upload via slash command */}
