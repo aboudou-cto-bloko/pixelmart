@@ -27,6 +27,22 @@ function extractTextFromJSON(node: JSONContent): string {
 }
 
 /**
+ * Extrait le texte brut depuis un document TipTap (format JSON)
+ */
+function extractTextFromJSON(node: JSONContent): string {
+  let text = "";
+  if (node.type === "text" && node.text) {
+    text += node.text;
+  }
+  if (node.content && Array.isArray(node.content)) {
+    for (const child of node.content) {
+      text += " " + extractTextFromJSON(child);
+    }
+  }
+  return text.trim();
+}
+
+/**
  * Calcule la longueur du texte contenu dans une chaîne qui peut être
  * soit du JSON TipTap, soit du HTML (legacy).
  */
