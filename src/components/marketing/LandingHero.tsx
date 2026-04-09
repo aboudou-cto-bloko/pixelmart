@@ -1,5 +1,6 @@
 // filepath: src/components/marketing/LandingHero.tsx
 
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeIn } from "./FadeIn";
@@ -19,7 +20,7 @@ export function LandingHero() {
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-4 py-1.5">
             <span className="size-1.5 animate-pulse rounded-full bg-primary" />
             <span className="text-xs font-medium text-primary">
-              Pré-lancement — Accès anticipé
+              Disponible maintenant — Créez votre boutique
             </span>
           </div>
         </FadeIn>
@@ -49,10 +50,10 @@ export function LandingHero() {
         {/* CTA */}
         <FadeIn delay={0.36} once>
           <Button size="lg" asChild className="gap-2">
-            <a href="#waitlist">
-              Rejoindre la waitlist
+            <Link href="/register">
+              Créer ma boutique
               <ArrowRight className="size-4" />
-            </a>
+            </Link>
           </Button>
         </FadeIn>
 

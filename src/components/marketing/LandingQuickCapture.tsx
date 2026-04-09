@@ -24,7 +24,7 @@ export function LandingQuickCapture({
   className,
   layout = "inline",
   placeholder = "votre@email.com",
-  cta = "Rejoindre la waitlist",
+  cta = "S'inscrire à la newsletter",
   showCount = true,
 }: LandingQuickCaptureProps) {
   const joinWaitlist = useMutation(api.waitlist.joinWaitlist);
@@ -62,7 +62,7 @@ export function LandingQuickCapture({
           <span className="font-medium">Vous êtes sur la liste !</span>
         </div>
         <p className="text-xs text-muted-foreground">
-          On vous contacte dès le lancement. Partagez à vos amis commerçants.
+          Inscription confirmée. Partagez à vos amis commerçants.
         </p>
       </div>
     );
@@ -113,8 +113,7 @@ export function LandingQuickCapture({
           <Users className="size-3.5" />
           <span>
             <span className="font-semibold text-foreground">{count}</span>{" "}
-            personne
-            {count > 1 ? "s" : ""} sur la liste d&apos;attente
+            abonné{count > 1 ? "s" : ""}
           </span>
         </div>
       )}

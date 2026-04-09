@@ -16,9 +16,14 @@ export function LandingNav() {
           />
         </Link>
 
-        <Button size="sm" asChild>
-          <a href="#waitlist">Rejoindre la waitlist</a>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/login">Se connecter</Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/register">S&apos;inscrire</Link>
+          </Button>
+        </div>
       </div>
     </header>
   );
