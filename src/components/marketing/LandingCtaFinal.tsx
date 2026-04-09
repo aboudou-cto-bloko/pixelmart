@@ -57,12 +57,12 @@ export function LandingCtaFinal() {
               Prêt à lancer votre boutique ?
             </h2>
             <p className="mb-8 text-base text-muted-foreground">
-              Rejoignez la liste d&apos;attente. On vous prévient dès le
-              lancement.
+              Créez votre compte gratuitement et commencez à vendre dès
+              aujourd&apos;hui.
             </p>
             <Button size="lg" asChild className="gap-2">
-              <a href="#waitlist">
-                Rejoindre la liste d&apos;attente
+              <a href="/register">
+                Créer ma boutique
                 <ArrowRight className="size-4" />
               </a>
             </Button>

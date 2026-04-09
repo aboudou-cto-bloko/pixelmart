@@ -61,7 +61,7 @@ export function LandingWaitlist() {
   }
 
   return (
-    <section id="waitlist" className="relative overflow-hidden py-28">
+    <section id="newsletter" className="relative overflow-hidden py-28">
       {/* Background glow */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-1/2 size-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/8 blur-[100px]" />
@@ -70,14 +70,14 @@ export function LandingWaitlist() {
       <div className="container relative mx-auto max-w-xl px-4 text-center">
         <FadeIn className="mb-8">
           <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
-            Pré-lancement
+            Newsletter
           </p>
           <h2 className="mb-4 text-3xl font-black text-foreground md:text-4xl">
-            Soyez parmi les premiers.
+            Restez dans la boucle.
           </h2>
           <p className="text-sm text-muted-foreground">
-            Inscrivez-vous à la waitlist. Accès anticipé, offres de lancement,
-            et aucun spam — promis.
+            Inscrivez-vous à la newsletter. Conseils e-commerce, nouveautés
+            Pixel-Mart, offres exclusives — et aucun spam.
           </p>
         </FadeIn>
 
@@ -87,8 +87,7 @@ export function LandingWaitlist() {
             <Users className="size-4 text-primary" />
             <span className="text-sm text-muted-foreground">
               <span className="font-semibold text-foreground">{count}</span>{" "}
-              personne
-              {count > 1 ? "s" : ""} inscrite{count > 1 ? "s" : ""}
+              abonné{count > 1 ? "s" : ""}
             </span>
           </FadeIn>
         )}
@@ -100,13 +99,13 @@ export function LandingWaitlist() {
                 <CheckCircle2 className="size-10 text-green-400" />
                 <h3 className="text-lg font-bold text-foreground">
                   {alreadyRegistered
-                    ? "Déjà inscrit !"
-                    : "Vous êtes sur la liste !"}
+                    ? "Déjà abonné !"
+                    : "Inscription confirmée !"}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {alreadyRegistered
-                    ? "Cette adresse est déjà enregistrée. On vous contacte dès le lancement."
-                    : "On vous contacte dès que Pixel-Mart est prêt. Partagez à vos amis commerçants."}
+                    ? "Cette adresse est déjà enregistrée. Vous recevrez nos prochaines actualités."
+                    : "Bienvenue dans la newsletter Pixel-Mart. Partagez à vos amis commerçants."}
                 </p>
               </CardContent>
             </Card>
@@ -165,7 +164,7 @@ export function LandingWaitlist() {
                       <Loader2 className="size-4 animate-spin" />
                     ) : (
                       <>
-                        Rejoindre la waitlist
+                        S&apos;inscrire à la newsletter
                         <ArrowRight className="size-4" />
                       </>
                     )}
