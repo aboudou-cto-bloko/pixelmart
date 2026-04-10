@@ -289,23 +289,15 @@ export default function VendorTermsPage() {
             </p>
             <ul>
               <li>
-                <strong>Free</strong> — 7 % (700 basis points).
+                <strong>Free</strong> — 10 %.
               </li>
               <li>
-                <strong>Pro</strong> — 3 % (300 basis points).
+                <strong>Pro</strong> — 7 %.
               </li>
               <li>
-                <strong>Business</strong> — 2 % (200 basis points).
+                <strong>Business</strong> — 4 %
               </li>
             </ul>
-            <p>
-              La commission est calculée comme suit :
-              <br />
-              <code>
-                commission = (sous-total − remise coupon) × taux_commission / 10
-                000
-              </code>
-            </p>
 
             <h3 className="text-lg font-medium">6.3 Frais de livraison</h3>
             <p>
