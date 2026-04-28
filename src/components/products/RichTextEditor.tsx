@@ -58,6 +58,7 @@ import {
   Code,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { compressImage } from "@/lib/compress-image";
 import { useCallback, useRef, useState, useEffect, useMemo } from "react";
 
 // ─── Types ──────────────────────────────────────────────────
@@ -78,11 +79,16 @@ function useConvexImageUpload() {
 
   const onUpload = useCallback(
     async (file: File): Promise<string> => {
+      const compressed = await compressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.8,
+      });
       const uploadUrl = await generateUploadUrl();
       const res = await fetch(uploadUrl, {
         method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
+        headers: { "Content-Type": compressed.type },
+        body: compressed,
       });
       if (!res.ok) throw new Error("Upload failed");
       const { storageId } = (await res.json()) as { storageId: string };

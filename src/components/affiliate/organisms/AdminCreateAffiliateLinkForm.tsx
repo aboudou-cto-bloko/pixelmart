@@ -35,7 +35,7 @@ export function AdminCreateAffiliateLinkForm() {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [storeId, setStoreId] = useState<string>("");
-  const [rateBp, setRateBp] = useState<string>("300");
+  const [ratePct, setRatePct] = useState<string>("3");
   const [durationDays, setDurationDays] = useState<string>("");
   const [customCode, setCustomCode] = useState<string>("");
 
@@ -46,24 +46,25 @@ export function AdminCreateAffiliateLinkForm() {
       return;
     }
 
-    const parsedRate = parseInt(rateBp, 10);
-    if (isNaN(parsedRate) || parsedRate < 1 || parsedRate > 1000) {
-      toast.error("Le taux doit être entre 0.01% et 10% (1–1000 bp)");
+    const parsedPct = parseFloat(ratePct);
+    if (isNaN(parsedPct) || parsedPct < 0.01 || parsedPct > 10) {
+      toast.error("Le taux doit être entre 0,01 % et 10 %");
       return;
     }
+    const commissionRateBp = Math.round(parsedPct * 100);
 
     setIsLoading(true);
     try {
       const result = await createLink({
         referrer_store_id: storeId as Id<"stores">,
-        commission_rate_bp: parsedRate,
+        commission_rate_bp: commissionRateBp,
         duration_days: durationDays ? parseInt(durationDays, 10) : undefined,
         custom_code: customCode.trim() || undefined,
       });
       toast.success(`Lien créé : ${result.code}`);
       setOpen(false);
       setStoreId("");
-      setRateBp("300");
+      setRatePct("3");
       setDurationDays("");
       setCustomCode("");
     } catch (err) {
@@ -109,23 +110,25 @@ export function AdminCreateAffiliateLinkForm() {
           </div>
 
           <div className="space-y-2">
-            <Label>
-              Taux de commission{" "}
-              <span className="text-muted-foreground text-xs">
-                (en basis points — 300 = 3%)
+            <Label>Taux de commission (%)</Label>
+            <div className="relative">
+              <Input
+                type="number"
+                min={0.01}
+                max={10}
+                step={0.01}
+                value={ratePct}
+                onChange={(e) => setRatePct(e.target.value)}
+                placeholder="3"
+                className="pr-8"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                %
               </span>
-            </Label>
-            <Input
-              type="number"
-              min={1}
-              max={1000}
-              value={rateBp}
-              onChange={(e) => setRateBp(e.target.value)}
-              placeholder="300"
-            />
+            </div>
             <p className="text-xs text-muted-foreground">
-              Valeur affichée : {(parseInt(rateBp || "0", 10) / 100).toFixed(2)}
-              %
+              Ce taux sera appliqué à chaque commande des vendeurs parrainés via
+              ce lien (min 0,01 % — max 10 %).
             </p>
           </div>
 
