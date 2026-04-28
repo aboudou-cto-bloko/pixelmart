@@ -157,7 +157,8 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
           });
           break;
         }
-        case "failed": {
+        case "failed":
+        case "cancelled": {
           await ctx.runMutation(internal.payouts.mutations.failPayout, {
             payoutId,
             reason: `Moneroo: ${data.status}`,

@@ -181,6 +181,34 @@ export const confirmPayout = internalMutation({
       return { alreadyProcessed: true };
     }
 
+    // Si le payout était précédemment "failed" (solde re-crédité par failPayout),
+    // Moneroo a quand même traité le virement : on re-débite le solde (F-01).
+    if (payout.status === "failed") {
+      const store = await ctx.db.get(payout.store_id);
+      if (store) {
+        const balanceBefore = store.balance;
+        const balanceAfter = balanceBefore - payout.amount;
+
+        await ctx.db.insert("transactions", {
+          store_id: store._id,
+          type: "payout",
+          direction: "debit",
+          amount: payout.amount,
+          currency: payout.currency,
+          balance_before: balanceBefore,
+          balance_after: balanceAfter,
+          status: "completed",
+          description: `Retrait confirmé (correction — virement temporairement échoué)`,
+          processed_at: Date.now(),
+        });
+
+        await ctx.db.patch(store._id, {
+          balance: balanceAfter,
+          updated_at: Date.now(),
+        });
+      }
+    }
+
     // 1. Mettre à jour le payout
     await ctx.db.patch(args.payoutId, {
       status: "completed",
