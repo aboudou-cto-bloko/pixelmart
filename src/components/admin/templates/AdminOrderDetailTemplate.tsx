@@ -4,7 +4,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Mail, Phone, Store, User, MapPin, Package, Clock, Truck, CreditCard, CheckCircle2, Circle, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  Store,
+  User,
+  MapPin,
+  Package,
+  Clock,
+  Truck,
+  CreditCard,
+  CheckCircle2,
+  Circle,
+  AlertTriangle,
+} from "lucide-react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -18,8 +32,15 @@ import { formatPrice, formatDate, formatRelativeTime } from "@/lib/format";
 // ─── Types ────────────────────────────────────────────────────
 
 type OrderStatus =
-  | "pending" | "paid" | "processing" | "shipped" | "delivered"
-  | "cancelled" | "refunded" | "ready_for_delivery" | "delivery_failed";
+  | "pending"
+  | "paid"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
+  | "refunded"
+  | "ready_for_delivery"
+  | "delivery_failed";
 
 type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
@@ -101,14 +122,14 @@ type TimelineEvent = {
 };
 
 const EVENT_ICONS: Record<string, React.ReactNode> = {
-  created:     <Circle className="size-3.5 text-muted-foreground" />,
-  paid:        <CheckCircle2 className="size-3.5 text-green-500" />,
-  processing:  <Clock className="size-3.5 text-violet-500" />,
-  shipped:     <Truck className="size-3.5 text-cyan-500" />,
-  delivered:   <CheckCircle2 className="size-3.5 text-green-600" />,
-  cancelled:   <AlertTriangle className="size-3.5 text-red-500" />,
-  refunded:    <AlertTriangle className="size-3.5 text-slate-500" />,
-  note:        <Circle className="size-3.5 text-muted-foreground" />,
+  created: <Circle className="size-3.5 text-muted-foreground" />,
+  paid: <CheckCircle2 className="size-3.5 text-green-500" />,
+  processing: <Clock className="size-3.5 text-violet-500" />,
+  shipped: <Truck className="size-3.5 text-cyan-500" />,
+  delivered: <CheckCircle2 className="size-3.5 text-green-600" />,
+  cancelled: <AlertTriangle className="size-3.5 text-red-500" />,
+  refunded: <AlertTriangle className="size-3.5 text-slate-500" />,
+  note: <Circle className="size-3.5 text-muted-foreground" />,
 };
 
 function OrderTimeline({ orderId }: { orderId: Id<"orders"> }) {
@@ -149,21 +170,52 @@ function OrderTimeline({ orderId }: { orderId: Id<"orders"> }) {
 
 // ─── Admin Status Actions ─────────────────────────────────────
 
-const NEXT_STATUSES: Partial<Record<string, { status: string; label: string; variant: "default" | "outline" | "destructive" }[]>> = {
-  paid:               [{ status: "processing", label: "Prendre en charge", variant: "default" }],
-  processing:         [
-    { status: "ready_for_delivery", label: "Prêt à livrer", variant: "outline" },
+const NEXT_STATUSES: Partial<
+  Record<
+    string,
+    {
+      status: string;
+      label: string;
+      variant: "default" | "outline" | "destructive";
+    }[]
+  >
+> = {
+  paid: [
+    { status: "processing", label: "Prendre en charge", variant: "default" },
+  ],
+  processing: [
+    {
+      status: "ready_for_delivery",
+      label: "Prêt à livrer",
+      variant: "outline",
+    },
     { status: "shipped", label: "Expédier", variant: "default" },
+    { status: "delivered", label: "Marquer livré", variant: "outline" },
   ],
-  ready_for_delivery: [{ status: "shipped", label: "Expédier", variant: "default" }],
-  shipped:            [
+  ready_for_delivery: [
+    { status: "shipped", label: "Expédier", variant: "default" },
+    { status: "delivered", label: "Marquer livré", variant: "outline" },
+  ],
+  shipped: [
     { status: "delivered", label: "Marquer livré", variant: "default" },
-    { status: "delivery_failed", label: "Échec livraison", variant: "destructive" },
+    {
+      status: "delivery_failed",
+      label: "Échec livraison",
+      variant: "destructive",
+    },
   ],
-  delivery_failed:    [{ status: "shipped", label: "Réexpédier", variant: "outline" }],
+  delivery_failed: [
+    { status: "shipped", label: "Réexpédier", variant: "outline" },
+  ],
 };
 
-function AdminStatusActions({ orderId, currentStatus }: { orderId: Id<"orders">; currentStatus: string }) {
+function AdminStatusActions({
+  orderId,
+  currentStatus,
+}: {
+  orderId: Id<"orders">;
+  currentStatus: string;
+}) {
   const updateStatus = useMutation(api.admin.mutations.adminUpdateOrderStatus);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -175,7 +227,10 @@ function AdminStatusActions({ orderId, currentStatus }: { orderId: Id<"orders">;
     setLoading(status);
     setError(null);
     try {
-      await updateStatus({ orderId, status: status as Parameters<typeof updateStatus>[0]["status"] });
+      await updateStatus({
+        orderId,
+        status: status as Parameters<typeof updateStatus>[0]["status"],
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
@@ -200,7 +255,13 @@ function AdminStatusActions({ orderId, currentStatus }: { orderId: Id<"orders">;
               variant={action.variant}
               disabled={!!loading}
               onClick={() => handle(action.status)}
-              className={action.variant === "destructive" ? "" : action.variant === "default" ? "bg-primary" : ""}
+              className={
+                action.variant === "destructive"
+                  ? ""
+                  : action.variant === "default"
+                    ? "bg-primary"
+                    : ""
+              }
             >
               {loading === action.status ? "…" : action.label}
             </Button>
@@ -215,52 +276,52 @@ function AdminStatusActions({ orderId, currentStatus }: { orderId: Id<"orders">;
 // ─── Badge styles ─────────────────────────────────────────────
 
 const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
-  pending:            "bg-amber-100 text-amber-700 border-amber-300",
-  paid:               "bg-blue-100 text-blue-700 border-blue-300",
-  processing:         "bg-violet-100 text-violet-700 border-violet-300",
-  shipped:            "bg-cyan-100 text-cyan-700 border-cyan-300",
-  delivered:          "bg-green-100 text-green-700 border-green-300",
-  cancelled:          "bg-red-100 text-red-700 border-red-300",
-  refunded:           "bg-slate-100 text-slate-700 border-slate-300",
+  pending: "bg-amber-100 text-amber-700 border-amber-300",
+  paid: "bg-blue-100 text-blue-700 border-blue-300",
+  processing: "bg-violet-100 text-violet-700 border-violet-300",
+  shipped: "bg-cyan-100 text-cyan-700 border-cyan-300",
+  delivered: "bg-green-100 text-green-700 border-green-300",
+  cancelled: "bg-red-100 text-red-700 border-red-300",
+  refunded: "bg-slate-100 text-slate-700 border-slate-300",
   ready_for_delivery: "bg-pink-100 text-pink-700 border-pink-300",
-  delivery_failed:    "bg-rose-100 text-rose-700 border-rose-300",
+  delivery_failed: "bg-rose-100 text-rose-700 border-rose-300",
 };
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending:            "En attente",
-  paid:               "Payée",
-  processing:         "En préparation",
-  shipped:            "Expédiée",
-  delivered:          "Livrée",
-  cancelled:          "Annulée",
-  refunded:           "Remboursée",
+  pending: "En attente",
+  paid: "Payée",
+  processing: "En préparation",
+  shipped: "Expédiée",
+  delivered: "Livrée",
+  cancelled: "Annulée",
+  refunded: "Remboursée",
   ready_for_delivery: "Prête à livrer",
-  delivery_failed:    "Échec livraison",
+  delivery_failed: "Échec livraison",
 };
 
 const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
-  pending:  "bg-amber-100 text-amber-700 border-amber-300",
-  paid:     "bg-green-100 text-green-700 border-green-300",
-  failed:   "bg-red-100 text-red-700 border-red-300",
+  pending: "bg-amber-100 text-amber-700 border-amber-300",
+  paid: "bg-green-100 text-green-700 border-green-300",
+  failed: "bg-red-100 text-red-700 border-red-300",
   refunded: "bg-slate-100 text-slate-700 border-slate-300",
 };
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending:  "En attente",
-  paid:     "Payé",
-  failed:   "Échoué",
+  pending: "En attente",
+  paid: "Payé",
+  failed: "Échoué",
   refunded: "Remboursé",
 };
 
 const DELIVERY_TYPE_LABELS: Record<DeliveryType, string> = {
   standard: "Standard",
-  urgent:   "Urgent",
-  fragile:  "Fragile",
+  urgent: "Urgent",
+  fragile: "Fragile",
 };
 
 const SOURCE_LABELS = {
-  marketplace:  "Marketplace",
-  vendor_shop:  "Boutique vendeur",
+  marketplace: "Marketplace",
+  vendor_shop: "Boutique vendeur",
 };
 
 // ─── Template ────────────────────────────────────────────────
@@ -347,7 +408,9 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium line-clamp-1">{item.title}</p>
+                    <p className="text-sm font-medium line-clamp-1">
+                      {item.title}
+                    </p>
                     {item.variant_title && (
                       <p className="text-xs text-muted-foreground font-medium">
                         {item.variant_title}
@@ -359,7 +422,8 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {item.quantity} × {formatPrice(item.unit_price, order.currency)}
+                      {item.quantity} ×{" "}
+                      {formatPrice(item.unit_price, order.currency)}
                     </p>
                   </div>
                   <span className="text-sm font-semibold tabular-nums shrink-0">
@@ -378,8 +442,13 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                 </div>
                 {order.discount_amount > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Réduction{order.coupon_code ? ` (${order.coupon_code})` : ""}</span>
-                    <span>-{formatPrice(order.discount_amount, order.currency)}</span>
+                    <span>
+                      Réduction
+                      {order.coupon_code ? ` (${order.coupon_code})` : ""}
+                    </span>
+                    <span>
+                      -{formatPrice(order.discount_amount, order.currency)}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between text-muted-foreground">
@@ -400,7 +469,9 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                 {order.commission_amount !== undefined && (
                   <div className="flex justify-between text-muted-foreground text-xs">
                     <span>Commission Pixel-Mart</span>
-                    <span>{formatPrice(order.commission_amount, order.currency)}</span>
+                    <span>
+                      {formatPrice(order.commission_amount, order.currency)}
+                    </span>
                   </div>
                 )}
               </div>
@@ -408,7 +479,10 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
           </Card>
 
           {/* Delivery info */}
-          {(order.delivery_type || order.delivery_distance_km || order.payment_mode || order.tracking_number) && (
+          {(order.delivery_type ||
+            order.delivery_distance_km ||
+            order.payment_mode ||
+            order.tracking_number) && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -428,14 +502,20 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                     <span className="text-muted-foreground">Paiement</span>
                     <span className="flex items-center gap-1">
                       <CreditCard className="size-3.5" />
-                      {order.payment_mode === "cod" ? "À la livraison" : "En ligne"}
+                      {order.payment_mode === "cod"
+                        ? "À la livraison"
+                        : "En ligne"}
                     </span>
                   </div>
                 )}
                 {order.delivery_fee !== undefined && order.delivery_fee > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Frais livraison</span>
-                    <span>{formatPrice(order.delivery_fee, order.currency)}</span>
+                    <span className="text-muted-foreground">
+                      Frais livraison
+                    </span>
+                    <span>
+                      {formatPrice(order.delivery_fee, order.currency)}
+                    </span>
                   </div>
                 )}
                 {order.delivery_distance_km !== undefined && (
@@ -447,33 +527,45 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                 {order.delivery_distance_vendor_to_hub_km !== undefined && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Vendeur → Hub</span>
-                    <span>{order.delivery_distance_vendor_to_hub_km.toFixed(1)} km</span>
+                    <span>
+                      {order.delivery_distance_vendor_to_hub_km.toFixed(1)} km
+                    </span>
                   </div>
                 )}
                 {order.delivery_distance_hub_to_client_km !== undefined && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Hub → Client</span>
-                    <span>{order.delivery_distance_hub_to_client_km.toFixed(1)} km</span>
+                    <span>
+                      {order.delivery_distance_hub_to_client_km.toFixed(1)} km
+                    </span>
                   </div>
                 )}
-                {order.delivery_lat !== undefined && order.delivery_lon !== undefined && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Coordonnées GPS</span>
-                    <a
-                      href={`https://www.openstreetmap.org/?mlat=${order.delivery_lat}&mlon=${order.delivery_lon}&zoom=16`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline flex items-center gap-1"
-                    >
-                      <MapPin className="size-3.5" />
-                      {order.delivery_lat.toFixed(4)}, {order.delivery_lon.toFixed(4)}
-                    </a>
-                  </div>
-                )}
+                {order.delivery_lat !== undefined &&
+                  order.delivery_lon !== undefined && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Coordonnées GPS
+                      </span>
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${order.delivery_lat}&mlon=${order.delivery_lon}&zoom=16`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        <MapPin className="size-3.5" />
+                        {order.delivery_lat.toFixed(4)},{" "}
+                        {order.delivery_lon.toFixed(4)}
+                      </a>
+                    </div>
+                  )}
                 {order.tracking_number && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Numéro de suivi</span>
-                    <span className="font-mono text-xs">{order.tracking_number}</span>
+                    <span className="text-muted-foreground">
+                      Numéro de suivi
+                    </span>
+                    <span className="font-mono text-xs">
+                      {order.tracking_number}
+                    </span>
                   </div>
                 )}
                 {order.carrier && (
@@ -484,7 +576,9 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                 )}
                 {order.estimated_delivery && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Livraison estimée</span>
+                    <span className="text-muted-foreground">
+                      Livraison estimée
+                    </span>
                     <span>{formatDate(order.estimated_delivery)}</span>
                   </div>
                 )}
@@ -553,7 +647,9 @@ export function AdminOrderDetailTemplate({ order, onBack }: Props) {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">Client introuvable</p>
+                <p className="text-sm text-muted-foreground">
+                  Client introuvable
+                </p>
               )}
             </CardContent>
           </Card>
