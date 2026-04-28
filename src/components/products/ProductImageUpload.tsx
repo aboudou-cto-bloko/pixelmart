@@ -16,6 +16,7 @@ import {
 import { ImagePlus, X, GripVertical, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { IMAGE_ROLES, getRoleLabel } from "@/constants/imageRoles";
+import { compressImage } from "@/lib/compress-image";
 
 interface ProductImageUploadProps {
   images: string[]; // storageIds
@@ -59,12 +60,18 @@ export function ProductImageUpload({
           if (!file.type.startsWith("image/")) continue;
           if (file.size > 5 * 1024 * 1024) continue; // 5 Mo max
 
+          const compressed = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1920,
+            quality: 0.82,
+          });
+
           const uploadUrl = await generateUploadUrl();
 
           const result = await fetch(uploadUrl, {
             method: "POST",
-            headers: { "Content-Type": file.type },
-            body: file,
+            headers: { "Content-Type": compressed.type },
+            body: compressed,
           });
 
           if (!result.ok) continue;
