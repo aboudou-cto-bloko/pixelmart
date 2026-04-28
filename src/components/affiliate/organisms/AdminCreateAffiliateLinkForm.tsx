@@ -36,6 +36,7 @@ export function AdminCreateAffiliateLinkForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [storeId, setStoreId] = useState<string>("");
   const [ratePct, setRatePct] = useState<string>("3");
+  const [platformRatePct, setPlatformRatePct] = useState<string>("");
   const [durationDays, setDurationDays] = useState<string>("");
   const [customCode, setCustomCode] = useState<string>("");
 
@@ -48,16 +49,27 @@ export function AdminCreateAffiliateLinkForm() {
 
     const parsedPct = parseFloat(ratePct);
     if (isNaN(parsedPct) || parsedPct < 0.01 || parsedPct > 10) {
-      toast.error("Le taux doit être entre 0,01 % et 10 %");
+      toast.error("Le taux parrain doit être entre 0,01 % et 10 %");
       return;
     }
     const commissionRateBp = Math.round(parsedPct * 100);
+
+    let vendorPlatformCommissionBp: number | undefined;
+    if (platformRatePct.trim() !== "") {
+      const parsedPlatformPct = parseFloat(platformRatePct);
+      if (isNaN(parsedPlatformPct) || parsedPlatformPct <= 0) {
+        toast.error("Le taux plateforme doit être supérieur à 0 %");
+        return;
+      }
+      vendorPlatformCommissionBp = Math.round(parsedPlatformPct * 100);
+    }
 
     setIsLoading(true);
     try {
       const result = await createLink({
         referrer_store_id: storeId as Id<"stores">,
         commission_rate_bp: commissionRateBp,
+        vendor_platform_commission_bp: vendorPlatformCommissionBp,
         duration_days: durationDays ? parseInt(durationDays, 10) : undefined,
         custom_code: customCode.trim() || undefined,
       });
@@ -65,6 +77,7 @@ export function AdminCreateAffiliateLinkForm() {
       setOpen(false);
       setStoreId("");
       setRatePct("3");
+      setPlatformRatePct("");
       setDurationDays("");
       setCustomCode("");
     } catch (err) {
@@ -129,6 +142,34 @@ export function AdminCreateAffiliateLinkForm() {
             <p className="text-xs text-muted-foreground">
               Ce taux sera appliqué à chaque commande des vendeurs parrainés via
               ce lien (min 0,01 % — max 10 %).
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              Commission plateforme pour les parrainés{" "}
+              <span className="text-muted-foreground text-xs">
+                (%, vide = taux par défaut du tier)
+              </span>
+            </Label>
+            <div className="relative">
+              <Input
+                type="number"
+                min={0.01}
+                step={0.01}
+                value={platformRatePct}
+                onChange={(e) => setPlatformRatePct(e.target.value)}
+                placeholder="Ex : 3 (taux par défaut utilisé si vide)"
+                className="pr-8"
+              />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                %
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Les vendeurs inscrits via ce lien paieront ce taux à la plateforme
+              plutôt que le taux standard. Ne peut pas dépasser le taux par
+              défaut configuré.
             </p>
           </div>
 

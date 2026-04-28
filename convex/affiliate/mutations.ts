@@ -4,7 +4,10 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { requireSuperAdmin, requireRoles } from "../users/helpers";
-import { getAffiliateConfig } from "../lib/getConfig";
+import {
+  getAffiliateConfig,
+  getEffectiveCommissionRates,
+} from "../lib/getConfig";
 import { generateAffiliateCode } from "./helpers";
 
 // ─── Admin: créer un lien affilié ────────────────────────────
@@ -13,6 +16,7 @@ export const createAffiliateLink = mutation({
   args: {
     referrer_store_id: v.id("stores"),
     commission_rate_bp: v.number(),
+    vendor_platform_commission_bp: v.optional(v.number()), // commission plateforme réduite pour les parrainés
     duration_days: v.optional(v.number()), // undefined = illimité
     custom_code: v.optional(v.string()), // code personnalisé (optionnel)
   },
@@ -25,8 +29,22 @@ export const createAffiliateLink = mutation({
       args.commission_rate_bp > maxCommissionBp
     ) {
       throw new Error(
-        `Taux invalide. Maximum autorisé : ${maxCommissionBp / 100} %`,
+        `Taux parrain invalide. Maximum autorisé : ${maxCommissionBp / 100} %`,
       );
+    }
+
+    // Valider le taux plateforme parrainés : doit être > 0 et ≤ taux free par défaut
+    if (args.vendor_platform_commission_bp !== undefined) {
+      const commissionRates = await getEffectiveCommissionRates(ctx);
+      const freeRate = commissionRates.free;
+      if (args.vendor_platform_commission_bp <= 0) {
+        throw new Error("Le taux plateforme doit être supérieur à 0");
+      }
+      if (args.vendor_platform_commission_bp > freeRate) {
+        throw new Error(
+          `Le taux plateforme ne peut pas dépasser le taux par défaut (${freeRate / 100} %)`,
+        );
+      }
     }
     if (
       args.duration_days !== undefined &&
@@ -82,6 +100,7 @@ export const createAffiliateLink = mutation({
       referrer_store_id: args.referrer_store_id,
       code,
       commission_rate_bp: args.commission_rate_bp,
+      vendor_platform_commission_bp: args.vendor_platform_commission_bp,
       duration_days: args.duration_days,
       expires_at,
       is_active: true,
@@ -318,6 +337,8 @@ export const linkStoreToAffiliate = internalMutation({
     await ctx.db.patch(args.store_id, {
       affiliate_link_id: link._id,
       affiliate_commission_rate_bp: link.commission_rate_bp,
+      // Snapshot du taux plateforme réduit (undefined si le lien n'en a pas)
+      referral_platform_commission_bp: link.vendor_platform_commission_bp,
     });
 
     await ctx.db.patch(link._id, {

@@ -144,8 +144,10 @@ export default defineSchema({
 
     // Affiliation — lien de parrainage ayant amené ce vendeur
     affiliate_link_id: v.optional(v.id("affiliate_links")),
-    // Taux snapshoté au moment de l'inscription (ne change pas si le lien est modifié ensuite)
+    // Taux parrain snapshoté au moment de l'inscription (ne change pas si le lien est modifié ensuite)
     affiliate_commission_rate_bp: v.optional(v.number()),
+    // Commission plateforme réduite accordée via le lien d'affiliation (≤ taux global du tier)
+    referral_platform_commission_bp: v.optional(v.number()),
 
     // Demo store (owned by a demo account — data isolated from production)
     is_demo: v.optional(v.boolean()),
@@ -1293,7 +1295,10 @@ export default defineSchema({
     created_by: v.id("users"), // admin qui a généré le lien
     referrer_store_id: v.id("stores"), // vendeur parrain
     code: v.string(), // code unique URL-safe, ex : "PM-AFF-X7K2"
-    commission_rate_bp: v.number(), // basis points, ex : 300 = 3 %
+    commission_rate_bp: v.number(), // basis points parrain, ex : 300 = 3 %
+    // Commission plateforme réduite pour les vendeurs inscrits via ce lien (optionnel)
+    // Doit être ≤ au taux par défaut du tier "free" dans platform_config
+    vendor_platform_commission_bp: v.optional(v.number()),
     duration_days: v.optional(v.number()), // undefined = illimité
     expires_at: v.optional(v.number()), // epoch ms, calculé à la création
     is_active: v.boolean(),

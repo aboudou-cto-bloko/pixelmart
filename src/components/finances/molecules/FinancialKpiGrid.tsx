@@ -19,6 +19,7 @@ interface FinancialKpiGridProps {
   revenueTrend: number;
   currency: string;
   commissionRate: number;
+  isReferralRate?: boolean;
 }
 
 export function FinancialKpiGrid({
@@ -29,7 +30,12 @@ export function FinancialKpiGrid({
   revenueTrend,
   currency,
   commissionRate,
+  isReferralRate,
 }: FinancialKpiGridProps) {
+  const commissionSubtitle = isReferralRate
+    ? `Taux : ${(commissionRate / 100).toFixed(2)}% · Parrainé`
+    : `Taux : ${(commissionRate / 100).toFixed(0)}%`;
+
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <BalanceCard
@@ -58,7 +64,7 @@ export function FinancialKpiGrid({
         amount={commissions30d}
         currency={currency}
         icon={Percent}
-        subtitle={`Taux : ${(commissionRate / 100).toFixed(0)}%`}
+        subtitle={commissionSubtitle}
       />
     </div>
   );
