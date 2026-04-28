@@ -32,6 +32,7 @@ interface FinanceDashboardTemplateProps {
         revenueTrend: number;
         currency: string;
         commissionRate: number;
+        isReferralRate?: boolean;
       }
     | undefined;
   transactions:
@@ -129,6 +130,7 @@ export function FinanceDashboardTemplate({
           revenueTrend={overview.revenueTrend}
           currency={currency}
           commissionRate={overview.commissionRate}
+          isReferralRate={overview.isReferralRate}
         />
       )}
 

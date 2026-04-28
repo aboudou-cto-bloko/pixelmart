@@ -299,11 +299,11 @@ export const createOrder = mutation({
 
     // 8. Commission — calculée sur le sous-total produits uniquement (hors livraison)
     // Règle métier : les frais de livraison ne font pas partie du CA du vendeur
+    // Si le vendeur est parrainé et que son lien a un taux plateforme réduit, on l'utilise.
     const commissionRates = await getEffectiveCommissionRates(ctx);
-    const commissionRate = getCommissionRate(
-      store.subscription_tier,
-      commissionRates,
-    );
+    const commissionRate =
+      store.referral_platform_commission_bp ??
+      getCommissionRate(store.subscription_tier, commissionRates);
     const commissionAmount = calculateCommission(
       subtotal - discountAmount,
       commissionRate,

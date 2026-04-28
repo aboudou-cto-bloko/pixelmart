@@ -86,18 +86,22 @@ export const getOverview = query({
           : 0;
 
     const commissionRatesConfig = await getEffectiveCommissionRates(ctx);
-    const effectiveCommissionRate = getCommissionRate(
+    const defaultCommissionRate = getCommissionRate(
       store.subscription_tier,
       commissionRatesConfig,
     );
+    // Si le vendeur est parrainé avec un taux plateforme réduit, on l'affiche
+    const effectiveCommissionRate =
+      store.referral_platform_commission_bp ?? defaultCommissionRate;
 
     return {
       // ── Champs schema stores ──
       balance: store.balance,
       pendingBalance: store.pending_balance,
-      currency: store.currency, // ✅ corrigé (était default_currency)
+      currency: store.currency,
       subscriptionTier: store.subscription_tier,
       commissionRate: effectiveCommissionRate,
+      isReferralRate: store.referral_platform_commission_bp !== undefined,
 
       // ── Calculés depuis transactions ──
       totalRevenue: totalCredits, // ✅ corrigé (était store.total_revenue)
