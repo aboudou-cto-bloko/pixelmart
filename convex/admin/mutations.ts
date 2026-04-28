@@ -1240,8 +1240,8 @@ export const adminUpdateOrderStatus = mutation({
     // Validate transition
     const ALLOWED: Partial<Record<string, string[]>> = {
       paid: ["processing"],
-      processing: ["shipped", "ready_for_delivery"],
-      ready_for_delivery: ["shipped"],
+      processing: ["shipped", "ready_for_delivery", "delivered"],
+      ready_for_delivery: ["shipped", "delivered"],
       shipped: ["delivered", "delivery_failed"],
       delivery_failed: ["shipped"],
     };

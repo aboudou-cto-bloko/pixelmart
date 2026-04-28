@@ -20,6 +20,7 @@ interface AffiliateLink {
   code: string;
   is_active: boolean;
   commission_rate_bp: number;
+  vendor_platform_commission_bp?: number;
   referral_count: number;
   expires_at?: number;
 }
@@ -50,7 +51,8 @@ export function VendorAffiliateLinksTable({
         <TableHeader>
           <TableRow>
             <TableHead>Code / Lien de parrainage</TableHead>
-            <TableHead className="text-right">Taux</TableHead>
+            <TableHead className="text-right">Taux parrain</TableHead>
+            <TableHead className="text-right">Commission filleuls</TableHead>
             <TableHead className="text-right">Filleuls</TableHead>
             <TableHead>Expiration</TableHead>
             <TableHead>Statut</TableHead>
@@ -67,6 +69,13 @@ export function VendorAffiliateLinksTable({
               </TableCell>
               <TableCell className="text-right font-mono text-sm">
                 {(link.commission_rate_bp / 100).toFixed(1)}%
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">
+                {link.vendor_platform_commission_bp !== undefined ? (
+                  `${(link.vendor_platform_commission_bp / 100).toFixed(1)}%`
+                ) : (
+                  <span className="text-muted-foreground">Défaut</span>
+                )}
               </TableCell>
               <TableCell className="text-right tabular-nums text-sm">
                 {link.referral_count}
