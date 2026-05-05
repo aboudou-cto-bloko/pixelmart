@@ -8,7 +8,12 @@ import type { MutationCtx } from "../_generated/server";
 import type { Id, Doc } from "../_generated/dataModel";
 import { requireAppUser, getAppUser, getVendorStore } from "../users/helpers";
 import { logOrderEvent } from "./events";
-import { DEFAULT_CURRENCY } from "../lib/constants";
+import {
+  DEFAULT_CURRENCY,
+  COD_DEFAULT_MAX_AMOUNT,
+  COD_MAX_PENDING_ORDERS,
+  COD_MAX_FAILURES,
+} from "../lib/constants";
 import {
   getEffectiveCommissionRates,
   getCancellationWindowMs,
@@ -315,13 +320,76 @@ export const createOrder = mutation({
     // 10. Devise — toujours XOF pour les opérations backend
     const currency = DEFAULT_CURRENCY;
 
-    // 11. Déterminer le statut initial selon le mode de paiement
+    // 11. Validation COD — contraintes anti-abus
+    if (paymentMode === "cod") {
+      // a) Le vendeur doit avoir activé le COD pour sa boutique
+      if (!store.cod_enabled) {
+        throw new ConvexError(
+          "Cette boutique n'accepte pas le paiement à la livraison",
+        );
+      }
+
+      // b) Téléphone obligatoire pour que le vendeur puisse confirmer avant préparation
+      if (!args.shippingAddress.phone?.trim()) {
+        throw new ConvexError(
+          "Votre numéro de téléphone est requis pour une commande avec paiement à la livraison",
+        );
+      }
+
+      // c) Montant maximum (limite vendeur ou plateforme)
+      const codMaxAmount = store.cod_max_amount ?? COD_DEFAULT_MAX_AMOUNT;
+      if (totalAmount > codMaxAmount) {
+        throw new ConvexError(
+          `Le paiement à la livraison est limité à ${codMaxAmount.toLocaleString("fr-FR")} FCFA pour cette boutique`,
+        );
+      }
+
+      // d) Client manuellement bloqué par l'admin
+      if (user.cod_blocked) {
+        throw new ConvexError(
+          "Le paiement à la livraison n'est pas disponible pour votre compte. Contactez le support.",
+        );
+      }
+
+      // e) Trop d'échecs passés (absent / refus à la livraison)
+      const failures = user.cod_failures_count ?? 0;
+      if (failures >= COD_MAX_FAILURES) {
+        throw new ConvexError(
+          "Le paiement à la livraison n'est plus disponible suite à des livraisons non honorées. Utilisez le paiement en ligne.",
+        );
+      }
+
+      // f) Trop de commandes COD actives — empêche le flood de fausses commandes
+      const pendingCodOrders = await ctx.db
+        .query("orders")
+        .withIndex("by_customer", (q) => q.eq("customer_id", user._id))
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("payment_mode"), "cod"),
+            q.or(
+              q.eq(q.field("status"), "paid"),
+              q.eq(q.field("status"), "processing"),
+              q.eq(q.field("status"), "shipped"),
+              q.eq(q.field("status"), "ready_for_delivery"),
+            ),
+          ),
+        )
+        .collect();
+
+      if (pendingCodOrders.length >= COD_MAX_PENDING_ORDERS) {
+        throw new ConvexError(
+          `Vous avez déjà ${COD_MAX_PENDING_ORDERS} commandes avec paiement à la livraison en cours. Attendez leur livraison avant d'en passer de nouvelles.`,
+        );
+      }
+    }
+
+    // 12. Déterminer le statut initial selon le mode de paiement
     // COD = "paid" directement (le paiement sera collecté à la livraison)
     // Online = "pending" (en attente de confirmation Moneroo)
     const initialStatus = paymentMode === "cod" ? "paid" : "pending";
     const initialPaymentStatus = paymentMode === "cod" ? "paid" : "pending";
 
-    // 12. Créer la commande
+    // 13. Créer la commande
     const orderId = await ctx.db.insert("orders", {
       order_number: orderNumber,
       customer_id: user._id,
@@ -355,15 +423,15 @@ export const createOrder = mutation({
       updated_at: Date.now(),
     });
 
-    // 13. Décrémenter le stock
+    // 14. Décrémenter le stock
     await decrementInventory(ctx, validatedItems);
 
-    // 14. Incrémenter used_count du coupon
+    // 15. Incrémenter used_count du coupon
     if (validatedCouponCode) {
       await incrementCouponUsage(ctx, validatedCouponCode, args.storeId);
     }
 
-    // 15. Log event
+    // 16. Log event
     await logOrderEvent(ctx, {
       orderId,
       storeId: store._id,
@@ -376,7 +444,7 @@ export const createOrder = mutation({
       actorId: user._id,
     });
 
-    // 16. COD : F-01 transactions + credit pending_balance + notifications
+    // 17. COD : F-01 transactions + credit pending_balance + notifications
     // Pour les commandes en ligne, ces étapes sont déclenchées par le webhook Moneroo.
     // Pour COD, le paiement est "confirmé" à la création (collecté à la livraison).
     if (paymentMode === "cod") {
@@ -799,6 +867,14 @@ export const updateStatus = mutation({
       });
 
       const customerFailed = await ctx.db.get(order.customer_id);
+
+      // COD : incrémenter le compteur d'échecs du client (absent / refus à la livraison)
+      if (order.payment_mode === "cod" && customerFailed) {
+        await ctx.db.patch(customerFailed._id, {
+          cod_failures_count: (customerFailed.cod_failures_count ?? 0) + 1,
+          updated_at: Date.now(),
+        });
+      }
 
       // Vendeur : email + in-app + push
       await ctx.scheduler.runAfter(

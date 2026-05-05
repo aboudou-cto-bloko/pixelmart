@@ -38,6 +38,7 @@ import {
   DeliverySection,
   type DeliveryConfig,
 } from "@/components/checkout/DeliverySection";
+import { PaymentModeSelector } from "@/components/checkout/PaymentModeSelector";
 import { formatPrice } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
@@ -70,6 +71,7 @@ interface QuickOrderStore {
   has_storage_plan?: boolean;
   custom_pickup_lat?: number;
   custom_pickup_lon?: number;
+  cod_enabled?: boolean;
 }
 
 interface QuickOrderSheetProps {
@@ -221,7 +223,9 @@ export function QuickOrderSheet({
         setGuestEmailError(null);
       }
 
-      const errors = validateAddress(address);
+      const errors = validateAddress(address, {
+        phoneRequired: deliveryConfig.paymentMode === "cod",
+      });
       if (errors && Object.keys(errors).length > 0) {
         setAddressErrors(errors);
         return;
@@ -406,14 +410,29 @@ export function QuickOrderSheet({
                 collectionPoint={collectionPoint}
               />
             ) : (
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Les frais de livraison sont définis par la boutique et vous
-                    seront communiqués après confirmation de votre commande.
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="space-y-3">
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">
+                      Les frais de livraison sont définis par la boutique et
+                      vous seront communiqués après confirmation de votre
+                      commande.
+                    </p>
+                  </CardContent>
+                </Card>
+                {/* Mode de paiement COD — visible uniquement si le vendeur l'a activé */}
+                {store.cod_enabled && (
+                  <PaymentModeSelector
+                    value={deliveryConfig.paymentMode}
+                    onChange={(mode) =>
+                      setDeliveryConfig((prev) => ({
+                        ...prev,
+                        paymentMode: mode,
+                      }))
+                    }
+                  />
+                )}
+              </div>
             )}
 
             {/* Address */}
@@ -423,6 +442,7 @@ export function QuickOrderSheet({
                 address={address}
                 onChange={setAddress}
                 errors={addressErrors}
+                phoneRequired={deliveryConfig.paymentMode === "cod"}
               />
             </div>
 

@@ -73,6 +73,24 @@ export const STORAGE_FEES = {
  */
 export const STORAGE_DEBT_BLOCK_DELAY_MS = 30 * 24 * 60 * 60 * 1000;
 
+// ── COD (Cash on Delivery) ───────────────────────────────────
+
+/**
+ * Montant maximum par défaut pour les commandes COD (XOF).
+ * Pour XOF : centimes = valeur FCFA (pas de ÷100).
+ * Le vendeur peut fixer une limite inférieure via cod_max_amount.
+ */
+export const COD_DEFAULT_MAX_AMOUNT = 50_000; // 50 000 FCFA
+
+/** Nombre maximum de commandes COD actives simultanément par client */
+export const COD_MAX_PENDING_ORDERS = 2;
+
+/**
+ * Nombre maximum de livraisons COD non honorées (absent / refus) avant
+ * que le client ne soit bloqué du COD automatiquement.
+ */
+export const COD_MAX_FAILURES = 3;
+
 // ── Affiliation ──────────────────────────────────────────────
 
 /** Taux de commission affilié maximum (basis points). Défaut : 1000 = 10 % */

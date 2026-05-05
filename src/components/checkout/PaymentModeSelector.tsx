@@ -2,9 +2,10 @@
 
 "use client";
 
-import { CreditCard, Banknote, Lock } from "lucide-react";
+import { CreditCard, Banknote, Lock, AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { COD_MAX_PENDING_ORDERS, COD_MAX_FAILURES } from "@/constants/cod";
 import type { PaymentMode } from "@/constants/deliveryTypes";
 
 interface PaymentModeSelectorProps {
@@ -74,11 +75,7 @@ export function PaymentModeSelector({
                 disabled={isDisabled}
                 className="shrink-0"
               />
-              <Icon
-                className={`size-5 shrink-0 ${
-                  isDisabled ? "text-muted-foreground" : "text-muted-foreground"
-                }`}
-              />
+              <Icon className="size-5 shrink-0 text-muted-foreground" />
               <div className="flex-1 min-w-0">
                 <p
                   className={`text-sm font-medium ${
@@ -101,6 +98,31 @@ export function PaymentModeSelector({
           );
         })}
       </RadioGroup>
+
+      {/* Conditions COD — affichées uniquement quand COD sélectionné */}
+      {value === "cod" && !codDisabled && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2.5">
+          <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+          <div className="text-xs text-amber-800 dark:text-amber-300 space-y-1">
+            <p className="font-medium">Conditions du paiement à la livraison</p>
+            <ul className="list-disc list-inside space-y-0.5 text-amber-700 dark:text-amber-400">
+              <li>
+                Votre téléphone est requis — le vendeur peut vous appeler pour
+                confirmer.
+              </li>
+              <li>
+                Maximum {COD_MAX_PENDING_ORDERS} commandes COD en cours
+                simultanément.
+              </li>
+              <li>
+                En cas d&apos;absence ou de refus à la livraison, votre accès au
+                paiement à la livraison sera restreint après {COD_MAX_FAILURES}{" "}
+                incidents.
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

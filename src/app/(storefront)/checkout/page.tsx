@@ -32,6 +32,7 @@ import {
   DeliverySection,
   type DeliveryConfig,
 } from "@/components/checkout/DeliverySection";
+import { PaymentModeSelector } from "@/components/checkout/PaymentModeSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -231,6 +232,13 @@ export default function CheckoutPage() {
       })
     : false;
 
+  // COD disponible uniquement si toutes les boutiques du panier l'ont activé
+  const allCodEnabled =
+    allIndependent &&
+    storeDeliveryConfigs !== undefined &&
+    storeIds.length > 0 &&
+    storeIds.every((id) => storeDeliveryConfigs[id]?.cod_enabled === true);
+
   // ── State ──
   const [address, setAddress] = useState<ShippingAddress>(() => ({
     full_name: user?.name ?? "",
@@ -354,7 +362,9 @@ export default function CheckoutPage() {
     }
 
     // Valider l'adresse de facturation/contact
-    const errors = validateAddress(address);
+    const errors = validateAddress(address, {
+      phoneRequired: deliveryConfig.paymentMode === "cod",
+    });
     if (errors) {
       setAddressErrors(errors);
       return;
@@ -616,6 +626,7 @@ export default function CheckoutPage() {
                   setAddressErrors(null);
                 }}
                 errors={addressErrors ?? undefined}
+                phoneRequired={deliveryConfig.paymentMode === "cod"}
               />
             </CardContent>
           </Card>
@@ -629,6 +640,16 @@ export default function CheckoutPage() {
             collectionPoint={warehouseCoords ?? undefined}
             skipFeeCalculation={allIndependent}
           />
+
+          {/* Mode de paiement COD — boutiques indépendantes uniquement */}
+          {allCodEnabled && (
+            <PaymentModeSelector
+              value={deliveryConfig.paymentMode}
+              onChange={(mode) =>
+                setDeliveryConfig((prev) => ({ ...prev, paymentMode: mode }))
+              }
+            />
+          )}
 
           {/* 3. Notes */}
           <Card>

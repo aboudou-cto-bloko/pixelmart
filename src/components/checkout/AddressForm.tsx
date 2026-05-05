@@ -29,24 +29,30 @@ interface AddressFormProps {
   address: ShippingAddress;
   onChange: (address: ShippingAddress) => void;
   errors?: Partial<Record<keyof ShippingAddress, string>>;
+  /** Rend le champ téléphone obligatoire (ex : commandes COD) */
+  phoneRequired?: boolean;
 }
 
-export function AddressForm({ address, onChange, errors }: AddressFormProps) {
-  const OPTIONAL_FIELDS: (keyof ShippingAddress)[] = [
-    "line2",
-    "state",
-    "postal_code",
-    "phone",
-  ];
-
+export function AddressForm({
+  address,
+  onChange,
+  errors,
+  phoneRequired = false,
+}: AddressFormProps) {
   const update = useCallback(
     (field: keyof ShippingAddress, value: string) => {
+      const optionalFields: (keyof ShippingAddress)[] = [
+        "line2",
+        "state",
+        "postal_code",
+        ...(phoneRequired ? [] : (["phone"] as (keyof ShippingAddress)[])),
+      ];
       onChange({
         ...address,
-        [field]: OPTIONAL_FIELDS.includes(field) ? value || undefined : value,
+        [field]: optionalFields.includes(field) ? value || undefined : value,
       });
     },
-    [address, onChange],
+    [address, onChange, phoneRequired],
   );
 
   return (
@@ -70,7 +76,16 @@ export function AddressForm({ address, onChange, errors }: AddressFormProps) {
 
       {/* Téléphone */}
       <div className="sm:col-span-2">
-        <Label htmlFor="phone">Téléphone</Label>
+        <Label htmlFor="phone">
+          Téléphone{" "}
+          {phoneRequired ? (
+            <span className="text-destructive">*</span>
+          ) : (
+            <span className="text-muted-foreground font-normal text-xs">
+              (optionnel)
+            </span>
+          )}
+        </Label>
         <Input
           id="phone"
           type="tel"
@@ -81,6 +96,12 @@ export function AddressForm({ address, onChange, errors }: AddressFormProps) {
         />
         {errors?.phone && (
           <p className="text-xs text-destructive mt-1">{errors.phone}</p>
+        )}
+        {phoneRequired && !errors?.phone && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Requis pour que le vendeur puisse confirmer votre commande avant
+            expédition.
+          </p>
         )}
       </div>
 
@@ -183,9 +204,11 @@ export function AddressForm({ address, onChange, errors }: AddressFormProps) {
 
 /**
  * Valide l'adresse et retourne les erreurs.
+ * @param phoneRequired - Si true, le téléphone est obligatoire (ex: commandes COD)
  */
 export function validateAddress(
   address: ShippingAddress,
+  { phoneRequired = false }: { phoneRequired?: boolean } = {},
 ): Partial<Record<keyof ShippingAddress, string>> | null {
   const errors: Partial<Record<keyof ShippingAddress, string>> = {};
 
@@ -206,7 +229,9 @@ export function validateAddress(
     errors.country = "Le pays est requis";
   }
 
-  if (address.phone) {
+  if (phoneRequired && !address.phone?.trim()) {
+    errors.phone = "Le téléphone est requis pour le paiement à la livraison";
+  } else if (address.phone) {
     const cleanedDigits = address.phone.replace(/[\s\-()]/g, "");
     if (cleanedDigits.length < 8) {
       errors.phone = "Le numéro doit contenir au moins 8 chiffres";

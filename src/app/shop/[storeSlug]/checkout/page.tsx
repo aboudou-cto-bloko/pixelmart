@@ -29,6 +29,7 @@ import {
   DeliverySection,
   type DeliveryConfig,
 } from "@/components/checkout/DeliverySection";
+import { PaymentModeSelector } from "@/components/checkout/PaymentModeSelector";
 import { CouponInput } from "@/components/checkout/CouponInput";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -206,7 +207,9 @@ export default function ShopCheckoutPage() {
       setGuestEmailError(null);
     }
 
-    const errors = validateAddress(address);
+    const errors = validateAddress(address, {
+      phoneRequired: deliveryConfig.paymentMode === "cod",
+    });
     if (errors && Object.keys(errors).length > 0) {
       setAddressErrors(errors);
       return;
@@ -408,6 +411,16 @@ export default function ShopCheckoutPage() {
           skipFeeCalculation={isScenarioC}
         />
 
+        {/* Mode de paiement COD — Scenario C seulement, si le vendeur l'a activé */}
+        {isScenarioC && store.cod_enabled && (
+          <PaymentModeSelector
+            value={deliveryConfig.paymentMode}
+            onChange={(mode) =>
+              setDeliveryConfig((prev) => ({ ...prev, paymentMode: mode }))
+            }
+          />
+        )}
+
         {/* Address */}
         <Card>
           <CardHeader className="pb-3">
@@ -458,6 +471,7 @@ export default function ShopCheckoutPage() {
               address={address}
               onChange={setAddress}
               errors={addressErrors ?? {}}
+              phoneRequired={deliveryConfig.paymentMode === "cod"}
             />
           </CardContent>
         </Card>

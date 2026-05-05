@@ -226,6 +226,34 @@ export const updateStore = mutation({
 });
 
 /**
+ * Active ou désactive le paiement à la livraison (COD) pour la boutique.
+ * Le vendeur peut aussi fixer un montant maximum (en centimes XOF).
+ */
+export const updateCodSettings = mutation({
+  args: {
+    cod_enabled: v.boolean(),
+    cod_max_amount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    if (args.cod_max_amount !== undefined) {
+      if (args.cod_max_amount < 0 || args.cod_max_amount > 500_000) {
+        throw new ConvexError("Montant COD invalide (0 – 500 000 FCFA)");
+      }
+    }
+
+    await ctx.db.patch(store._id, {
+      cod_enabled: args.cod_enabled,
+      cod_max_amount: args.cod_max_amount ?? undefined,
+      updated_at: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+/**
  * Met à jour les paramètres de livraison / point de retrait.
  * Bloqué si le store a des commandes actives.
  *

@@ -55,6 +55,10 @@ export default defineSchema({
     // Demo account (partners / tutorial creators)
     is_demo: v.optional(v.boolean()),
 
+    // COD (Cash on Delivery) reliability
+    cod_failures_count: v.optional(v.number()), // nb de livraisons COD non honorées (absent / refus)
+    cod_blocked: v.optional(v.boolean()), // admin peut bloquer manuellement le COD
+
     // Metadata
     updated_at: v.number(),
   })
@@ -151,6 +155,10 @@ export default defineSchema({
 
     // Demo store (owned by a demo account — data isolated from production)
     is_demo: v.optional(v.boolean()),
+
+    // COD (Cash on Delivery) — opt-in vendeur pour paiement à la livraison
+    cod_enabled: v.optional(v.boolean()), // true = vendor accepte le COD
+    cod_max_amount: v.optional(v.number()), // montant max COD en centimes (défaut : constante plateforme)
 
     // Metadata
     updated_at: v.number(),
