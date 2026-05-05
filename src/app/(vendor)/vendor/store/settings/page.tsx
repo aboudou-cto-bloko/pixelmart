@@ -19,6 +19,7 @@ import {
   Info,
   Package,
   Check,
+  Banknote,
 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { SUPPORTED_COUNTRIES } from "@/constants/countries";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { formatPrice } from "@/lib/utils";
@@ -49,6 +51,7 @@ import {
   type PickedLocation,
 } from "@/components/maps/LocationPicker";
 import { PIXELMART_WAREHOUSE } from "@/constants/pickup";
+import { COD_DEFAULT_MAX_AMOUNT } from "@/constants/cod";
 import {
   storeSettingsSchema,
   deliverySettingsSchema,
@@ -107,6 +110,14 @@ export default function StoreSettingsPage() {
   const [deliverySuccess, setDeliverySuccess] = useState(false);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
+  // COD settings
+  const updateCodSettings = useMutation(api.stores.mutations.updateCodSettings);
+  const [codEnabled, setCodEnabled] = useState(false);
+  const [codMaxAmountInput, setCodMaxAmountInput] = useState(""); // XOF string
+  const [isSavingCod, setIsSavingCod] = useState(false);
+  const [codSuccess, setCodSuccess] = useState(false);
+  const [codError, setCodError] = useState<string | null>(null);
+
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -145,6 +156,11 @@ export default function StoreSettingsPage() {
       } else {
         setServiceMode("full");
       }
+
+      setCodEnabled(store.cod_enabled ?? false);
+      setCodMaxAmountInput(
+        store.cod_max_amount ? String(store.cod_max_amount) : "",
+      );
     }
   }, [store]);
 
@@ -243,6 +259,33 @@ export default function StoreSettingsPage() {
       );
     } finally {
       setIsSavingDelivery(false);
+    }
+  }
+
+  async function handleSaveCod() {
+    setIsSavingCod(true);
+    setCodError(null);
+    setCodSuccess(false);
+    try {
+      const maxAmount = codMaxAmountInput.trim()
+        ? Number(codMaxAmountInput.trim())
+        : undefined;
+
+      if (maxAmount !== undefined && (isNaN(maxAmount) || maxAmount <= 0)) {
+        setCodError("Le montant maximum doit être un nombre positif");
+        return;
+      }
+
+      await updateCodSettings({
+        cod_enabled: codEnabled,
+        cod_max_amount: maxAmount,
+      });
+      setCodSuccess(true);
+      setTimeout(() => setCodSuccess(false), 3000);
+    } catch (err) {
+      setCodError(err instanceof Error ? err.message : "Erreur de sauvegarde");
+    } finally {
+      setIsSavingCod(false);
     }
   }
 
@@ -638,6 +681,117 @@ export default function StoreSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Paiement à la livraison (COD) — visible uniquement en mode indépendant */}
+      {serviceMode === "none" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Banknote className="size-4" />
+              Paiement à la livraison
+            </CardTitle>
+            <CardDescription>
+              Permettre à vos clients de payer en espèces au moment de la
+              livraison. Vous gérez la collecte directement.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Toggle principal */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">
+                  Activer le paiement à la livraison
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Vos clients pourront choisir de payer à la réception de leur
+                  commande.
+                </p>
+              </div>
+              <Switch checked={codEnabled} onCheckedChange={setCodEnabled} />
+            </div>
+
+            {codEnabled && (
+              <>
+                <Separator />
+
+                {/* Avertissement risques */}
+                <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2.5">
+                  <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600" />
+                  <div className="text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                    <p className="font-medium">
+                      Risques du paiement à la livraison
+                    </p>
+                    <ul className="list-disc list-inside space-y-0.5 text-amber-700 dark:text-amber-400">
+                      <li>
+                        Certains clients commandent sans intention réelle de
+                        payer.
+                      </li>
+                      <li>
+                        Des annulations de dernière minute sont possibles.
+                      </li>
+                      <li>
+                        Pixel-Mart impose des limites automatiques : max{" "}
+                        {COD_DEFAULT_MAX_AMOUNT.toLocaleString("fr-FR")} FCFA
+                        par commande, max 2 commandes COD actives par client, et
+                        blocage après 3 livraisons non honorées.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Montant maximum */}
+                <div className="space-y-2">
+                  <Label htmlFor="cod-max-amount" className="text-sm">
+                    Montant maximum par commande (FCFA)
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="cod-max-amount"
+                      type="number"
+                      min={0}
+                      max={500000}
+                      placeholder={String(COD_DEFAULT_MAX_AMOUNT)}
+                      value={codMaxAmountInput}
+                      onChange={(e) => setCodMaxAmountInput(e.target.value)}
+                      className="max-w-[200px]"
+                    />
+                    <span className="text-sm text-muted-foreground">FCFA</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Laissez vide pour utiliser le plafond plateforme (
+                    {COD_DEFAULT_MAX_AMOUNT.toLocaleString("fr-FR")} FCFA).
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Save */}
+            <div className="flex items-center gap-3 pt-1">
+              <Button
+                type="button"
+                onClick={handleSaveCod}
+                disabled={isSavingCod}
+                size="sm"
+              >
+                {isSavingCod ? (
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="size-4 mr-2" />
+                )}
+                Enregistrer
+              </Button>
+              {codSuccess && (
+                <p className="text-sm text-green-600">
+                  Paramètres COD mis à jour ✓
+                </p>
+              )}
+              {codError && (
+                <p className="text-sm text-destructive">{codError}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Appearance */}
       <Card>

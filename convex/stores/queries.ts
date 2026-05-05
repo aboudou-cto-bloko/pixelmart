@@ -168,6 +168,8 @@ export const getBySlug = query({
       custom_pickup_lat: store.custom_pickup_lat,
       custom_pickup_lon: store.custom_pickup_lon,
       is_demo: store.is_demo ?? false,
+      cod_enabled: store.cod_enabled ?? false,
+      cod_max_amount: store.cod_max_amount,
     };
   },
 });
@@ -337,6 +339,8 @@ export const getDeliveryConfigBatch = query({
             has_storage_plan: store.has_storage_plan ?? false,
             custom_pickup_lat: store.custom_pickup_lat,
             custom_pickup_lon: store.custom_pickup_lon,
+            cod_enabled: store.cod_enabled ?? false,
+            cod_max_amount: store.cod_max_amount,
           };
         }
         return acc;
@@ -348,6 +352,8 @@ export const getDeliveryConfigBatch = query({
           has_storage_plan: boolean;
           custom_pickup_lat?: number;
           custom_pickup_lon?: number;
+          cod_enabled: boolean;
+          cod_max_amount?: number;
         }
       >,
     );

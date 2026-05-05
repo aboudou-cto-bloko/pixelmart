@@ -9,11 +9,17 @@
  */
 export const FEATURES = {
   /**
-   * Paiement à la livraison (Cash On Delivery)
-   * Désactivé en attendant l'implémentation du flux financier COD
-   * @see convex/finance/mutations.ts - createSaleTransaction
+   * COD pour les boutiques indépendantes (Scénario C : vendeur gère sa propre livraison).
+   * Le vendeur encaisse lui-même — pas de réconciliation agent nécessaire.
+   * Activé : opt-in par boutique via cod_enabled + contraintes anti-abus.
    */
-  COD_ENABLED: false,
+  COD_ENABLED_INDEPENDENT: true,
+
+  /**
+   * COD pour les boutiques avec service Pixel-Mart (Scénarios A/B).
+   * Nécessite un flux de réconciliation agent (Phase 2 — non implémenté).
+   */
+  COD_ENABLED_PM: false,
 
   /**
    * Système de livraison avec lots

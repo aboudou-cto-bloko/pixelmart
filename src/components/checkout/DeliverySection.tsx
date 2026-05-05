@@ -66,9 +66,9 @@ export function DeliverySection({
   collectionPoint,
   skipFeeCalculation = false,
 }: DeliverySectionProps) {
-  // ── Forcer paymentMode à "online" si COD désactivé ──
+  // ── Forcer paymentMode à "online" si COD PM désactivé ──
   useEffect(() => {
-    if (!FEATURES.COD_ENABLED && value.paymentMode === "cod") {
+    if (!FEATURES.COD_ENABLED_PM && value.paymentMode === "cod") {
       onChange({ ...value, paymentMode: "online" });
     }
   }, [value, onChange]);
@@ -195,7 +195,7 @@ export function DeliverySection({
             <PaymentModeSelector
               value={value.paymentMode}
               onChange={handlePaymentModeChange}
-              codDisabled={!FEATURES.COD_ENABLED}
+              codDisabled={!FEATURES.COD_ENABLED_PM}
             />
 
             <Separator />
