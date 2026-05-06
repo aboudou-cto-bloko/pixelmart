@@ -118,6 +118,19 @@ export default function StoreSettingsPage() {
   const [codSuccess, setCodSuccess] = useState(false);
   const [codError, setCodError] = useState<string | null>(null);
 
+  // Free delivery settings
+  const updateFreeDeliverySettings = useMutation(
+    api.stores.mutations.updateFreeDeliverySettings,
+  );
+  const [freeDeliveryEnabled, setFreeDeliveryEnabled] = useState(false);
+  const [freeDeliveryMinOrderInput, setFreeDeliveryMinOrderInput] =
+    useState(""); // XOF string
+  const [isSavingFreeDelivery, setIsSavingFreeDelivery] = useState(false);
+  const [freeDeliverySuccess, setFreeDeliverySuccess] = useState(false);
+  const [freeDeliveryError, setFreeDeliveryError] = useState<string | null>(
+    null,
+  );
+
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -160,6 +173,13 @@ export default function StoreSettingsPage() {
       setCodEnabled(store.cod_enabled ?? false);
       setCodMaxAmountInput(
         store.cod_max_amount ? String(store.cod_max_amount) : "",
+      );
+
+      setFreeDeliveryEnabled(store.free_delivery_enabled ?? false);
+      setFreeDeliveryMinOrderInput(
+        store.free_delivery_min_order
+          ? String(store.free_delivery_min_order)
+          : "",
       );
     }
   }, [store]);
@@ -286,6 +306,35 @@ export default function StoreSettingsPage() {
       setCodError(err instanceof Error ? err.message : "Erreur de sauvegarde");
     } finally {
       setIsSavingCod(false);
+    }
+  }
+
+  async function handleSaveFreeDelivery() {
+    setIsSavingFreeDelivery(true);
+    setFreeDeliveryError(null);
+    setFreeDeliverySuccess(false);
+    try {
+      const minOrder = freeDeliveryMinOrderInput.trim()
+        ? Number(freeDeliveryMinOrderInput.trim())
+        : undefined;
+
+      if (minOrder !== undefined && (isNaN(minOrder) || minOrder < 0)) {
+        setFreeDeliveryError("Le montant minimum doit être un nombre positif");
+        return;
+      }
+
+      await updateFreeDeliverySettings({
+        free_delivery_enabled: freeDeliveryEnabled,
+        free_delivery_min_order: minOrder,
+      });
+      setFreeDeliverySuccess(true);
+      setTimeout(() => setFreeDeliverySuccess(false), 3000);
+    } catch (err) {
+      setFreeDeliveryError(
+        err instanceof Error ? err.message : "Erreur de sauvegarde",
+      );
+    } finally {
+      setIsSavingFreeDelivery(false);
     }
   }
 
@@ -682,115 +731,197 @@ export default function StoreSettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Paiement à la livraison (COD) — visible uniquement en mode indépendant */}
+      {/* Paiement à la livraison (COD) + Livraison offerte — mode indépendant uniquement */}
       {serviceMode === "none" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Banknote className="size-4" />
-              Paiement à la livraison
-            </CardTitle>
-            <CardDescription>
-              Permettre à vos clients de payer en espèces au moment de la
-              livraison. Vous gérez la collecte directement.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {/* Toggle principal */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label className="text-sm font-medium">
-                  Activer le paiement à la livraison
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Vos clients pourront choisir de payer à la réception de leur
-                  commande.
-                </p>
-              </div>
-              <Switch checked={codEnabled} onCheckedChange={setCodEnabled} />
-            </div>
-
-            {codEnabled && (
-              <>
-                <Separator />
-
-                {/* Avertissement risques */}
-                <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2.5">
-                  <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600" />
-                  <div className="text-xs text-amber-800 dark:text-amber-300 space-y-1">
-                    <p className="font-medium">
-                      Risques du paiement à la livraison
-                    </p>
-                    <ul className="list-disc list-inside space-y-0.5 text-amber-700 dark:text-amber-400">
-                      <li>
-                        Certains clients commandent sans intention réelle de
-                        payer.
-                      </li>
-                      <li>
-                        Des annulations de dernière minute sont possibles.
-                      </li>
-                      <li>
-                        Pixel-Mart impose des limites automatiques : max{" "}
-                        {COD_DEFAULT_MAX_AMOUNT.toLocaleString("fr-FR")} FCFA
-                        par commande, max 2 commandes COD actives par client, et
-                        blocage après 3 livraisons non honorées.
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Montant maximum */}
-                <div className="space-y-2">
-                  <Label htmlFor="cod-max-amount" className="text-sm">
-                    Montant maximum par commande (FCFA)
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Banknote className="size-4" />
+                Paiement à la livraison
+              </CardTitle>
+              <CardDescription>
+                Permettre à vos clients de payer en espèces au moment de la
+                livraison. Vous gérez la collecte directement.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Toggle principal */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">
+                    Activer le paiement à la livraison
                   </Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="cod-max-amount"
-                      type="number"
-                      min={0}
-                      max={500000}
-                      placeholder={String(COD_DEFAULT_MAX_AMOUNT)}
-                      value={codMaxAmountInput}
-                      onChange={(e) => setCodMaxAmountInput(e.target.value)}
-                      className="max-w-[200px]"
-                    />
-                    <span className="text-sm text-muted-foreground">FCFA</span>
-                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Laissez vide pour utiliser le plafond plateforme (
-                    {COD_DEFAULT_MAX_AMOUNT.toLocaleString("fr-FR")} FCFA).
+                    Vos clients pourront choisir de payer à la réception de leur
+                    commande.
                   </p>
                 </div>
-              </>
-            )}
+                <Switch checked={codEnabled} onCheckedChange={setCodEnabled} />
+              </div>
 
-            {/* Save */}
-            <div className="flex items-center gap-3 pt-1">
-              <Button
-                type="button"
-                onClick={handleSaveCod}
-                disabled={isSavingCod}
-                size="sm"
-              >
-                {isSavingCod ? (
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="size-4 mr-2" />
+              {codEnabled && (
+                <>
+                  <Separator />
+
+                  {/* Avertissement risques */}
+                  <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2.5">
+                    <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-600" />
+                    <div className="text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                      <p className="font-medium">
+                        Risques du paiement à la livraison
+                      </p>
+                      <ul className="list-disc list-inside space-y-0.5 text-amber-700 dark:text-amber-400">
+                        <li>
+                          Certains clients commandent sans intention réelle de
+                          payer.
+                        </li>
+                        <li>
+                          Des annulations de dernière minute sont possibles.
+                        </li>
+                        <li>
+                          Pixel-Mart impose des limites automatiques : max{" "}
+                          {COD_DEFAULT_MAX_AMOUNT.toLocaleString("fr-FR")} FCFA
+                          par commande, max 2 commandes COD actives par client,
+                          et blocage après 3 livraisons non honorées.
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Montant maximum */}
+                  <div className="space-y-2">
+                    <Label htmlFor="cod-max-amount" className="text-sm">
+                      Montant maximum par commande (FCFA)
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="cod-max-amount"
+                        type="number"
+                        min={0}
+                        max={500000}
+                        placeholder={String(COD_DEFAULT_MAX_AMOUNT)}
+                        value={codMaxAmountInput}
+                        onChange={(e) => setCodMaxAmountInput(e.target.value)}
+                        className="max-w-[200px]"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        FCFA
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Laissez vide pour utiliser le plafond plateforme (
+                      {COD_DEFAULT_MAX_AMOUNT.toLocaleString("fr-FR")} FCFA).
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Save */}
+              <div className="flex items-center gap-3 pt-1">
+                <Button
+                  type="button"
+                  onClick={handleSaveCod}
+                  disabled={isSavingCod}
+                  size="sm"
+                >
+                  {isSavingCod ? (
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="size-4 mr-2" />
+                  )}
+                  Enregistrer
+                </Button>
+                {codSuccess && (
+                  <p className="text-sm text-green-600">
+                    Paramètres COD mis à jour ✓
+                  </p>
                 )}
-                Enregistrer
-              </Button>
-              {codSuccess && (
-                <p className="text-sm text-green-600">
-                  Paramètres COD mis à jour ✓
-                </p>
+                {codError && (
+                  <p className="text-sm text-destructive">{codError}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Livraison offerte */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Truck className="size-4" />
+                Livraison offerte
+              </CardTitle>
+              <CardDescription>
+                Absorber les frais de livraison pour vos clients. Le client ne
+                paie que le montant des articles.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">
+                    Activer la livraison offerte
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Les frais de livraison sont à votre charge
+                  </p>
+                </div>
+                <Switch
+                  checked={freeDeliveryEnabled}
+                  onCheckedChange={setFreeDeliveryEnabled}
+                />
+              </div>
+
+              {freeDeliveryEnabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="free-delivery-min">
+                    Montant minimum de commande (FCFA)
+                  </Label>
+                  <Input
+                    id="free-delivery-min"
+                    type="number"
+                    min={0}
+                    value={freeDeliveryMinOrderInput}
+                    onChange={(e) =>
+                      setFreeDeliveryMinOrderInput(e.target.value)
+                    }
+                    placeholder="0 (aucun minimum)"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Laissez vide ou 0 pour offrir la livraison sur toutes les
+                    commandes.
+                  </p>
+                </div>
               )}
-              {codError && (
-                <p className="text-sm text-destructive">{codError}</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  onClick={handleSaveFreeDelivery}
+                  disabled={isSavingFreeDelivery}
+                  size="sm"
+                >
+                  {isSavingFreeDelivery ? (
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="size-4 mr-2" />
+                  )}
+                  Enregistrer
+                </Button>
+                {freeDeliverySuccess && (
+                  <p className="text-sm text-green-600">
+                    Paramètres mis à jour ✓
+                  </p>
+                )}
+                {freeDeliveryError && (
+                  <p className="text-sm text-destructive">
+                    {freeDeliveryError}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Appearance */}

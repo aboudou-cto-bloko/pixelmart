@@ -160,6 +160,10 @@ export default defineSchema({
     cod_enabled: v.optional(v.boolean()), // true = vendor accepte le COD
     cod_max_amount: v.optional(v.number()), // montant max COD en centimes (défaut : constante plateforme)
 
+    // Livraison offerte — le vendeur absorbe les frais de livraison
+    free_delivery_enabled: v.optional(v.boolean()),
+    free_delivery_min_order: v.optional(v.number()), // montant min de commande (centimes) pour déclencher la livraison offerte
+
     // Metadata
     updated_at: v.number(),
   })
@@ -417,6 +421,7 @@ export default defineSchema({
     payment_mode: v.optional(v.union(v.literal("online"), v.literal("cod"))),
     delivery_fee: v.optional(v.number()),
     estimated_weight_kg: v.optional(v.number()),
+    absorbed_delivery_fee: v.optional(v.number()), // centimes absorbés par le vendeur (livraison offerte)
     batch_id: v.optional(v.id("delivery_batches")),
     ready_for_delivery: v.optional(v.boolean()),
     ready_at: v.optional(v.number()),

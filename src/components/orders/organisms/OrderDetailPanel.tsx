@@ -18,7 +18,7 @@ import { OrderSummaryCard } from "../molecules/OrderSummaryCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPrice } from "@/lib/format";
 import Image from "next/image";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin, PhoneCall } from "lucide-react";
 
 interface OrderItem {
   product_id: string;
@@ -161,6 +161,10 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
   };
 
   const addr = order.shipping_address;
+  const isCodPending =
+    order.payment_mode === "cod" &&
+    (order.status === "paid" || order.status === "processing");
+  const codPhone = addr.phone ?? order.customer?.phone;
 
   return (
     <div className="space-y-6">
@@ -199,6 +203,35 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           )}
         </div>
       </div>
+
+      {/* COD — bannière d'appel de confirmation */}
+      {isCodPending && (
+        <div className="flex items-start gap-3 rounded-lg border border-orange-300 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-700 p-4">
+          <PhoneCall className="size-5 shrink-0 mt-0.5 text-orange-600 dark:text-orange-400" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <p className="text-sm font-semibold text-orange-900 dark:text-orange-200">
+              Appelez le client avant de préparer la commande
+            </p>
+            <p className="text-xs text-orange-700 dark:text-orange-400">
+              Cette commande est payable à la livraison. Confirmez la
+              disponibilité du client avant d&apos;engager la préparation.
+            </p>
+            {codPhone ? (
+              <a
+                href={`tel:${codPhone}`}
+                className="inline-flex items-center gap-2 rounded-md bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-3 py-1.5 transition-colors"
+              >
+                <Phone className="size-3.5" />
+                {codPhone}
+              </a>
+            ) : (
+              <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                Aucun numéro de téléphone renseigné.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <OrderStatusActions

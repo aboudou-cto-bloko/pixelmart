@@ -123,7 +123,26 @@ export const confirmPayment = internalMutation({
       });
     }
 
-    // 5b. Affiliation : créer un enregistrement de commission si la boutique a un parrain
+    // 5b. F-01 : Transaction "free_delivery" — frais absorbés par le vendeur (informatif)
+    if (order.absorbed_delivery_fee && order.absorbed_delivery_fee > 0) {
+      await ctx.db.insert("transactions", {
+        store_id: store._id,
+        order_id: args.orderId,
+        type: "fee",
+        direction: "debit",
+        amount: order.absorbed_delivery_fee,
+        currency: order.currency,
+        balance_before: balanceAfter,
+        balance_after: balanceAfter,
+        status: "completed",
+        reference: args.paymentReference,
+        description: `Livraison offerte commande ${order.order_number}`,
+        processed_at: Date.now(),
+        is_demo: isDemoStore ? true : undefined,
+      });
+    }
+
+    // 5c. Affiliation : créer un enregistrement de commission si la boutique a un parrain
     if (store.affiliate_link_id && store.affiliate_commission_rate_bp) {
       const affiliateLink = await ctx.db.get(store.affiliate_link_id);
       if (affiliateLink && affiliateLink.is_active) {
