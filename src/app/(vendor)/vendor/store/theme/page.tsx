@@ -131,12 +131,12 @@ export default function StoreThemePage() {
             Choisir un thème
           </CardTitle>
           <CardDescription>
-            5 thèmes pré-conçus — l&apos;aperçu reflète le mode{" "}
+            10 thèmes pré-conçus — l&apos;aperçu reflète le mode{" "}
             {themeMode === "dark" ? "sombre" : "clair"} sélectionné
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5">
             {(Object.keys(THEME_PRESETS) as ThemePresetId[]).map((id) => (
               <ThemePreview
                 key={id}
