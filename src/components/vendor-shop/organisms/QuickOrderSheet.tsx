@@ -72,6 +72,8 @@ interface QuickOrderStore {
   custom_pickup_lat?: number;
   custom_pickup_lon?: number;
   cod_enabled?: boolean;
+  free_delivery_enabled?: boolean;
+  free_delivery_min_order?: number;
 }
 
 interface QuickOrderSheetProps {
@@ -204,7 +206,17 @@ export function QuickOrderSheet({
     };
   })();
 
-  const orderTotal = totalAmount + (deliveryConfig.deliveryFee ?? 0);
+  const isFreeDelivery =
+    showDeliverySection &&
+    store.free_delivery_enabled === true &&
+    (deliveryConfig.deliveryFee ?? 0) > 0 &&
+    totalAmount >= (store.free_delivery_min_order ?? 0);
+
+  const effectiveDeliveryFee = isFreeDelivery
+    ? 0
+    : (deliveryConfig.deliveryFee ?? 0);
+
+  const orderTotal = totalAmount + effectiveDeliveryFee;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -514,10 +526,16 @@ export function QuickOrderSheet({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Livraison</span>
-                <span>
-                  {(deliveryConfig.deliveryFee ?? 0) > 0
-                    ? formatPrice(deliveryConfig.deliveryFee ?? 0, currency)
-                    : "À définir"}
+                <span
+                  className={isFreeDelivery ? "text-green-600 font-medium" : ""}
+                >
+                  {!showDeliverySection
+                    ? "Par la boutique"
+                    : isFreeDelivery
+                      ? "Offerte"
+                      : effectiveDeliveryFee > 0
+                        ? formatPrice(effectiveDeliveryFee, currency)
+                        : "À définir"}
                 </span>
               </div>
               <div className="flex justify-between font-bold text-base pt-1 border-t">

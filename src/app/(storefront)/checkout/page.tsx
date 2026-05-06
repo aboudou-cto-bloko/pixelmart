@@ -72,6 +72,7 @@ function StoreOrderCard({
   coupon,
   deliveryFee,
   isPmStore,
+  isFreeDelivery,
   onCouponApply,
   onCouponRemove,
 }: {
@@ -79,6 +80,7 @@ function StoreOrderCard({
   coupon: StoreCoupon | null;
   deliveryFee: number;
   isPmStore?: boolean;
+  isFreeDelivery?: boolean;
   onCouponApply: (code: string, discount: number) => void;
   onCouponRemove: () => void;
 }) {
@@ -86,7 +88,8 @@ function StoreOrderCard({
     ? Math.max(0, store.subtotal - coupon.discount)
     : store.subtotal;
 
-  const storeTotal = discountedSubtotal + deliveryFee;
+  const effectiveDeliveryFee = isFreeDelivery ? 0 : deliveryFee;
+  const storeTotal = discountedSubtotal + effectiveDeliveryFee;
 
   return (
     <Card>
@@ -172,12 +175,16 @@ function StoreOrderCard({
           )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Livraison</span>
-            <span>
+            <span
+              className={isFreeDelivery ? "text-green-600 font-medium" : ""}
+            >
               {isPmStore === false
                 ? "Par la boutique"
-                : deliveryFee > 0
-                  ? formatPrice(deliveryFee, "XOF")
-                  : "À définir"}
+                : isFreeDelivery
+                  ? "Offerte"
+                  : effectiveDeliveryFee > 0
+                    ? formatPrice(effectiveDeliveryFee, "XOF")
+                    : "À définir"}
             </span>
           </div>
           <Separator />
@@ -326,6 +333,21 @@ export default function CheckoutPage() {
   // ── Frais de livraison (depuis DeliveryDistanceCalculator) ──
   const deliveryFee = deliveryConfig.deliveryFee ?? 0;
 
+  // ── Livraison offerte (single-store PM uniquement) ──
+  const isFreeDeliverySingleStore = useMemo(() => {
+    if (stores.length !== 1) return false;
+    const store = stores[0]!;
+    const cfg = storeDeliveryConfigs?.[store.storeId];
+    if (!cfg?.free_delivery_enabled) return false;
+    const coupon = storeCoupons[store.storeId];
+    const discounted = coupon
+      ? Math.max(0, store.subtotal - coupon.discount)
+      : store.subtotal;
+    return deliveryFee > 0 && discounted >= (cfg.free_delivery_min_order ?? 0);
+  }, [stores, storeDeliveryConfigs, storeCoupons, deliveryFee]);
+
+  const effectiveDeliveryFee = isFreeDeliverySingleStore ? 0 : deliveryFee;
+
   // ── Grand total avec réductions et livraison ──
   const grandTotal = useMemo(() => {
     const subtotalWithDiscounts = stores.reduce((sum, store) => {
@@ -338,8 +360,8 @@ export default function CheckoutPage() {
       );
     }, 0);
 
-    return subtotalWithDiscounts + deliveryFee;
-  }, [stores, storeCoupons, deliveryFee]);
+    return subtotalWithDiscounts + effectiveDeliveryFee;
+  }, [stores, storeCoupons, effectiveDeliveryFee]);
 
   // ── Validation ──
   const isDeliveryAddressValid =
@@ -693,6 +715,11 @@ export default function CheckoutPage() {
                 coupon={storeCoupons[store.storeId] ?? null}
                 deliveryFee={stores.length === 1 && isPm ? deliveryFee : 0}
                 isPmStore={isPm}
+                isFreeDelivery={
+                  stores.length === 1 && isPm
+                    ? isFreeDeliverySingleStore
+                    : false
+                }
                 onCouponApply={(code, discount) =>
                   handleCouponApply(store.storeId, code, discount)
                 }

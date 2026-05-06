@@ -299,7 +299,17 @@ export const createOrder = mutation({
       );
     }
 
-    // 7. Total — tout en XOF centimes
+    // 7. Livraison offerte — le vendeur absorbe les frais si les conditions sont réunies
+    let absorbedDeliveryFee = 0;
+    if (store.free_delivery_enabled && shippingAmount > 0) {
+      const minOrder = store.free_delivery_min_order ?? 0;
+      if (subtotal - discountAmount >= minOrder) {
+        absorbedDeliveryFee = shippingAmount;
+        shippingAmount = 0;
+      }
+    }
+
+    // 8. Total — tout en XOF centimes
     const totalAmount = Math.max(0, subtotal - discountAmount + shippingAmount);
 
     // 8. Commission — calculée sur le sous-total produits uniquement (hors livraison)
@@ -418,6 +428,8 @@ export const createOrder = mutation({
       payment_mode: paymentMode,
       delivery_fee: shippingAmount,
       estimated_weight_kg: args.estimatedWeightKg,
+      absorbed_delivery_fee:
+        absorbedDeliveryFee > 0 ? absorbedDeliveryFee : undefined,
       source: args.source ?? "marketplace",
       is_demo: store.is_demo === true ? true : undefined,
       updated_at: Date.now(),
@@ -482,6 +494,24 @@ export const createOrder = mutation({
           balance_after: balanceAfter,
           status: "completed",
           description: `Commission Pixel-Mart COD commande ${orderNumber}`,
+          processed_at: Date.now(),
+          is_demo: store.is_demo === true ? true : undefined,
+        });
+      }
+
+      // F-01 : Transaction "free_delivery" — frais absorbés par le vendeur (informatif)
+      if (absorbedDeliveryFee > 0) {
+        await ctx.db.insert("transactions", {
+          store_id: store._id,
+          order_id: orderId,
+          type: "fee",
+          direction: "debit",
+          amount: absorbedDeliveryFee,
+          currency,
+          balance_before: balanceAfter,
+          balance_after: balanceAfter,
+          status: "completed",
+          description: `Livraison offerte COD commande ${orderNumber}`,
           processed_at: Date.now(),
           is_demo: store.is_demo === true ? true : undefined,
         });

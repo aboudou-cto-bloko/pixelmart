@@ -182,7 +182,18 @@ export default function ShopCheckoutPage() {
   const discountedSubtotal = coupon
     ? Math.max(0, totalAmount - coupon.discount)
     : totalAmount;
-  const orderTotal = discountedSubtotal + (deliveryConfig.deliveryFee ?? 0);
+
+  const isFreeDelivery =
+    !isScenarioC &&
+    store?.free_delivery_enabled === true &&
+    (deliveryConfig.deliveryFee ?? 0) > 0 &&
+    discountedSubtotal >= (store?.free_delivery_min_order ?? 0);
+
+  const effectiveDeliveryFee = isFreeDelivery
+    ? 0
+    : (deliveryConfig.deliveryFee ?? 0);
+
+  const orderTotal = discountedSubtotal + effectiveDeliveryFee;
 
   // Redirect if cart empty
   if (!authLoading && items.length === 0) {
@@ -384,12 +395,16 @@ export default function ShopCheckoutPage() {
               )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Livraison</span>
-                <span>
+                <span
+                  className={isFreeDelivery ? "text-green-600 font-medium" : ""}
+                >
                   {isScenarioC
                     ? "Par la boutique"
-                    : (deliveryConfig.deliveryFee ?? 0) > 0
-                      ? formatPrice(deliveryConfig.deliveryFee ?? 0, "XOF")
-                      : "À définir"}
+                    : isFreeDelivery
+                      ? "Offerte"
+                      : effectiveDeliveryFee > 0
+                        ? formatPrice(effectiveDeliveryFee, "XOF")
+                        : "À définir"}
                 </span>
               </div>
               <Separator />

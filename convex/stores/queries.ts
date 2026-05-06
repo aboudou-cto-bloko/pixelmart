@@ -170,6 +170,8 @@ export const getBySlug = query({
       is_demo: store.is_demo ?? false,
       cod_enabled: store.cod_enabled ?? false,
       cod_max_amount: store.cod_max_amount,
+      free_delivery_enabled: store.free_delivery_enabled ?? false,
+      free_delivery_min_order: store.free_delivery_min_order,
     };
   },
 });
@@ -341,6 +343,8 @@ export const getDeliveryConfigBatch = query({
             custom_pickup_lon: store.custom_pickup_lon,
             cod_enabled: store.cod_enabled ?? false,
             cod_max_amount: store.cod_max_amount,
+            free_delivery_enabled: store.free_delivery_enabled ?? false,
+            free_delivery_min_order: store.free_delivery_min_order,
           };
         }
         return acc;
@@ -354,6 +358,8 @@ export const getDeliveryConfigBatch = query({
           custom_pickup_lon?: number;
           cod_enabled: boolean;
           cod_max_amount?: number;
+          free_delivery_enabled: boolean;
+          free_delivery_min_order?: number;
         }
       >,
     );

@@ -253,6 +253,33 @@ export const updateCodSettings = mutation({
   },
 });
 
+export const updateFreeDeliverySettings = mutation({
+  args: {
+    free_delivery_enabled: v.boolean(),
+    free_delivery_min_order: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { store } = await getVendorStore(ctx);
+
+    if (args.free_delivery_min_order !== undefined) {
+      if (
+        args.free_delivery_min_order < 0 ||
+        args.free_delivery_min_order > 10_000_000
+      ) {
+        throw new ConvexError("Montant minimum invalide (0 – 10 000 000 FCFA)");
+      }
+    }
+
+    await ctx.db.patch(store._id, {
+      free_delivery_enabled: args.free_delivery_enabled,
+      free_delivery_min_order: args.free_delivery_min_order ?? undefined,
+      updated_at: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
 /**
  * Met à jour les paramètres de livraison / point de retrait.
  * Bloqué si le store a des commandes actives.
