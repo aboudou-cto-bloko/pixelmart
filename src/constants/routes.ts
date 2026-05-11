@@ -49,6 +49,7 @@ export const ROUTES = {
   ADMIN_CATEGORIES: "/admin/categories",
   ADMIN_PAYOUTS: "/admin/payouts",
   ADMIN_REPORTS: "/admin/reports",
+  ADMIN_COMMISSIONS: "/admin/commissions",
 
   // ---- Vendor Meta Settings ----
   VENDOR_STORE_META: "/vendor/store/meta",

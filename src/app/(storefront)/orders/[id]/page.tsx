@@ -45,6 +45,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ReviewForm } from "@/components/reviews";
+import { CodPaymentButton } from "@/components/orders/CodPaymentButton";
 import { formatPrice } from "@/lib/utils";
 import {
   getOrderStatusConfig,
@@ -486,18 +487,16 @@ export default function OrderDetailPage({
                 )}
               </div>
 
-              {/* Message COD */}
+              {/* Message COD en cours de livraison */}
               {order.payment_mode === "cod" &&
-                order.status !== "delivered" &&
+                order.payment_status !== "pending_cod" &&
+                order.payment_status !== "paid" &&
                 order.status !== "cancelled" && (
                   <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 mt-3">
                     <p className="text-sm text-blue-700 dark:text-blue-300">
                       <Banknote className="size-4 inline mr-1.5" />
-                      Préparez le montant de{" "}
-                      <strong>
-                        {formatPrice(order.total_amount, order.currency)}
-                      </strong>{" "}
-                      pour le livreur.
+                      Votre livreur vous contactera à la réception. Le paiement
+                      se fera en ligne via Mobile Money à la livraison.
                     </p>
                   </div>
                 )}
@@ -678,10 +677,22 @@ export default function OrderDetailPage({
           </div>
         )}
 
+        {/* COD : Bouton de paiement après livraison */}
+        <CodPaymentButton
+          orderId={order._id}
+          totalAmount={order.total_amount}
+          currency={order.currency}
+          paymentStatus={order.payment_status}
+          orderStatus={order.status}
+          deliveredAt={order.delivered_at}
+        />
+
         {/* Actions */}
         <div className="flex gap-3">
-          {/* Bouton retour si commande livrée */}
-          {order.status === "delivered" && <ReturnButton orderId={order._id} />}
+          {/* Bouton retour si commande livrée et payée */}
+          {order.status === "delivered" && order.payment_status === "paid" && (
+            <ReturnButton orderId={order._id} />
+          )}
 
           {canPay && (
             <Button onClick={handlePay} disabled={isPaying} className="flex-1">

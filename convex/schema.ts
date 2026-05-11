@@ -372,9 +372,15 @@ export default defineSchema({
       v.literal("paid"),
       v.literal("failed"),
       v.literal("refunded"),
+      v.literal("pending_cod"), // COD livré, en attente de paiement client
     ),
     payment_method: v.optional(v.string()), // stripe_card | moneroo_mtn | moneroo_orange | ...
     payment_reference: v.optional(v.string()), // Stripe/Moneroo payment ID
+
+    // COD Payment via QR Code (nouveau workflow sécurisé)
+    cod_payment_reference: v.optional(v.string()), // référence unique pour le QR code
+    cod_delivery_started_at: v.optional(v.number()), // timestamp début livraison
+    cod_delivery_agent_id: v.optional(v.id("users")), // agent qui gère la livraison
 
     // Shipping
     shipping_address: v.object({
@@ -528,6 +534,36 @@ export default defineSchema({
     .index("by_store", ["store_id"])
     .index("by_type", ["store_id", "type"])
     .index("by_order", ["order_id"]),
+
+  // ============================================
+  // PLATFORM COMMISSIONS — Commissions perçues par la plateforme
+  // ============================================
+  platform_commissions: defineTable({
+    order_id: v.id("orders"),
+    store_id: v.id("stores"), // denormalized for queries
+
+    // Commission details
+    commission_amount: v.number(), // centimes
+    commission_rate: v.number(), // basis points au moment du calcul
+    order_total: v.number(), // centimes — total de la commande
+    payment_mode: v.union(v.literal("online"), v.literal("cod")),
+    currency: v.string(), // XOF
+
+    // Collection timing
+    collected_at: v.number(), // timestamp de collecte (création ordre pour online, libération pour COD)
+    collection_trigger: v.union(
+      v.literal("payment_confirmed"), // online : webhook Moneroo payment.success
+      v.literal("balance_released"), // COD : 48h après livraison
+    ),
+
+    // Audit trail
+    description: v.string(), // description lisible
+    processed_by: v.optional(v.string()), // "webhook" | "cron:balance-release" | user_id
+  })
+    .index("by_order", ["order_id"])
+    .index("by_store", ["store_id"])
+    .index("by_payment_mode", ["payment_mode", "collected_at"])
+    .index("by_collected_at", ["collected_at"]),
 
   // ============================================
   // REVIEWS

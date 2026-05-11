@@ -3,17 +3,8 @@
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { verifyMonerooSignature, monerooAmountToCentimes } from "./helpers";
+import { parseCurrencyCode } from "./moneroo_client";
 import type { Id } from "../_generated/dataModel";
-
-/** Moneroo may return currency as a string "XOF" or as an object {code:"XOF",...} */
-function parseCurrencyCode(value: unknown, fallback = "XOF"): string {
-  if (typeof value === "string" && value.length > 0) return value;
-  if (value !== null && typeof value === "object" && "code" in value) {
-    const code = (value as { code: unknown }).code;
-    if (typeof code === "string" && code.length > 0) return code;
-  }
-  return fallback;
-}
 
 export const handleMonerooWebhook = httpAction(async (ctx, request) => {
   const rawBody = await request.text();
@@ -51,7 +42,7 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
         payout_id?: string;
         type?: string;
         booking_id?: string;
-        invoice_id?: string; // stockage
+        invoice_id?: string;
       };
     };
   };
@@ -172,7 +163,9 @@ export const handleMonerooWebhook = httpAction(async (ctx, request) => {
       return new Response("OK", { status: 200 });
     }
 
-    // ── PAYMENT FLOW ──
+    // ── ORDER PAYMENT FLOW (online + COD différé) ──
+    // confirmPayment détecte automatiquement les conversions COD via
+    // order.payment_mode === "cod" && order.status === "delivered"
     if (orderId) {
       switch (data.status) {
         case "success": {

@@ -9,6 +9,7 @@
  */
 
 import type * as admin_actions from "../admin/actions.js";
+import type * as admin_commissions from "../admin/commissions.js";
 import type * as admin_mutations from "../admin/mutations.js";
 import type * as admin_queries from "../admin/queries.js";
 import type * as ads_actions from "../ads/actions.js";
@@ -63,12 +64,14 @@ import type * as notifications_helpers from "../notifications/helpers.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_send from "../notifications/send.js";
+import type * as orders_cod_payment from "../orders/cod_payment.js";
 import type * as orders_events from "../orders/events.js";
 import type * as orders_helpers from "../orders/helpers.js";
 import type * as orders_mutations from "../orders/mutations.js";
 import type * as orders_queries from "../orders/queries.js";
 import type * as payments_helpers from "../payments/helpers.js";
 import type * as payments_moneroo from "../payments/moneroo.js";
+import type * as payments_moneroo_client from "../payments/moneroo_client.js";
 import type * as payments_mutations from "../payments/mutations.js";
 import type * as payments_queries from "../payments/queries.js";
 import type * as payments_webhooks from "../payments/webhooks.js";
@@ -76,6 +79,7 @@ import type * as payouts_actions from "../payouts/actions.js";
 import type * as payouts_helpers from "../payouts/helpers.js";
 import type * as payouts_mutations from "../payouts/mutations.js";
 import type * as payouts_queries from "../payouts/queries.js";
+import type * as platform_commissions from "../platform/commissions.js";
 import type * as product_specs_mutations from "../product_specs/mutations.js";
 import type * as product_specs_queries from "../product_specs/queries.js";
 import type * as products_csvImport from "../products/csvImport.js";
@@ -122,6 +126,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "admin/actions": typeof admin_actions;
+  "admin/commissions": typeof admin_commissions;
   "admin/mutations": typeof admin_mutations;
   "admin/queries": typeof admin_queries;
   "ads/actions": typeof ads_actions;
@@ -176,12 +181,14 @@ declare const fullApi: ApiFromModules<{
   "notifications/mutations": typeof notifications_mutations;
   "notifications/queries": typeof notifications_queries;
   "notifications/send": typeof notifications_send;
+  "orders/cod_payment": typeof orders_cod_payment;
   "orders/events": typeof orders_events;
   "orders/helpers": typeof orders_helpers;
   "orders/mutations": typeof orders_mutations;
   "orders/queries": typeof orders_queries;
   "payments/helpers": typeof payments_helpers;
   "payments/moneroo": typeof payments_moneroo;
+  "payments/moneroo_client": typeof payments_moneroo_client;
   "payments/mutations": typeof payments_mutations;
   "payments/queries": typeof payments_queries;
   "payments/webhooks": typeof payments_webhooks;
@@ -189,6 +196,7 @@ declare const fullApi: ApiFromModules<{
   "payouts/helpers": typeof payouts_helpers;
   "payouts/mutations": typeof payouts_mutations;
   "payouts/queries": typeof payouts_queries;
+  "platform/commissions": typeof platform_commissions;
   "product_specs/mutations": typeof product_specs_mutations;
   "product_specs/queries": typeof product_specs_queries;
   "products/csvImport": typeof products_csvImport;

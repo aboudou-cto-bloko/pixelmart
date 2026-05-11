@@ -394,10 +394,11 @@ export const createOrder = mutation({
     }
 
     // 12. Déterminer le statut initial selon le mode de paiement
-    // COD = "paid" directement (le paiement sera collecté à la livraison)
+    // COD = "paid" mais payment_status = "pending_cod" (paiement après livraison)
     // Online = "pending" (en attente de confirmation Moneroo)
     const initialStatus = paymentMode === "cod" ? "paid" : "pending";
-    const initialPaymentStatus = paymentMode === "cod" ? "paid" : "pending";
+    const initialPaymentStatus =
+      paymentMode === "cod" ? "pending_cod" : "pending";
 
     // 13. Créer la commande
     const orderId = await ctx.db.insert("orders", {
@@ -456,97 +457,11 @@ export const createOrder = mutation({
       actorId: user._id,
     });
 
-    // 17. COD : F-01 transactions + credit pending_balance + notifications
-    // Pour les commandes en ligne, ces étapes sont déclenchées par le webhook Moneroo.
-    // Pour COD, le paiement est "confirmé" à la création (collecté à la livraison).
+    // 17. COD : Notifications uniquement — les transactions F-01 et le crédit
+    // pending_balance sont déclenchés UNIQUEMENT quand le client paye via Mobile Money.
     if (paymentMode === "cod") {
-      const netAmount = totalAmount - commissionAmount;
-
-      // F-01 : Transaction "sale" — crédit pour le vendeur
-      const balanceBefore = store.pending_balance;
-      const balanceAfter = balanceBefore + netAmount;
-
-      await ctx.db.insert("transactions", {
-        store_id: store._id,
-        order_id: orderId,
-        type: "sale",
-        direction: "credit",
-        amount: netAmount,
-        currency,
-        balance_before: balanceBefore,
-        balance_after: balanceAfter,
-        status: "completed",
-        description: `Vente COD commande ${orderNumber}`,
-        processed_at: Date.now(),
-        is_demo: store.is_demo === true ? true : undefined,
-      });
-
-      // F-01 : Transaction "fee" — commission Pixel-Mart
-      if (commissionAmount > 0) {
-        await ctx.db.insert("transactions", {
-          store_id: store._id,
-          order_id: orderId,
-          type: "fee",
-          direction: "debit",
-          amount: commissionAmount,
-          currency,
-          balance_before: balanceAfter,
-          balance_after: balanceAfter,
-          status: "completed",
-          description: `Commission Pixel-Mart COD commande ${orderNumber}`,
-          processed_at: Date.now(),
-          is_demo: store.is_demo === true ? true : undefined,
-        });
-      }
-
-      // F-01 : Transaction "free_delivery" — frais absorbés par le vendeur (informatif)
-      if (absorbedDeliveryFee > 0) {
-        await ctx.db.insert("transactions", {
-          store_id: store._id,
-          order_id: orderId,
-          type: "fee",
-          direction: "debit",
-          amount: absorbedDeliveryFee,
-          currency,
-          balance_before: balanceAfter,
-          balance_after: balanceAfter,
-          status: "completed",
-          description: `Livraison offerte COD commande ${orderNumber}`,
-          processed_at: Date.now(),
-          is_demo: store.is_demo === true ? true : undefined,
-        });
-      }
-
-      // Affiliation : créer un enregistrement de commission si la boutique a un parrain
-      if (store.affiliate_link_id && store.affiliate_commission_rate_bp) {
-        const affiliateLink = await ctx.db.get(store.affiliate_link_id);
-        if (affiliateLink && affiliateLink.is_active) {
-          const affiliateCommissionAmount = Math.round(
-            ((subtotal - discountAmount) * store.affiliate_commission_rate_bp) /
-              10_000,
-          );
-          if (affiliateCommissionAmount > 0) {
-            await ctx.scheduler.runAfter(
-              0,
-              internal.affiliate.mutations.createCommissionRecord,
-              {
-                affiliate_link_id: store.affiliate_link_id,
-                referrer_store_id: affiliateLink.referrer_store_id,
-                referlee_store_id: store._id,
-                order_id: orderId,
-                order_subtotal: subtotal - discountAmount,
-                commission_rate_bp: store.affiliate_commission_rate_bp,
-                commission_amount: affiliateCommissionAmount,
-                currency,
-              },
-            );
-          }
-        }
-      }
-
-      // Créditer le pending_balance (libéré après 48h par cron)
+      // Incrémenter le compteur de commandes du store
       await ctx.db.patch(store._id, {
-        pending_balance: balanceAfter,
         total_orders: store.total_orders + 1,
         updated_at: Date.now(),
       });
