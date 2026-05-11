@@ -24,6 +24,8 @@ import VendorOrderDelivered from "../../emails/VendorOrderDelivered";
 import VendorDeliveryFailed from "../../emails/VendorDeliveryFailed";
 import OrderRefunded from "../../emails/OrderRefunded";
 import DemoInvite from "../../emails/DemoInvite";
+import CodPaymentConfirmed from "../../emails/CodPaymentConfirmed";
+import CodPaymentReceived from "../../emails/CodPaymentReceived";
 
 const EMAIL_FROM = "Pixel-Mart <noreply@pixel-mart-bj.com>";
 
@@ -1282,6 +1284,131 @@ export const notifyOrderRefunded = internalAction({
       title: `Remboursement — ${args.orderNumber}`,
       body: `${formatted} remboursé`,
       url: "/orders",
+    });
+  },
+});
+
+// ─── COD Payment Confirmed (email + in-app + push) ───────────
+
+/**
+ * Notifie le client ET le vendeur quand un paiement COD est confirmé.
+ * Déclenché par confirmCodConversion (internalMutation) via scheduler.
+ */
+export const notifyCodPaymentConfirmed = internalAction({
+  args: {
+    // Client
+    customerUserId: v.id("users"),
+    customerEmail: v.string(),
+    customerName: v.string(),
+    // Vendeur
+    vendorUserId: v.id("users"),
+    vendorEmail: v.string(),
+    vendorName: v.string(),
+    // Commande
+    orderId: v.id("orders"),
+    orderNumber: v.string(),
+    storeName: v.string(),
+    totalFormatted: v.string(), // ex: "12 500 FCFA"
+    commissionFormatted: v.string(), // ex: "625 FCFA"
+    netRevenueFormatted: v.string(), // ex: "11 875 FCFA"
+    paymentMethod: v.string(), // ex: "Mobile Money"
+  },
+  handler: async (ctx, args) => {
+    const siteUrl = process.env.SITE_URL ?? "https://www.pixel-mart-bj.com";
+    const orderUrl = `${siteUrl}/orders/${args.orderId}`;
+    const vendorOrderUrl = `${siteUrl}/vendor/orders/${args.orderId}`;
+
+    // ── CLIENT : in-app ──────────────────────────────────────
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.customerUserId,
+      type: "order_status",
+      title: `Paiement confirmé — Commande ${args.orderNumber}`,
+      body: `Votre paiement de ${args.totalFormatted} a été reçu. Commande finalisée chez ${args.storeName}.`,
+      link: `/orders/${args.orderId}`,
+      channels: ["email", "in_app", "push"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
+    // ── CLIENT : email ───────────────────────────────────────
+    try {
+      const resend = getResend();
+      const html = await render(
+        CodPaymentConfirmed({
+          customerName: args.customerName,
+          orderNumber: args.orderNumber,
+          storeName: args.storeName,
+          total: args.totalFormatted,
+          paymentMethod: args.paymentMethod,
+          orderUrl,
+        }),
+      );
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.customerEmail,
+        subject: `Paiement confirmé — Commande ${args.orderNumber}`,
+        html,
+      });
+    } catch (error) {
+      console.error(
+        "[Notification] CodPaymentConfirmed customer email failed:",
+        error,
+      );
+    }
+
+    // ── CLIENT : push ────────────────────────────────────────
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.customerUserId,
+      title: "Paiement confirmé ✅",
+      body: `${args.totalFormatted} reçus pour la commande ${args.orderNumber}. Tout est finalisé !`,
+      url: `/orders/${args.orderId}`,
+    });
+
+    // ── VENDEUR : in-app ─────────────────────────────────────
+    await ctx.runMutation(internal.notifications.mutations.create, {
+      userId: args.vendorUserId,
+      type: "payment",
+      title: `Paiement COD reçu — Commande ${args.orderNumber}`,
+      body: `${args.netRevenueFormatted} crédités (net). Disponibles pour retrait sous 48h.`,
+      link: `/vendor/orders/${args.orderId}`,
+      channels: ["email", "in_app", "push"],
+      sentVia: ["in_app"],
+      metadata: undefined,
+    });
+
+    // ── VENDEUR : email ──────────────────────────────────────
+    try {
+      const resend = getResend();
+      const html = await render(
+        CodPaymentReceived({
+          vendorName: args.vendorName,
+          orderNumber: args.orderNumber,
+          customerName: args.customerName,
+          total: args.totalFormatted,
+          commission: args.commissionFormatted,
+          netRevenue: args.netRevenueFormatted,
+          orderUrl: vendorOrderUrl,
+        }),
+      );
+      await resend.emails.send({
+        from: EMAIL_FROM,
+        to: args.vendorEmail,
+        subject: `Paiement COD reçu — ${args.orderNumber}`,
+        html,
+      });
+    } catch (error) {
+      console.error(
+        "[Notification] CodPaymentReceived vendor email failed:",
+        error,
+      );
+    }
+
+    // ── VENDEUR : push ───────────────────────────────────────
+    await ctx.scheduler.runAfter(0, internal.push.actions.sendToUser, {
+      userId: args.vendorUserId,
+      title: "Paiement COD reçu 💳",
+      body: `Commande ${args.orderNumber} — ${args.netRevenueFormatted} nets disponibles sous 48h.`,
+      url: `/vendor/orders/${args.orderId}`,
     });
   },
 });
