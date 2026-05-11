@@ -13,6 +13,7 @@ import {
   type MonerooInitResponse,
 } from "../payments/moneroo_client";
 import { logOrderEvent } from "./events";
+import { formatAmountText } from "../lib/format";
 
 // ─── Action : initie le paiement Moneroo pour une commande COD livrée ──────
 
@@ -248,36 +249,27 @@ export const confirmCodConversion = internalMutation({
     const customer = await ctx.db.get(order.customer_id);
     const vendor = await ctx.db.get(store.owner_id);
 
-    if (customer) {
+    if (customer && vendor) {
       await ctx.scheduler.runAfter(
         0,
-        internal.notifications.send.createInAppNotification,
+        internal.notifications.send.notifyCodPaymentConfirmed,
         {
-          userId: customer._id,
-          type: "order_status",
-          title: `Paiement confirmé — Commande ${order.order_number}`,
-          body: `Votre paiement de ${order.total_amount.toLocaleString("fr-FR")} FCFA a bien été reçu. Merci !`,
-          link: `/orders/${args.orderId}`,
-          channels: ["in_app", "push"],
-          sentVia: ["in_app"],
-          metadata: undefined,
-        },
-      );
-    }
-
-    if (vendor) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.notifications.send.createInAppNotification,
-        {
-          userId: vendor._id,
-          type: "payment",
-          title: `Paiement COD reçu — Commande ${order.order_number}`,
-          body: `Le client a payé sa commande COD. ${netAmount.toLocaleString("fr-FR")} FCFA en attente de libération.`,
-          link: `/vendor/orders/${args.orderId}`,
-          channels: ["in_app", "push"],
-          sentVia: ["in_app"],
-          metadata: undefined,
+          customerUserId: customer._id,
+          customerEmail: customer.email,
+          customerName: customer.name,
+          vendorUserId: vendor._id,
+          vendorEmail: vendor.email,
+          vendorName: vendor.name,
+          orderId: args.orderId,
+          orderNumber: order.order_number,
+          storeName: store.name,
+          totalFormatted: formatAmountText(order.total_amount, args.currency),
+          commissionFormatted: formatAmountText(
+            commissionAmount,
+            args.currency,
+          ),
+          netRevenueFormatted: formatAmountText(netAmount, args.currency),
+          paymentMethod: "Mobile Money",
         },
       );
     }
