@@ -88,6 +88,11 @@ const PAYMENT_STATUS_MAP: Record<PaymentStatus, StatusConfig> = {
     color: "text-gray-700 dark:text-gray-400",
     bgColor: "bg-gray-100 dark:bg-gray-900/20",
   },
+  pending_cod: {
+    label: "À payer",
+    color: "text-orange-700 dark:text-orange-400",
+    bgColor: "bg-orange-100 dark:bg-orange-900/20",
+  },
 };
 
 export function getPaymentStatusConfig(status: PaymentStatus): StatusConfig {

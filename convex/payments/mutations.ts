@@ -63,7 +63,19 @@ export const confirmPayment = internalMutation({
       );
     }
 
-    // Valider la transition
+    // Cas COD converti en paiement online : la commande est déjà "delivered"
+    // La transition delivered → paid n'existe pas, on délègue au handler dédié.
+    if (order.payment_mode === "cod" && order.status === "delivered") {
+      await ctx.runMutation(internal.orders.cod_payment.confirmCodConversion, {
+        orderId: args.orderId,
+        paymentReference: args.paymentReference,
+        amountPaid: args.amountPaid,
+        currency: args.currency,
+      });
+      return { success: true };
+    }
+
+    // Valider la transition (cas online standard)
     assertValidTransition(order.status, "paid");
 
     // 1. Mettre à jour la commande
@@ -272,6 +284,23 @@ export const confirmPayment = internalMutation({
           currency: order.currency,
         },
       );
+    }
+
+    // Enregistrer la commission perçue par la plateforme (seulement pour les paiements online)
+    // Pour COD, c'est fait dans le cron releaseBalances après livraison
+    if (order.payment_mode === "online" && commissionAmount > 0) {
+      await ctx.runMutation(internal.platform.commissions.recordCommission, {
+        orderId: args.orderId,
+        storeId: store._id,
+        commissionAmount,
+        commissionRate: store.commission_rate, // taux du store au moment de la commande
+        orderTotal: order.total_amount,
+        paymentMode: "online",
+        currency: order.currency,
+        collectionTrigger: "payment_confirmed",
+        description: `Commission online commande ${order.order_number}`,
+        processedBy: "webhook",
+      });
     }
 
     return { success: true };

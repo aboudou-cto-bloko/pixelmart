@@ -36,7 +36,7 @@ export const releaseBalances = internalMutation({
       .filter((q) =>
         q.and(
           q.eq(q.field("status"), "delivered"),
-          q.eq(q.field("payment_status"), "paid"),
+          q.eq(q.field("payment_status"), "paid"), // exclut les "pending_cod" non encore payées
         ),
       )
       .collect();
@@ -101,6 +101,27 @@ export const releaseBalances = internalMutation({
         pending_balance: newPending,
         updated_at: Date.now(),
       });
+
+      // Pour les commandes COD : enregistrer la commission plateforme maintenant
+      // (pour les commandes online, c'est fait lors du webhook payment.success)
+      if (
+        order.payment_mode === "cod" &&
+        order.commission_amount &&
+        order.commission_amount > 0
+      ) {
+        await ctx.runMutation(internal.platform.commissions.recordCommission, {
+          orderId: order._id,
+          storeId: store._id,
+          commissionAmount: order.commission_amount,
+          commissionRate: store.commission_rate, // taux du store au moment de la commande
+          orderTotal: order.total_amount,
+          paymentMode: "cod",
+          currency: order.currency,
+          collectionTrigger: "balance_released",
+          description: `Commission COD commande ${order.order_number}`,
+          processedBy: "cron:balance-release",
+        });
+      }
 
       releasedCount++;
     }

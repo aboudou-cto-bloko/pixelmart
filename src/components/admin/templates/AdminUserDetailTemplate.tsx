@@ -29,10 +29,17 @@ import { formatPrice, formatDate } from "@/lib/format";
 // ─── Types ────────────────────────────────────────────────────
 
 type OrderStatus =
-  | "pending" | "paid" | "processing" | "shipped" | "delivered"
-  | "cancelled" | "refunded" | "ready_for_delivery" | "delivery_failed";
+  | "pending"
+  | "paid"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
+  | "refunded"
+  | "ready_for_delivery"
+  | "delivery_failed";
 
-type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+type PaymentStatus = "pending" | "paid" | "failed" | "refunded" | "pending_cod";
 
 interface UserOrder {
   _id: string;
@@ -74,49 +81,51 @@ interface Props {
 // ─── Badge styles ─────────────────────────────────────────────
 
 const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
-  pending:            "bg-amber-100 text-amber-700 border-amber-300",
-  paid:               "bg-blue-100 text-blue-700 border-blue-300",
-  processing:         "bg-violet-100 text-violet-700 border-violet-300",
-  shipped:            "bg-cyan-100 text-cyan-700 border-cyan-300",
-  delivered:          "bg-green-100 text-green-700 border-green-300",
-  cancelled:          "bg-red-100 text-red-700 border-red-300",
-  refunded:           "bg-slate-100 text-slate-700 border-slate-300",
+  pending: "bg-amber-100 text-amber-700 border-amber-300",
+  paid: "bg-blue-100 text-blue-700 border-blue-300",
+  processing: "bg-violet-100 text-violet-700 border-violet-300",
+  shipped: "bg-cyan-100 text-cyan-700 border-cyan-300",
+  delivered: "bg-green-100 text-green-700 border-green-300",
+  cancelled: "bg-red-100 text-red-700 border-red-300",
+  refunded: "bg-slate-100 text-slate-700 border-slate-300",
   ready_for_delivery: "bg-pink-100 text-pink-700 border-pink-300",
-  delivery_failed:    "bg-rose-100 text-rose-700 border-rose-300",
+  delivery_failed: "bg-rose-100 text-rose-700 border-rose-300",
 };
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending:            "En attente",
-  paid:               "Payée",
-  processing:         "En préparation",
-  shipped:            "Expédiée",
-  delivered:          "Livrée",
-  cancelled:          "Annulée",
-  refunded:           "Remboursée",
+  pending: "En attente",
+  paid: "Payée",
+  processing: "En préparation",
+  shipped: "Expédiée",
+  delivered: "Livrée",
+  cancelled: "Annulée",
+  refunded: "Remboursée",
   ready_for_delivery: "Prête à livrer",
-  delivery_failed:    "Échec livraison",
+  delivery_failed: "Échec livraison",
 };
 
 const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
-  pending:  "bg-amber-100 text-amber-700 border-amber-300",
-  paid:     "bg-green-100 text-green-700 border-green-300",
-  failed:   "bg-red-100 text-red-700 border-red-300",
+  pending: "bg-amber-100 text-amber-700 border-amber-300",
+  paid: "bg-green-100 text-green-700 border-green-300",
+  failed: "bg-red-100 text-red-700 border-red-300",
   refunded: "bg-slate-100 text-slate-700 border-slate-300",
+  pending_cod: "bg-orange-100 text-orange-700 border-orange-300",
 };
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending:  "En attente",
-  paid:     "Payé",
-  failed:   "Échoué",
+  pending: "En attente",
+  paid: "Payé",
+  failed: "Échoué",
   refunded: "Remboursé",
+  pending_cod: "COD — À payer",
 };
 
 const ROLE_LABELS: Record<string, string> = {
   customer: "Client",
-  vendor:   "Vendeur",
-  admin:    "Admin",
-  agent:    "Agent",
-  finance:  "Finance",
+  vendor: "Vendeur",
+  admin: "Admin",
+  agent: "Agent",
+  finance: "Finance",
   logistics: "Logistique",
   developer: "Développeur",
   marketing: "Marketing",
@@ -150,7 +159,9 @@ export function AdminUserDetailTemplate({ user, onBack }: Props) {
     .filter((o) => o.payment_status === "paid")
     .reduce((s, o) => s + o.total_amount, 0);
 
-  const deliveredCount = user.orders.filter((o) => o.status === "delivered").length;
+  const deliveredCount = user.orders.filter(
+    (o) => o.status === "delivered",
+  ).length;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -177,9 +188,7 @@ export function AdminUserDetailTemplate({ user, onBack }: Props) {
           </p>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/admin/users`}>
-            Gérer dans la liste
-          </Link>
+          <Link href={`/admin/users`}>Gérer dans la liste</Link>
         </Button>
       </div>
 
@@ -219,7 +228,9 @@ export function AdminUserDetailTemplate({ user, onBack }: Props) {
               {user.last_login_at && (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock className="size-3.5 shrink-0" />
-                  <span>Dernière connexion {formatDate(user.last_login_at)}</span>
+                  <span>
+                    Dernière connexion {formatDate(user.last_login_at)}
+                  </span>
                 </div>
               )}
             </CardContent>
@@ -237,7 +248,9 @@ export function AdminUserDetailTemplate({ user, onBack }: Props) {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Livrées</span>
-                <span className="font-semibold text-green-600">{deliveredCount}</span>
+                <span className="font-semibold text-green-600">
+                  {deliveredCount}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Dépenses totales</span>
@@ -327,12 +340,18 @@ export function AdminUserDetailTemplate({ user, onBack }: Props) {
                             {formatPrice(order.total_amount, order.currency)}
                           </TableCell>
                           <TableCell>
-                            <Badge className={ORDER_STATUS_STYLES[order.status]}>
+                            <Badge
+                              className={ORDER_STATUS_STYLES[order.status]}
+                            >
                               {ORDER_STATUS_LABELS[order.status]}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge className={PAYMENT_STATUS_STYLES[order.payment_status]}>
+                            <Badge
+                              className={
+                                PAYMENT_STATUS_STYLES[order.payment_status]
+                              }
+                            >
                               {PAYMENT_STATUS_LABELS[order.payment_status]}
                             </Badge>
                           </TableCell>

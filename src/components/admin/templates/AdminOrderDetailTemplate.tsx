@@ -42,7 +42,7 @@ type OrderStatus =
   | "ready_for_delivery"
   | "delivery_failed";
 
-type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+type PaymentStatus = "pending" | "paid" | "failed" | "refunded" | "pending_cod";
 
 type DeliveryType = "standard" | "urgent" | "fragile";
 
@@ -304,6 +304,7 @@ const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
   paid: "bg-green-100 text-green-700 border-green-300",
   failed: "bg-red-100 text-red-700 border-red-300",
   refunded: "bg-slate-100 text-slate-700 border-slate-300",
+  pending_cod: "bg-orange-100 text-orange-700 border-orange-300",
 };
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
@@ -311,6 +312,7 @@ const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   paid: "Payé",
   failed: "Échoué",
   refunded: "Remboursé",
+  pending_cod: "COD — À payer",
 };
 
 const DELIVERY_TYPE_LABELS: Record<DeliveryType, string> = {

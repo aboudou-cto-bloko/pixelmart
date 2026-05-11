@@ -39,7 +39,7 @@ type OrderStatus =
   | "ready_for_delivery"
   | "delivery_failed";
 
-type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
+type PaymentStatus = "pending" | "paid" | "failed" | "refunded" | "pending_cod";
 
 type OrderItem = {
   _id: string;
@@ -65,41 +65,43 @@ interface Props {
 // ─── Status Badges ────────────────────────────────────────────
 
 const ORDER_STATUS_STYLES: Record<OrderStatus, string> = {
-  pending:              "bg-amber-100 text-amber-700 border-amber-300",
-  paid:                 "bg-blue-100 text-blue-700 border-blue-300",
-  processing:           "bg-violet-100 text-violet-700 border-violet-300",
-  shipped:              "bg-cyan-100 text-cyan-700 border-cyan-300",
-  delivered:            "bg-green-100 text-green-700 border-green-300",
-  cancelled:            "bg-red-100 text-red-700 border-red-300",
-  refunded:             "bg-slate-100 text-slate-700 border-slate-300",
-  ready_for_delivery:   "bg-pink-100 text-pink-700 border-pink-300",
-  delivery_failed:      "bg-rose-100 text-rose-700 border-rose-300",
+  pending: "bg-amber-100 text-amber-700 border-amber-300",
+  paid: "bg-blue-100 text-blue-700 border-blue-300",
+  processing: "bg-violet-100 text-violet-700 border-violet-300",
+  shipped: "bg-cyan-100 text-cyan-700 border-cyan-300",
+  delivered: "bg-green-100 text-green-700 border-green-300",
+  cancelled: "bg-red-100 text-red-700 border-red-300",
+  refunded: "bg-slate-100 text-slate-700 border-slate-300",
+  ready_for_delivery: "bg-pink-100 text-pink-700 border-pink-300",
+  delivery_failed: "bg-rose-100 text-rose-700 border-rose-300",
 };
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending:              "En attente",
-  paid:                 "Payée",
-  processing:           "En préparation",
-  shipped:              "Expédiée",
-  delivered:            "Livrée",
-  cancelled:            "Annulée",
-  refunded:             "Remboursée",
-  ready_for_delivery:   "Prête à livrer",
-  delivery_failed:      "Échec livraison",
+  pending: "En attente",
+  paid: "Payée",
+  processing: "En préparation",
+  shipped: "Expédiée",
+  delivered: "Livrée",
+  cancelled: "Annulée",
+  refunded: "Remboursée",
+  ready_for_delivery: "Prête à livrer",
+  delivery_failed: "Échec livraison",
 };
 
 const PAYMENT_STATUS_STYLES: Record<PaymentStatus, string> = {
-  pending:  "bg-amber-100 text-amber-700 border-amber-300",
-  paid:     "bg-green-100 text-green-700 border-green-300",
-  failed:   "bg-red-100 text-red-700 border-red-300",
+  pending: "bg-amber-100 text-amber-700 border-amber-300",
+  paid: "bg-green-100 text-green-700 border-green-300",
+  failed: "bg-red-100 text-red-700 border-red-300",
   refunded: "bg-slate-100 text-slate-700 border-slate-300",
+  pending_cod: "bg-orange-100 text-orange-700 border-orange-300",
 };
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending:  "En attente",
-  paid:     "Payé",
-  failed:   "Échoué",
+  pending: "En attente",
+  paid: "Payé",
+  failed: "Échoué",
   refunded: "Remboursé",
+  pending_cod: "COD — À payer",
 };
 
 // ─── Main Template ────────────────────────────────────────────
@@ -124,7 +126,10 @@ export function AdminOrdersTemplate({ orders }: Props) {
 
   const filteredIds = filtered.map((o) => o._id);
   const totalGmv = filtered.reduce((s, o) => s + o.total_amount, 0);
-  const totalCommissions = filtered.reduce((s, o) => s + o.commission_amount, 0);
+  const totalCommissions = filtered.reduce(
+    (s, o) => s + o.commission_amount,
+    0,
+  );
   const selectedGmv = orders
     .filter((o) => bulk.selectedIds.has(o._id))
     .reduce((s, o) => s + o.total_amount, 0);
@@ -133,7 +138,9 @@ export function AdminOrdersTemplate({ orders }: Props) {
     <div className="space-y-6">
       {/* Heading */}
       <div>
-        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Commandes</h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          Commandes
+        </h1>
         <p className="text-sm text-muted-foreground">
           {orders.length} commande{orders.length !== 1 ? "s" : ""} au total
         </p>
@@ -176,13 +183,22 @@ export function AdminOrdersTemplate({ orders }: Props) {
       {filtered.length > 0 && (
         <div className="flex flex-wrap gap-4 text-sm">
           <span className="text-muted-foreground">
-            <span className="font-semibold text-foreground">{filtered.length}</span> commande{filtered.length > 1 ? "s" : ""}
+            <span className="font-semibold text-foreground">
+              {filtered.length}
+            </span>{" "}
+            commande{filtered.length > 1 ? "s" : ""}
           </span>
           <span className="text-muted-foreground">
-            GMV{" "}<span className="font-semibold text-foreground">{formatPrice(totalGmv, "XOF")}</span>
+            GMV{" "}
+            <span className="font-semibold text-foreground">
+              {formatPrice(totalGmv, "XOF")}
+            </span>
           </span>
           <span className="text-muted-foreground">
-            Commissions{" "}<span className="font-semibold text-foreground">{formatPrice(totalCommissions, "XOF")}</span>
+            Commissions{" "}
+            <span className="font-semibold text-foreground">
+              {formatPrice(totalCommissions, "XOF")}
+            </span>
           </span>
         </div>
       )}
@@ -191,11 +207,14 @@ export function AdminOrdersTemplate({ orders }: Props) {
       {bulk.count > 0 && (
         <div className="flex items-center gap-3 rounded-lg border bg-muted/60 px-4 py-2.5">
           <span className="text-sm font-medium">
-            {bulk.count} commande{bulk.count > 1 ? "s" : ""} sélectionnée{bulk.count > 1 ? "s" : ""}
+            {bulk.count} commande{bulk.count > 1 ? "s" : ""} sélectionnée
+            {bulk.count > 1 ? "s" : ""}
           </span>
           <span className="text-sm text-muted-foreground">
             GMV sélection{" "}
-            <span className="font-semibold text-foreground">{formatPrice(selectedGmv, "XOF")}</span>
+            <span className="font-semibold text-foreground">
+              {formatPrice(selectedGmv, "XOF")}
+            </span>
           </span>
           <button
             onClick={bulk.clear}
@@ -243,7 +262,8 @@ export function AdminOrdersTemplate({ orders }: Props) {
                   className="data-[selected=true]:bg-muted/40 cursor-pointer hover:bg-muted/50"
                   onClick={(e) => {
                     // Don't navigate if clicking checkbox
-                    if ((e.target as HTMLElement).closest('[role="checkbox"]')) return;
+                    if ((e.target as HTMLElement).closest('[role="checkbox"]'))
+                      return;
                     router.push(`/admin/orders/${order._id}`);
                   }}
                 >
@@ -263,7 +283,9 @@ export function AdminOrdersTemplate({ orders }: Props) {
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div
                       className="text-sm font-medium hover:text-primary transition-colors cursor-pointer"
-                      onClick={() => router.push(`/admin/users/${order.customer_id}`)}
+                      onClick={() =>
+                        router.push(`/admin/users/${order.customer_id}`)
+                      }
                     >
                       {order.customer_name}
                     </div>
@@ -296,7 +318,9 @@ export function AdminOrdersTemplate({ orders }: Props) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={PAYMENT_STATUS_STYLES[order.payment_status]}>
+                    <Badge
+                      className={PAYMENT_STATUS_STYLES[order.payment_status]}
+                    >
                       {PAYMENT_STATUS_LABELS[order.payment_status]}
                     </Badge>
                   </TableCell>

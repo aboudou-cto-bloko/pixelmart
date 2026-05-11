@@ -4,47 +4,14 @@ import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { centimesToMonerooAmount, monerooAmountToCentimes } from "./helpers";
-
-const MONEROO_API_URL = "https://api.moneroo.io/v1";
-const MONEROO_TIMEOUT_MS = 10_000;
-
-/** Moneroo may return currency as a string "XOF" or as an object {code:"XOF",...} */
-function parseCurrencyCode(value: unknown, fallback: string): string {
-  if (typeof value === "string" && value.length > 0) return value;
-  if (value !== null && typeof value === "object" && "code" in value) {
-    const code = (value as { code: unknown }).code;
-    if (typeof code === "string" && code.length > 0) return code;
-  }
-  return fallback;
-}
-
-function fetchWithTimeout(
-  url: string,
-  options: RequestInit,
-): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), MONEROO_TIMEOUT_MS);
-  return fetch(url, { ...options, signal: controller.signal }).finally(() =>
-    clearTimeout(id),
-  );
-}
-
-function handleMonerooFetchError(err: unknown, context: string): never {
-  if ((err as Error).name === "AbortError") {
-    throw new Error(
-      `Délai d'attente dépassé lors de la connexion à Moneroo (${context}, timeout ${MONEROO_TIMEOUT_MS / 1000}s)`,
-    );
-  }
-  throw err;
-}
-
-interface MonerooInitResponse {
-  message: string;
-  data: {
-    id: string;
-    checkout_url: string;
-  };
-}
+import {
+  MONEROO_API_URL,
+  fetchWithTimeout,
+  handleMonerooFetchError,
+  parseCurrencyCode,
+  buildAuthHeaders,
+  type MonerooInitResponse,
+} from "./moneroo_client";
 
 /**
  * Initialise un paiement Moneroo pour une commande existante.
@@ -130,11 +97,7 @@ export const initializePayment = action({
         `${MONEROO_API_URL}/payments/initialize`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${secretKey}`,
-            Accept: "application/json",
-          },
+          headers: buildAuthHeaders(secretKey),
           body: JSON.stringify(payload),
         },
       );
@@ -222,11 +185,7 @@ export const initializeShopPayment = action({
         `${MONEROO_API_URL}/payments/initialize`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${secretKey}`,
-            Accept: "application/json",
-          },
+          headers: buildAuthHeaders(secretKey),
           body: JSON.stringify(payload),
         },
       );
@@ -426,11 +385,7 @@ export const requestRefund = internalAction({
         `${MONEROO_API_URL}/payouts/initialize`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${secretKey}`,
-            Accept: "application/json",
-          },
+          headers: buildAuthHeaders(secretKey),
           body: JSON.stringify(payload),
         },
       );
