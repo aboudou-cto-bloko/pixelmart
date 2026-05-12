@@ -113,6 +113,7 @@ export default function StoreSettingsPage() {
   // COD settings
   const updateCodSettings = useMutation(api.stores.mutations.updateCodSettings);
   const [codEnabled, setCodEnabled] = useState(false);
+  const [codDefault, setCodDefault] = useState(false);
   const [codMaxAmountInput, setCodMaxAmountInput] = useState(""); // XOF string
   const [isSavingCod, setIsSavingCod] = useState(false);
   const [codSuccess, setCodSuccess] = useState(false);
@@ -171,6 +172,7 @@ export default function StoreSettingsPage() {
       }
 
       setCodEnabled(store.cod_enabled ?? false);
+      setCodDefault(store.cod_default ?? false);
       setCodMaxAmountInput(
         store.cod_max_amount ? String(store.cod_max_amount) : "",
       );
@@ -298,6 +300,7 @@ export default function StoreSettingsPage() {
 
       await updateCodSettings({
         cod_enabled: codEnabled,
+        cod_default: codDefault,
         cod_max_amount: maxAmount,
       });
       setCodSuccess(true);
@@ -762,6 +765,26 @@ export default function StoreSettingsPage() {
 
               {codEnabled && (
                 <>
+                  <Separator />
+
+                  {/* COD par défaut */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">
+                        COD par défaut
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Le paiement à la livraison sera pré-sélectionné au
+                        checkout — le client peut toujours choisir le paiement
+                        en ligne.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={codDefault}
+                      onCheckedChange={setCodDefault}
+                    />
+                  </div>
+
                   <Separator />
 
                   {/* Avertissement risques */}

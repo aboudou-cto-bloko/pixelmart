@@ -169,6 +169,7 @@ export const getBySlug = query({
       custom_pickup_lon: store.custom_pickup_lon,
       is_demo: store.is_demo ?? false,
       cod_enabled: store.cod_enabled ?? false,
+      cod_default: store.cod_default ?? false,
       cod_max_amount: store.cod_max_amount,
       free_delivery_enabled: store.free_delivery_enabled ?? false,
       free_delivery_min_order: store.free_delivery_min_order,
@@ -342,6 +343,7 @@ export const getDeliveryConfigBatch = query({
             custom_pickup_lat: store.custom_pickup_lat,
             custom_pickup_lon: store.custom_pickup_lon,
             cod_enabled: store.cod_enabled ?? false,
+            cod_default: store.cod_default ?? false,
             cod_max_amount: store.cod_max_amount,
             free_delivery_enabled: store.free_delivery_enabled ?? false,
             free_delivery_min_order: store.free_delivery_min_order,
@@ -357,6 +359,7 @@ export const getDeliveryConfigBatch = query({
           custom_pickup_lat?: number;
           custom_pickup_lon?: number;
           cod_enabled: boolean;
+          cod_default: boolean;
           cod_max_amount?: number;
           free_delivery_enabled: boolean;
           free_delivery_min_order?: number;
