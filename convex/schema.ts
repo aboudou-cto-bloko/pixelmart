@@ -158,6 +158,7 @@ export default defineSchema({
 
     // COD (Cash on Delivery) — opt-in vendeur pour paiement à la livraison
     cod_enabled: v.optional(v.boolean()), // true = vendor accepte le COD
+    cod_default: v.optional(v.boolean()), // true = COD pré-sélectionné au checkout
     cod_max_amount: v.optional(v.number()), // montant max COD en centimes (défaut : constante plateforme)
 
     // Livraison offerte — le vendeur absorbe les frais de livraison

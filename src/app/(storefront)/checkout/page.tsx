@@ -246,6 +246,11 @@ export default function CheckoutPage() {
     storeIds.length > 0 &&
     storeIds.every((id) => storeDeliveryConfigs[id]?.cod_enabled === true);
 
+  // COD par défaut si toutes les boutiques du panier ont cod_default activé
+  const allCodDefault =
+    allCodEnabled &&
+    storeIds.every((id) => storeDeliveryConfigs![id]?.cod_default === true);
+
   // ── State ──
   const [address, setAddress] = useState<ShippingAddress>(() => ({
     full_name: user?.name ?? "",
@@ -259,6 +264,13 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState("");
 
   // ── Delivery State (OpenStreetMap) ──
+  // userPaymentMode : null tant que le client n'a pas choisi explicitement
+  const [userPaymentMode, setUserPaymentMode] = useState<
+    "cod" | "online" | null
+  >(null);
+  // paymentMode effectif : sélection du client ou COD par défaut si tous les vendeurs du panier l'ont activé
+  const paymentMode: "cod" | "online" =
+    userPaymentMode ?? (allCodDefault ? "cod" : "online");
   const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig>({
     deliveryType: "standard",
     paymentMode: "online",
@@ -385,7 +397,7 @@ export default function CheckoutPage() {
 
     // Valider l'adresse de facturation/contact
     const errors = validateAddress(address, {
-      phoneRequired: deliveryConfig.paymentMode === "cod",
+      phoneRequired: paymentMode === "cod",
     });
     if (errors) {
       setAddressErrors(errors);
@@ -483,7 +495,7 @@ export default function CheckoutPage() {
           deliveryDistanceHubToClientKm,
           deliveryFee: storePmService ? deliveryConfig.deliveryFee : 0,
           deliveryType: deliveryConfig.deliveryType,
-          paymentMode: deliveryConfig.paymentMode,
+          paymentMode: paymentMode,
           estimatedWeightKg:
             estimatedWeightKg > 0 ? estimatedWeightKg : undefined,
         });
@@ -493,7 +505,7 @@ export default function CheckoutPage() {
       }
 
       // 2. Gérer le flux selon le mode de paiement
-      if (deliveryConfig.paymentMode === "cod") {
+      if (paymentMode === "cod") {
         // COD : Rediriger directement vers la confirmation
         const orderNumbers = orderResults.map((r) => r.orderNumber).join(",");
         router.push(
@@ -648,7 +660,7 @@ export default function CheckoutPage() {
                   setAddressErrors(null);
                 }}
                 errors={addressErrors ?? undefined}
-                phoneRequired={deliveryConfig.paymentMode === "cod"}
+                phoneRequired={paymentMode === "cod"}
               />
             </CardContent>
           </Card>
@@ -666,10 +678,8 @@ export default function CheckoutPage() {
           {/* Mode de paiement COD — boutiques indépendantes uniquement */}
           {allCodEnabled && (
             <PaymentModeSelector
-              value={deliveryConfig.paymentMode}
-              onChange={(mode) =>
-                setDeliveryConfig((prev) => ({ ...prev, paymentMode: mode }))
-              }
+              value={paymentMode}
+              onChange={(mode) => setUserPaymentMode(mode)}
             />
           )}
 
@@ -752,7 +762,7 @@ export default function CheckoutPage() {
               )}
 
               {/* Payment mode indicator */}
-              {deliveryConfig.paymentMode === "cod" && (
+              {paymentMode === "cod" && (
                 <div className="flex items-center gap-2 text-sm bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-md p-3">
                   <Banknote className="size-4" />
                   <span>Paiement à la livraison sélectionné</span>
@@ -792,7 +802,7 @@ export default function CheckoutPage() {
                     <Loader2 className="size-4 mr-2 animate-spin" />
                     Traitement en cours…
                   </>
-                ) : deliveryConfig.paymentMode === "cod" ? (
+                ) : paymentMode === "cod" ? (
                   <>
                     <ShieldCheck className="size-4 mr-2" />
                     Confirmer (paiement à la livraison)

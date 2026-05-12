@@ -2,7 +2,7 @@
 
 // filepath: src/app/shop/[storeSlug]/checkout/page.tsx
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
 import Link from "next/link";
@@ -85,6 +85,15 @@ export default function ShopCheckoutPage() {
     deliveryLat: undefined,
     deliveryLon: undefined,
   });
+  const codDefaultApplied = useRef(false);
+  useEffect(() => {
+    if (store && !codDefaultApplied.current) {
+      codDefaultApplied.current = true;
+      if (store.cod_default) {
+        setDeliveryConfig((prev) => ({ ...prev, paymentMode: "cod" }));
+      }
+    }
+  }, [store]);
 
   // ── Delivery service scenarios ──────────────────────────────
   // A: use_pixelmart_service + has_storage_plan  → products in PM warehouse → DEFAULT_COLLECTION_POINT

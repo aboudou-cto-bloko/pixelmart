@@ -232,6 +232,7 @@ export const updateStore = mutation({
 export const updateCodSettings = mutation({
   args: {
     cod_enabled: v.boolean(),
+    cod_default: v.optional(v.boolean()),
     cod_max_amount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -245,6 +246,7 @@ export const updateCodSettings = mutation({
 
     await ctx.db.patch(store._id, {
       cod_enabled: args.cod_enabled,
+      cod_default: args.cod_enabled ? (args.cod_default ?? false) : false,
       cod_max_amount: args.cod_max_amount ?? undefined,
       updated_at: Date.now(),
     });

@@ -72,6 +72,7 @@ interface QuickOrderStore {
   custom_pickup_lat?: number;
   custom_pickup_lon?: number;
   cod_enabled?: boolean;
+  cod_default?: boolean;
   free_delivery_enabled?: boolean;
   free_delivery_min_order?: number;
 }
@@ -138,14 +139,14 @@ export function QuickOrderSheet({
     Partial<Record<keyof ShippingAddress, string>>
   >({});
   const [notes, setNotes] = useState("");
-  const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig>({
+  const [deliveryConfig, setDeliveryConfig] = useState<DeliveryConfig>(() => ({
     deliveryType: "standard",
-    paymentMode: "online",
+    paymentMode: store.cod_default ? "cod" : "online",
     deliveryFee: 0,
     deliveryDistanceKm: undefined,
     deliveryLat: undefined,
     deliveryLon: undefined,
-  });
+  }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guestEmail, setGuestEmail] = useState("");
