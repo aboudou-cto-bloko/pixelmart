@@ -1,42 +1,49 @@
 // filepath: src/components/marketing/LandingFooter.tsx
+// Footer — fond noir, séparateur net, liens légaux discrets.
 
 import Link from "next/link";
 import { ChatwayButton } from "@/components/atoms/ChatwayButton";
+import { Section, Container } from "./LandingKit";
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-border/30 py-10">
-      <div className="container mx-auto px-4">
+    <Section tone="ink" className="border-t border-border py-12">
+      <Container>
         <div className="flex flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left">
-          <img
-            src="/Pixel-Mart-1.png"
-            alt="Pixel-Mart"
-            className="h-25 w-auto"
+          <span
+            role="img"
+            aria-label="Pixel-Mart"
+            className="block h-10 w-40 bg-no-repeat"
+            style={{
+              backgroundImage: "url(/Pixel-Mart-1.png)",
+              backgroundSize: "auto 300%",
+              backgroundPosition: "left center",
+            }}
           />
 
-          <div className="flex gap-6 text-xs text-muted-foreground/50">
+          <div className="flex gap-6 text-sm text-muted-foreground">
             <Link
               href="/terms"
-              className="transition-colors hover:text-muted-foreground"
+              className="transition-colors hover:text-foreground"
             >
               CGV
             </Link>
             <Link
               href="/privacy"
-              className="transition-colors hover:text-muted-foreground"
+              className="transition-colors hover:text-foreground"
             >
               Confidentialité
             </Link>
-            <ChatwayButton className="transition-colors hover:text-muted-foreground">
+            <ChatwayButton className="transition-colors hover:text-foreground">
               Contact
             </ChatwayButton>
           </div>
 
-          <p className="text-xs text-muted-foreground/35">
-            © {new Date().getFullYear()} Pixel-Mart. Bénin
+          <p className="text-sm text-muted-foreground">
+            © {new Date().getFullYear()} Pixel-Mart · Bénin
           </p>
         </div>
-      </div>
-    </footer>
+      </Container>
+    </Section>
   );
 }
