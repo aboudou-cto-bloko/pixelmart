@@ -1,159 +1,177 @@
 // filepath: src/components/marketing/LandingAlternating.tsx
-// Sections alternées fidèles à l'app — mockups interactifs + nouvelles sections.
+// 5 features alternées — tonalité ET côté alternés (contraste fort, sans gradient).
+// Chaque feature isole un visuel animé intentionnel.
 
-import { Check } from "lucide-react";
-import { FadeIn, RevealText } from "./FadeIn";
-import { AnimatedPaymentMockup } from "./AnimatedPaymentMockup";
-import { AnimatedOrderMockup } from "./AnimatedOrderMockup";
-import { AnimatedDeliveryMockup } from "./AnimatedDeliveryMockup";
-import { AnimatedMetaPixelMockup } from "./AnimatedMetaPixelMockup";
-import { AnimatedMarketplaceMockup } from "./AnimatedMarketplaceMockup";
 import type { ReactNode } from "react";
+import {
+  Section,
+  Container,
+  Eyebrow,
+  Heading,
+  Lead,
+  CheckList,
+} from "./LandingKit";
+import { FadeIn } from "./FadeIn";
+import {
+  PaymentConfirm,
+  OrderFlow,
+  DeliveryBatch,
+  ShopUrlCard,
+  PixelFunnel,
+} from "./LandingMockups";
 
-interface FeatureSection {
-  tag: string;
-  title: string;
-  description: string;
+type Tone = "dark" | "light";
+
+interface Feature {
+  id: string;
+  tone: Tone;
+  reverse: boolean;
+  eyebrow: string;
+  title: ReactNode;
+  lead: string;
   bullets: string[];
   visual: ReactNode;
-  reverse: boolean;
 }
 
-const FEATURES: FeatureSection[] = [
+const FEATURES: Feature[] = [
   {
-    tag: "Paiements",
-    title: "Encaissez comme\nvos clients paient.",
-    description:
-      "Vos clients paient avec leur téléphone — MTN, Moov, Celtiis ou en espèces à la livraison. Pas de carte bancaire, pas de friction. L'argent arrive sur votre balance dès confirmation.",
-    bullets: [
-      "Vos clients n'ont pas besoin d'avoir une carte bancaire",
-      "Le paiement à la livraison disponible pour ceux qui préfèrent le cash",
-      "Chaque nouveau opérateur disponible sans action de votre part",
-    ],
-    visual: <AnimatedPaymentMockup />,
+    id: "paiements",
+    tone: "dark",
     reverse: false,
+    eyebrow: "Encaissement",
+    title: (
+      <>
+        L&apos;argent entre.
+        <br />
+        Sans friction.
+      </>
+    ),
+    lead: "MTN, Moov, Celtiis, ou cash à la livraison. Pas de carte bancaire. L'argent arrive sur votre balance dès la confirmation du paiement.",
+    bullets: [
+      "Pas de carte bancaire — MTN, Moov ou Celtiis suffit.",
+      "Cash à la livraison inclus, pour ceux qui préfèrent.",
+      "Nouveaux opérateurs disponibles automatiquement.",
+    ],
+    visual: <PaymentConfirm />,
   },
   {
-    tag: "Commandes",
-    title: "Chaque commande,\nsuivie de A à Z.",
-    description:
-      "Finies les commandes perdues dans WhatsApp. Chaque vente a sa propre fiche : qui a commandé, ce qu'il a pris, où ça en est. Votre client aussi est informé à chaque étape — sans que vous ayez à le contacter manuellement.",
-    bullets: [
-      "Plus jamais de commande oubliée ou égarée dans les messages",
-      "Votre client sait exactement où est son colis à chaque instant",
-      "L'historique complet de vos ventes accessible en quelques secondes",
-    ],
-    visual: <AnimatedOrderMockup />,
+    id: "commandes",
+    tone: "light",
     reverse: true,
+    eyebrow: "Commandes",
+    title: (
+      <>
+        Zéro commande perdue.
+        <br />
+        Jamais.
+      </>
+    ),
+    lead: "Chaque vente a sa fiche : qui a commandé, quoi, où ça en est. Votre client est informé à chaque étape — sans que vous leviez le petit doigt.",
+    bullets: [
+      "Fini les commandes noyées dans WhatsApp.",
+      "Suivi client automatique, à chaque étape.",
+      "Tout votre historique, en quelques secondes.",
+    ],
+    visual: <OrderFlow />,
   },
   {
-    tag: "Livraisons",
-    title: "Gérez vos livraisons\nsans prise de tête.",
-    description:
-      "Regroupez plusieurs commandes dans un seul trajet. Les frais sont calculés automatiquement selon la distance réelle. Vos clients voient le coût avant de commander.",
-    bullets: [
-      "Plusieurs commandes dans un seul trajet pour gagner du temps",
-      "Les frais de livraison calculés et affichés automatiquement",
-      "Vos clients connaissent le prix de la livraison avant de payer",
-    ],
-    visual: <AnimatedDeliveryMockup />,
+    id: "livraisons",
+    tone: "dark",
     reverse: false,
+    eyebrow: "Livraisons",
+    title: (
+      <>
+        Plusieurs commandes.
+        <br />
+        Un seul trajet.
+      </>
+    ),
+    lead: "Regroupez vos livraisons. Les frais se calculent à la distance réelle. Vos clients voient le prix avant de commander.",
+    bullets: [
+      "Un trajet, plusieurs livraisons, moins de temps perdu.",
+      "Frais calculés automatiquement selon la distance.",
+      "Prix de livraison affiché avant le paiement.",
+    ],
+    visual: <DeliveryBatch />,
   },
   {
-    tag: "Marketplace hybride",
-    title: "Votre boutique ET\nla marketplace.",
-    description:
-      "Pixel-Mart est à la fois votre boutique personnelle ET une marketplace où vos produits apparaissent pour de nouveaux clients. Vous bénéficiez de la visibilité du catalogue commun sans sacrifier votre identité.",
-    bullets: [
-      "URL dédiée /shop/votre-boutique — votre marque, votre expérience",
-      "Vos produits visibles dans le catalogue Pixel-Mart pour attirer de nouveaux acheteurs",
-      "Le meilleur des deux mondes : boutique indépendante + visibilité marketplace",
-    ],
-    visual: <AnimatedMarketplaceMockup />,
+    id: "boutique",
+    tone: "light",
     reverse: true,
+    eyebrow: "Boutique dédiée",
+    title: (
+      <>
+        Votre boutique.
+        <br />
+        Plus nos acheteurs.
+      </>
+    ),
+    lead: "Une URL à votre nom, votre logo, vos couleurs. Et la visibilité du catalogue Pixel-Mart pour attirer de nouveaux clients.",
+    bullets: [
+      "pixel-mart-bj.com/shop/vous — zéro logo Pixel-Mart.",
+      "5 thèmes, couleur primaire au choix, aperçu en direct.",
+      "Vos produits aussi visibles dans le catalogue commun.",
+    ],
+    visual: <ShopUrlCard />,
   },
   {
-    tag: "Facebook Ads",
-    title: "Vendez depuis vos\npubs Facebook.",
-    description:
-      "Ajoutez votre Pixel ID et tous vos événements Facebook Ads sont configurés automatiquement — AddToCart, Purchase via l'API Conversions côté serveur. Pas de code, pas de développeur.",
-    bullets: [
-      "5 événements pré-configurés : PageView, ViewContent, AddToCart, Checkout, Purchase",
-      "Purchase envoyé via l'API Conversions (côté serveur) pour un tracking fiable même sans cookies",
-      "Vos visiteurs Facebook atterrissent directement sur votre boutique dédiée",
-    ],
-    visual: <AnimatedMetaPixelMockup />,
+    id: "facebook",
+    tone: "dark",
     reverse: false,
+    eyebrow: "Facebook",
+    title: (
+      <>
+        Vendez depuis
+        <br />
+        vos pubs Facebook.
+      </>
+    ),
+    lead: "Ajoutez votre Pixel ID. Les 5 événements se configurent seuls — dont Purchase via l'API Conversions, côté serveur. Pas de code, pas de développeur.",
+    bullets: [
+      "5 événements auto : de PageView jusqu'à Purchase.",
+      "API Conversions côté serveur — fiable même sans cookies.",
+      "Vos visiteurs Facebook arrivent direct sur votre boutique.",
+    ],
+    visual: <PixelFunnel />,
   },
 ];
 
 export function LandingAlternating() {
   return (
-    <div className="flex flex-col">
+    <>
       {FEATURES.map((f) => (
-        <section
-          key={f.tag}
-          className="relative overflow-hidden py-32 odd:bg-card/15"
-        >
-          {/* Ambient glow */}
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div
-              className="absolute top-1/2 -translate-y-1/2 size-[500px] rounded-full bg-primary/4 blur-[130px]"
-              style={{ [f.reverse ? "right" : "left"]: "-15%" }}
-            />
-          </div>
-
-          <div className="container relative mx-auto px-4">
-            <div
-              className={`grid items-center gap-16 lg:grid-cols-2 lg:gap-24 ${f.reverse ? "lg:grid-flow-dense" : ""}`}
-            >
-              {/* Mockup — conteneur isolé overflow-hidden pour que les animations internes ne fassent pas trembler la page */}
-              <div
-                className={`overflow-hidden ${f.reverse ? "lg:col-start-2" : ""}`}
+        <Section key={f.id} id={f.id} tone={f.tone} className="py-24 md:py-32">
+          <Container>
+            <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+              {/* Visuel */}
+              <FadeIn
+                direction={f.reverse ? "right" : "left"}
+                className={`flex justify-center ${f.reverse ? "lg:order-2 lg:justify-end" : "lg:justify-start"}`}
               >
-                <FadeIn direction={f.reverse ? "right" : "left"} duration={0.6}>
-                  {f.visual}
-                </FadeIn>
-              </div>
+                {f.visual}
+              </FadeIn>
 
               {/* Texte */}
-              <div className="flex flex-col gap-7">
-                <div>
-                  <FadeIn delay={0.05} direction="up">
-                    <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-primary">
-                      {f.tag}
-                    </p>
-                  </FadeIn>
-                  <RevealText delay={0.1}>
-                    <h2 className="whitespace-pre-line text-3xl font-black leading-tight text-foreground md:text-4xl">
-                      {f.title}
-                    </h2>
-                  </RevealText>
-                </div>
-                <FadeIn delay={0.18} direction="up">
-                  <p className="text-base leading-relaxed text-muted-foreground">
-                    {f.description}
-                  </p>
+              <div
+                className={`flex flex-col gap-6 ${f.reverse ? "lg:order-1" : ""}`}
+              >
+                <FadeIn>
+                  <Eyebrow>{f.eyebrow}</Eyebrow>
                 </FadeIn>
-                <FadeIn delay={0.26} direction="up">
-                  <ul className="flex flex-col gap-4">
-                    {f.bullets.map((b) => (
-                      <li key={b} className="flex items-start gap-3">
-                        <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15">
-                          <Check className="size-3 text-primary" />
-                        </div>
-                        <span className="text-sm leading-relaxed text-muted-foreground">
-                          {b}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                <FadeIn delay={0.06}>
+                  <Heading size="md">{f.title}</Heading>
+                </FadeIn>
+                <FadeIn delay={0.12}>
+                  <Lead>{f.lead}</Lead>
+                </FadeIn>
+                <FadeIn delay={0.18}>
+                  <CheckList items={f.bullets} />
                 </FadeIn>
               </div>
             </div>
-          </div>
-        </section>
+          </Container>
+        </Section>
       ))}
-    </div>
+    </>
   );
 }

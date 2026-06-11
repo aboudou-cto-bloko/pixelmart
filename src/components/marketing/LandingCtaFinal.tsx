@@ -1,83 +1,77 @@
 "use client";
 
 // filepath: src/components/marketing/LandingCtaFinal.tsx
-// CTA pré-footer + mot impact animé qui alterne entre 3 mots (motion AnimatePresence).
+// CTA de clôture — fond noir, 3 étapes numérotées, mot impact animé.
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { Section, Container, Heading, Cta } from "./LandingKit";
 import { FadeIn } from "./FadeIn";
 
+const STEPS = [
+  { n: "01", label: "Ajoutez votre premier produit" },
+  { n: "02", label: "Personnalisez votre boutique" },
+  { n: "03", label: "Encaissez en Mobile Money" },
+];
+
 const WORDS = ["VENDEZ.", "GRANDISSEZ.", "ENCAISSEZ."];
-const INTERVAL_MS = 2200;
-const EASE = [0.25, 0.46, 0.45, 0.94] as const;
 
-function AnimatedWord() {
+// Mot impact rotatif — setInterval + keyframe CSS (pm-rise). Pas d'eval, CSP-safe.
+function ImpactWord() {
   const [index, setIndex] = useState(0);
-
   useEffect(() => {
-    const id = setInterval(() => {
-      setIndex((i) => (i + 1) % WORDS.length);
-    }, INTERVAL_MS);
+    const id = setInterval(() => setIndex((i) => (i + 1) % WORDS.length), 2400);
     return () => clearInterval(id);
   }, []);
 
   return (
     <div
       className="relative overflow-hidden"
-      style={{ height: "clamp(4.2rem, 19vw, 17rem)" }}
+      style={{ height: "clamp(3.5rem, 16vw, 14rem)" }}
     >
-      <AnimatePresence mode="wait">
-        <motion.p
-          key={WORDS[index]}
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{ y: "0%", opacity: 1 }}
-          exit={{ y: "-100%", opacity: 0 }}
-          transition={{ duration: 0.45, ease: EASE }}
-          className="absolute inset-x-0 select-none text-center font-heading font-black uppercase leading-none tracking-tighter text-foreground/[0.07]"
-          style={{ fontSize: "clamp(4rem, 18vw, 16rem)" }}
-        >
-          {WORDS[index]}
-        </motion.p>
-      </AnimatePresence>
+      <p
+        key={WORDS[index]}
+        className="absolute inset-x-0 select-none text-center font-heading font-semibold uppercase leading-none tracking-[-0.05em] text-foreground/[0.08]"
+        style={{
+          fontSize: "clamp(3.5rem, 15vw, 14rem)",
+          animation: "pm-rise 0.5s ease both",
+        }}
+      >
+        {WORDS[index]}
+      </p>
     </div>
   );
 }
 
 export function LandingCtaFinal() {
   return (
-    <>
-      {/* Pre-footer CTA */}
-      <section className="py-32">
-        <div className="container mx-auto max-w-xl px-4 text-center">
-          <FadeIn>
-            <h2 className="mb-3 text-2xl font-black text-foreground md:text-3xl">
-              Prêt à lancer votre boutique ?
-            </h2>
-            <p className="mb-8 text-base text-muted-foreground">
-              Créez votre compte gratuitement et commencez à vendre dès
-              aujourd&apos;hui.
-            </p>
-            <Button size="lg" asChild className="gap-2">
-              <a href="/register">
-                Créer ma boutique
-                <ArrowRight className="size-4" />
-              </a>
-            </Button>
-          </FadeIn>
-        </div>
-      </section>
+    <Section tone="ink" className="pt-24 md:pt-32">
+      <Container className="text-center">
+        <FadeIn className="flex flex-col items-center gap-7">
+          <Heading size="lg">Lancez vite sur Pixel-Mart.</Heading>
 
-      {/* Impact word animé */}
-      <div className="overflow-hidden">
-        <Separator className="opacity-10" />
-        <div className="py-8">
-          <AnimatedWord />
-        </div>
-        <Separator className="opacity-10" />
+          <div className="grid w-full max-w-3xl gap-4 sm:grid-cols-3">
+            {STEPS.map((s) => (
+              <div
+                key={s.n}
+                className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card px-5 py-7"
+              >
+                <span className="font-heading text-2xl font-semibold tracking-[-0.03em] text-primary">
+                  {s.n}
+                </span>
+                <span className="text-sm font-medium tracking-[-0.01em] text-foreground">
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <Cta href="/register">Démarrer gratuitement</Cta>
+        </FadeIn>
+      </Container>
+
+      <div className="mt-16 border-t border-border pt-6">
+        <ImpactWord />
       </div>
-    </>
+    </Section>
   );
 }

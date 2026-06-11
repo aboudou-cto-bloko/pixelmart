@@ -22,9 +22,21 @@ const nextConfig: NextConfig = {
   async headers() {
     // Content-Security-Policy
     // 'unsafe-inline' requis pour Next.js App Router (hydration scripts + JSON-LD inline)
+    // 'unsafe-eval' requis UNIQUEMENT en dev : le Fast Refresh / HMR de Next.js
+    // (react-refresh runtime) évalue du code via eval(). En prod il n'y a pas de HMR,
+    // donc on garde la CSP stricte sans unsafe-eval.
+    const isDev = process.env.NODE_ENV === "development";
+    const scriptSrc = [
+      "script-src 'self' 'unsafe-inline'",
+      isDev ? "'unsafe-eval'" : "",
+      "https://connect.facebook.net https://cdn.chatway.app",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://connect.facebook.net https://cdn.chatway.app",
+      scriptSrc,
       "style-src 'self' 'unsafe-inline' https://*.chatway.app https://fonts.googleapis.com",
       "img-src 'self' data: blob: https://*.convex.cloud https://picsum.photos https://www.facebook.com https://*.tile.openstreetmap.org https://unpkg.com https://*.chatway.app",
       "font-src 'self' https://*.chatway.app https://fonts.gstatic.com",
