@@ -33,7 +33,7 @@ export function LandingNav() {
           : "border-b border-transparent bg-transparent",
       )}
     >
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 md:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 md:px-8">
         <Link
           href="/landing"
           className="flex items-center"
@@ -44,7 +44,7 @@ export function LandingNav() {
           <span
             role="img"
             aria-label="Pixel-Mart"
-            className="block h-10 w-40 bg-no-repeat"
+            className="block h-9 w-32 shrink-0 bg-no-repeat sm:h-10 sm:w-40"
             style={{
               backgroundImage: "url(/Pixel-Mart-1.png)",
               backgroundSize: "auto 300%",
@@ -65,7 +65,7 @@ export function LandingNav() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <Link
             href="/login"
             className="hidden rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
@@ -74,9 +74,10 @@ export function LandingNav() {
           </Link>
           <Link
             href="/register"
-            className="inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-semibold tracking-[-0.01em] text-black transition-colors hover:bg-primary/90"
+            className="inline-flex h-9 items-center whitespace-nowrap rounded-full bg-primary px-3.5 text-sm font-semibold tracking-[-0.01em] text-black transition-colors hover:bg-primary/90 sm:h-10 sm:px-5"
           >
-            Démarrer gratuitement
+            <span className="sm:hidden">Démarrer</span>
+            <span className="hidden sm:inline">Démarrer gratuitement</span>
           </Link>
         </div>
       </div>
