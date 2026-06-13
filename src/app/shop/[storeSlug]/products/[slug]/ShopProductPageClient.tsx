@@ -32,7 +32,7 @@ import { WishlistButton } from "@/components/atoms/WishlistButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, centimesToPixelValue } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { toast } from "sonner";
 import { useMetaPixel } from "@/components/vendor-shop/providers";
@@ -187,7 +187,7 @@ export function ShopProductPageClient({
       {
         content_ids: [product._id],
         content_type: "product",
-        value: product.price / 100,
+        value: centimesToPixelValue(product.price, store?.currency ?? "XOF"),
         currency: store?.currency ?? "XOF",
       },
       eventId,

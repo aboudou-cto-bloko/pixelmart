@@ -37,7 +37,7 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, centimesToPixelValue } from "@/lib/utils";
 import { toast } from "sonner";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
@@ -173,7 +173,7 @@ export default function ShopCheckoutPage() {
       {
         content_ids: items.map((i) => i.productId),
         num_items: items.reduce((s, i) => s + i.quantity, 0),
-        value: totalAmount / 100,
+        value: centimesToPixelValue(totalAmount, store?.currency ?? "XOF"),
         currency: store?.currency ?? "XOF",
       },
       eventId,
@@ -277,6 +277,20 @@ export default function ShopCheckoutPage() {
       });
 
       if (deliveryConfig.paymentMode === "cod") {
+        // COD : aucun webhook Moneroo → le CAPI ne se déclenchera pas
+        // → browser Pixel est la seule source pour cet événement Purchase
+        const purchaseEventId = generateEventId();
+        trackEvent(
+          "Purchase",
+          {
+            content_ids: items.map((i) => i.productId),
+            content_type: "product",
+            value: centimesToPixelValue(orderTotal, store.currency ?? "XOF"),
+            currency: store.currency ?? "XOF",
+            num_items: items.reduce((s, i) => s + i.quantity, 0),
+          },
+          purchaseEventId,
+        );
         clearCart();
         router.push(
           `${SHOP_ROUTES.CONFIRMATION(storeSlug)}?order=${orderId}&cod=true`,

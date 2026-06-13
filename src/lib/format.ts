@@ -1,5 +1,19 @@
 // filepath: src/lib/format.ts
 
+const NO_SUBUNIT_CURRENCIES = ["XOF", "XAF", "GNF", "CDF"];
+
+/**
+ * Convertit des centimes en valeur numérique pour Meta Pixel/CAPI.
+ * XOF/XAF/GNF/CDF : pas de division (1 centime = 1 FCFA).
+ * Autres devises : divise par 100.
+ */
+export function centimesToPixelValue(
+  centimes: number,
+  currency = "XOF",
+): number {
+  return NO_SUBUNIT_CURRENCIES.includes(currency) ? centimes : centimes / 100;
+}
+
 /**
  * Formate un montant en centimes vers une chaîne lisible.
  * Gère les devises africaines sans décimales (XOF, XAF, GNF, CDF).

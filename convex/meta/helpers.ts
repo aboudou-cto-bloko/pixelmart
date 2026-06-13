@@ -63,9 +63,12 @@ export async function formatUserData(userData: {
   };
 }
 
+const NO_SUBUNIT_CURRENCIES = ["XOF", "XAF", "GNF", "CDF"];
+
 /**
  * Formate les données custom pour Meta CAPI.
- * Convertit les centimes en unités pour la valeur.
+ * Convertit les centimes en valeur réelle selon la devise.
+ * XOF/XAF/GNF/CDF : pas de division (1 centime = 1 unité).
  */
 export function formatCustomData(data: {
   contentIds?: string[];
@@ -75,11 +78,18 @@ export function formatCustomData(data: {
   numItems?: number;
   orderId?: string;
 }): Record<string, unknown> {
+  const currency = data.currency ?? "XOF";
+  const value =
+    data.value !== undefined
+      ? NO_SUBUNIT_CURRENCIES.includes(currency)
+        ? data.value
+        : data.value / 100
+      : undefined;
   return {
     content_ids: data.contentIds,
     content_type: data.contentType ?? "product",
-    value: data.value !== undefined ? data.value / 100 : undefined, // centimes → FCFA
-    currency: data.currency ?? "XOF",
+    value,
+    currency,
     num_items: data.numItems,
     order_id: data.orderId,
   };

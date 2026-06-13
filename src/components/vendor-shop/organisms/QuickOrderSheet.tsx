@@ -39,7 +39,7 @@ import {
   type DeliveryConfig,
 } from "@/components/checkout/DeliverySection";
 import { PaymentModeSelector } from "@/components/checkout/PaymentModeSelector";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, centimesToPixelValue } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { DEFAULT_COUNTRY } from "@/constants/countries";
 import { calculateDistance, DEFAULT_COLLECTION_POINT } from "@/lib/geocoding";
@@ -120,7 +120,7 @@ export function QuickOrderSheet({
       {
         content_ids: [product._id],
         content_type: "product",
-        value: totalAmount,
+        value: centimesToPixelValue(totalAmount, currency),
         currency,
         num_items: quantity,
       },
@@ -291,19 +291,20 @@ export function QuickOrderSheet({
             : undefined,
         });
 
-        trackEvent(
-          "Purchase",
-          {
-            content_ids: [product._id],
-            content_type: "product",
-            value: orderTotal / 100,
-            currency,
-            num_items: quantity,
-          },
-          eventId,
-        );
-
         if (deliveryConfig.paymentMode === "cod") {
+          // COD : confirmé immédiatement côté système — browser Pixel est la seule source
+          // (aucun webhook Moneroo ne viendra déclencher le CAPI)
+          trackEvent(
+            "Purchase",
+            {
+              content_ids: [product._id],
+              content_type: "product",
+              value: centimesToPixelValue(orderTotal, currency),
+              currency,
+              num_items: quantity,
+            },
+            eventId,
+          );
           onOpenChange(false);
           router.push(
             `${SHOP_ROUTES.CONFIRMATION(storeSlug)}?order=${orderId}&cod=true`,
@@ -311,7 +312,8 @@ export function QuickOrderSheet({
           return;
         }
 
-        // Online payment
+        // Paiement en ligne : le CAPI déclenche Purchase après confirmation webhook
+        // → ne pas envoyer le Pixel navigateur ici pour éviter le double-comptage
         const { checkoutUrl } = await initializePayment({ orderId, storeSlug });
         onOpenChange(false);
         window.location.href = checkoutUrl;
