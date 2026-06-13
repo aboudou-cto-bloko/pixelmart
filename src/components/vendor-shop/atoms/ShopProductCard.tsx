@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, centimesToPixelValue } from "@/lib/utils";
 import { SHOP_ROUTES } from "@/constants/routes";
 import { useShopCart, useMetaPixel } from "../providers";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -87,7 +87,7 @@ export function ShopProductCard({
         {
           content_ids: [product._id],
           content_type: "product",
-          value: product.price,
+          value: centimesToPixelValue(product.price, currency),
           currency,
         },
         generateEventId(),

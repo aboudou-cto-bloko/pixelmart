@@ -5,7 +5,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export { formatPrice, formatDate, formatRelativeTime } from "./format";
+export {
+  formatPrice,
+  formatDate,
+  formatRelativeTime,
+  centimesToPixelValue,
+} from "./format";
 
 /**
  * Génère un slug URL-safe à partir d'un string
